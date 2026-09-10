@@ -12,6 +12,10 @@ export function getPool() {
       user: env.database.user,
       password: env.database.password,
       connectionLimit: env.database.connectionLimit,
+      waitForConnections: true,
+      queueLimit: 0,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 0,
       charset: 'utf8mb4',
       timezone: '+07:00',
       decimalNumbers: true,
@@ -25,6 +29,28 @@ export function getPool() {
 export async function query(sql, params = []) {
   const [rows] = await getPool().execute(sql, params);
   return rows;
+}
+
+export async function checkDatabaseConnection() {
+  const startedAt = process.hrtime.bigint();
+
+  await getPool().query({
+    sql: 'SELECT 1 AS ready',
+    timeout: env.database.healthCheckTimeoutMs
+  });
+
+  return {
+    latencyMs: Number(process.hrtime.bigint() - startedAt) / 1_000_000
+  };
+}
+
+export async function closePool() {
+  const currentPool = pool;
+  pool = undefined;
+
+  if (currentPool) {
+    await currentPool.end();
+  }
 }
 
 export async function withTransaction(work) {

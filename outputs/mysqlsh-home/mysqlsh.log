@@ -1,0 +1,58 @@
+2026-09-09 14:16:26: Info: C:\Program Files\MySQL\MySQL Shell 8.0\bin\mysqlsh.exe   Ver 8.0.41 for Win64 on x86_64 - for MySQL 8.0.41 (MySQL Community Server (GPL)) - build 17949741 - commit_id 1f8cf3aae98e6243c930a1266352d6e6ef6b2593
+2026-09-09 14:16:26: Error: Failed to initialize the default helper "windows-credential": Credential helper named "windows-credential" could not be found or is invalid. See logs for more information.
+2026-09-09 14:16:26: Info: Credential store mechanism is going to be disabled.
+2026-09-09 14:16:26: Info: Setting Python home to 'C:\Program Files\MySQL\MySQL Shell 8.0\lib\Python3.13'
+2026-09-09 14:16:26: Info: Loading startup files...
+2026-09-09 14:16:26: Info: Loading plugins...
+2026-09-09 14:16:27: Info: Pager has been set to 'cat'.
+2026-09-09 14:16:27: Warning: Using a password on the command line interface can be insecure.
+2026-09-09 14:16:27: Info: Connecting to MySQL at: root@localhost:3306/food_delivery_db
+2026-09-09 14:16:27: Info: main: tid=10: CONNECTED: localhost:3306
+2026-09-09 14:16:27: Info: Now tracking 'sql_mode' system variable.
+2026-09-09 14:17:04: Info: C:\Program Files\MySQL\MySQL Shell 8.0\bin\mysqlsh.exe   Ver 8.0.41 for Win64 on x86_64 - for MySQL 8.0.41 (MySQL Community Server (GPL)) - build 17949741 - commit_id 1f8cf3aae98e6243c930a1266352d6e6ef6b2593
+2026-09-09 14:17:04: Error: Failed to initialize the default helper "windows-credential": Credential helper named "windows-credential" could not be found or is invalid. See logs for more information.
+2026-09-09 14:17:04: Info: Credential store mechanism is going to be disabled.
+2026-09-09 14:17:04: Info: Setting Python home to 'C:\Program Files\MySQL\MySQL Shell 8.0\lib\Python3.13'
+2026-09-09 14:17:04: Info: Loading startup files...
+2026-09-09 14:17:04: Info: Loading plugins...
+2026-09-09 14:17:04: Info: Pager has been set to 'cat'.
+2026-09-09 14:17:04: Warning: Using a password on the command line interface can be insecure.
+2026-09-09 14:17:04: Info: Connecting to MySQL at: root@localhost:3306/food_delivery_db
+2026-09-09 14:17:04: Info: main: tid=12: CONNECTED: localhost:3306
+2026-09-09 14:17:04: Info: Now tracking 'sql_mode' system variable.
+2026-09-09 14:17:50: Info: C:\Program Files\MySQL\MySQL Shell 8.0\bin\mysqlsh.exe   Ver 8.0.41 for Win64 on x86_64 - for MySQL 8.0.41 (MySQL Community Server (GPL)) - build 17949741 - commit_id 1f8cf3aae98e6243c930a1266352d6e6ef6b2593
+2026-09-09 14:17:51: Error: Failed to initialize the default helper "windows-credential": Credential helper named "windows-credential" could not be found or is invalid. See logs for more information.
+2026-09-09 14:17:51: Info: Credential store mechanism is going to be disabled.
+2026-09-09 14:17:51: Info: Setting Python home to 'C:\Program Files\MySQL\MySQL Shell 8.0\lib\Python3.13'
+2026-09-09 14:17:51: Info: Loading startup files...
+2026-09-09 14:17:51: Info: Loading plugins...
+2026-09-09 14:17:51: Info: Pager has been set to 'cat'.
+2026-09-09 14:17:51: Warning: Using a password on the command line interface can be insecure.
+2026-09-09 14:17:51: Info: Connecting to MySQL at: root@localhost:3306/food_delivery_db
+2026-09-09 14:17:51: Info: main: tid=14: CONNECTED: localhost:3306
+2026-09-09 14:17:51: Info: Now tracking 'sql_mode' system variable.
+2026-09-09 14:17:51: Info: main: tid=14: MySQL Error 1267 (HY000): Illegal mix of collations (utf8mb4_unicode_ci,IMPLICIT) and (utf8mb4_0900_ai_ci,IMPLICIT) for operation '=', SQL: SELECT COUNT(*) AS rows_left_after_rollback
+FROM users
+WHERE username = @verify_key
+2026-09-09 14:18:21: Info: C:\Program Files\MySQL\MySQL Shell 8.0\bin\mysqlsh.exe   Ver 8.0.41 for Win64 on x86_64 - for MySQL 8.0.41 (MySQL Community Server (GPL)) - build 17949741 - commit_id 1f8cf3aae98e6243c930a1266352d6e6ef6b2593
+2026-09-09 14:18:21: Error: Failed to initialize the default helper "windows-credential": Credential helper named "windows-credential" could not be found or is invalid. See logs for more information.
+2026-09-09 14:18:21: Info: Credential store mechanism is going to be disabled.
+2026-09-09 14:18:21: Info: Setting Python home to 'C:\Program Files\MySQL\MySQL Shell 8.0\lib\Python3.13'
+2026-09-09 14:18:21: Info: Loading startup files...
+2026-09-09 14:18:21: Info: Loading plugins...
+2026-09-09 14:18:21: Info: Pager has been set to 'cat'.
+2026-09-09 14:18:21: Warning: Using a password on the command line interface can be insecure.
+2026-09-09 14:18:21: Info: Connecting to MySQL at: root@localhost:3306/food_delivery_db
+2026-09-09 14:18:21: Info: main: tid=16: CONNECTED: localhost:3306
+2026-09-09 14:18:21: Info: Now tracking 'sql_mode' system variable.
+2026-09-09 15:02:22: Info: C:\Program Files\MySQL\MySQL Shell 8.0\bin\mysqlsh.exe   Ver 8.0.41 for Win64 on x86_64 - for MySQL 8.0.41 (MySQL Community Server (GPL)) - build 17949741 - commit_id 1f8cf3aae98e6243c930a1266352d6e6ef6b2593
+2026-09-09 15:02:22: Error: Failed to initialize the default helper "windows-credential": Credential helper named "windows-credential" could not be found or is invalid. See logs for more information.
+2026-09-09 15:02:22: Info: Credential store mechanism is going to be disabled.
+2026-09-09 15:02:22: Info: Setting Python home to 'C:\Program Files\MySQL\MySQL Shell 8.0\lib\Python3.13'
+2026-09-09 15:02:22: Info: Loading startup files...
+2026-09-09 15:02:22: Info: Loading plugins...
+2026-09-09 15:02:22: Info: Pager has been set to 'cat'.
+2026-09-09 15:02:22: Warning: Using a password on the command line interface can be insecure.
+2026-09-09 15:02:22: Info: Connecting to MySQL at: root@localhost:3306/food_delivery_db
+2026-09-09 15:02:22: Info: main: tid=18: CONNECTED: localhost:3306
+2026-09-09 15:02:22: Info: Now tracking 'sql_mode' system variable.

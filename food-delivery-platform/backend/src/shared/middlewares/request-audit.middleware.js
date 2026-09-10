@@ -10,7 +10,7 @@ const sensitiveQueryKeys = new Set([
 ]);
 
 export function requestAuditMiddleware(req, res, next) {
-  if (req.path === '/health') {
+  if (req.path === '/health' || req.path.startsWith('/health/')) {
     next();
     return;
   }
@@ -23,8 +23,8 @@ export function requestAuditMiddleware(req, res, next) {
 
     auditLogService.write({
       userId: getUserId(req),
-      action: auditInfo.action,
-      entityType: auditInfo.entityType,
+      action: req.auditAction ?? auditInfo.action,
+      entityType: req.auditEntityType ?? auditInfo.entityType,
       entityId: req.auditEntityId ?? auditInfo.entityId,
       oldValuesJson: req.auditOldValues ?? null,
       newValuesJson: {
