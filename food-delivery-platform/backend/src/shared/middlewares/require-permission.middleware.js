@@ -2,6 +2,10 @@ import { query } from '../database/mysql.js';
 import { HttpError } from '../http/http-error.js';
 
 export function requirePermission(...permissionCodes) {
+  return createPermissionMiddleware(query, ...permissionCodes);
+}
+
+export function createPermissionMiddleware(queryFn, ...permissionCodes) {
   const requiredCodes = [...new Set(permissionCodes)];
 
   return async (req, res, next) => {
@@ -17,7 +21,7 @@ export function requirePermission(...permissionCodes) {
 
     try {
       const placeholders = requiredCodes.map(() => '?').join(', ');
-      const rows = await query(
+      const rows = await queryFn(
         `
           SELECT COUNT(DISTINCT p.code) AS granted_count
           FROM users u

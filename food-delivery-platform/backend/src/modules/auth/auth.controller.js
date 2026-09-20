@@ -39,3 +39,37 @@ export const me = asyncHandler(async (req, res) => {
   const user = await authService.getCurrentUser(req.user.id);
   res.json(user);
 });
+
+export const requestPasswordReset = asyncHandler(async (req, res) => {
+  const result = await authService.requestPasswordReset(req.body);
+  req.auditEntityType = 'USER';
+  req.auditAction = 'PASSWORD_RESET_REQUEST';
+
+  res.json(result);
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const result = await authService.resetPassword(req.body);
+  req.auditEntityType = 'USER';
+  req.auditAction = 'PASSWORD_RESET_CONFIRM';
+
+  res.json(result);
+});
+
+export const requestEmailVerification = asyncHandler(async (req, res) => {
+  const result = await authService.requestEmailVerification(req.body);
+  req.auditEntityType = 'USER';
+  req.auditAction = 'EMAIL_VERIFICATION_REQUEST';
+
+  res.json(result);
+});
+
+export const verifyEmail = asyncHandler(async (req, res) => {
+  const result = await authService.verifyEmail(req.body?.token);
+  req.auditUserId = result.user.id;
+  req.auditEntityId = result.user.id;
+  req.auditEntityType = 'USER';
+  req.auditAction = 'EMAIL_VERIFICATION_CONFIRM';
+
+  res.json(result);
+});

@@ -6,6 +6,7 @@ import { addressRoutes } from './modules/addresses/address.routes.js';
 import { auditLogRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { catalogRoutes } from './modules/catalog/catalog.routes.js';
+import { customerProfileRoutes } from './modules/customers/customer.routes.js';
 import { healthRoutes } from './modules/health/health.routes.js';
 import {
   restaurantAdminRoutes,
@@ -32,6 +33,7 @@ export function createApp() {
   app.use('/health', healthRoutes);
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/customer/profile', customerProfileRoutes);
   app.use('/api/customer/addresses', addressRoutes);
   app.use('/api/catalog', catalogRoutes);
   app.use('/api/catalog', restaurantPublicRoutes);

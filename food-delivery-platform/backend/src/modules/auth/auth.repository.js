@@ -54,6 +54,45 @@ export const authRepository = {
     return rows[0] ? mapUser(rows[0]) : null;
   },
 
+  async findUserByEmail(email) {
+    const rows = await query(
+      `
+        SELECT
+          u.id,
+          u.role_id,
+          r.name AS role_name,
+          u.username,
+          u.email,
+          u.phone,
+          u.password_hash,
+          u.avatar_url,
+          u.status,
+          u.email_verified_at,
+          u.phone_verified_at,
+          u.last_login_at,
+          u.created_at,
+          cp.id AS customer_id,
+          cp.full_name,
+          cp.date_of_birth,
+          cp.gender,
+          cp.loyalty_points,
+          cp.total_orders,
+          cp.total_spent
+        FROM users u
+        INNER JOIN roles r
+          ON r.id = u.role_id
+        LEFT JOIN customer_profiles cp
+          ON cp.user_id = u.id
+        WHERE u.email = ?
+          AND u.deleted_at IS NULL
+        LIMIT 1
+      `,
+      [email]
+    );
+
+    return rows[0] ? mapUser(rows[0]) : null;
+  },
+
   async findUserById(userId) {
     const rows = await query(
       `
@@ -258,6 +297,136 @@ export const authRepository = {
           AND revoked_at IS NULL
       `,
       [tokenHash]
+    );
+  },
+
+  async revokeRefreshTokensForUser(userId) {
+    await query(
+      `
+        UPDATE refresh_tokens
+        SET revoked_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?
+          AND revoked_at IS NULL
+      `,
+      [userId]
+    );
+  },
+
+  async addPasswordResetToken(input) {
+    await query(
+      `
+        INSERT INTO password_reset_tokens (
+          user_id,
+          token_hash,
+          expires_at
+        )
+        VALUES (?, ?, ?)
+      `,
+      [input.userId, input.tokenHash, input.expiresAt]
+    );
+  },
+
+  async findPasswordResetToken(tokenHash) {
+    const rows = await query(
+      `
+        SELECT
+          id,
+          user_id,
+          expires_at,
+          used_at
+        FROM password_reset_tokens
+        WHERE token_hash = ?
+        LIMIT 1
+      `,
+      [tokenHash]
+    );
+
+    return rows[0] ?? null;
+  },
+
+  async markPasswordResetTokenUsed(tokenHash) {
+    const result = await query(
+      `
+        UPDATE password_reset_tokens
+        SET used_at = CURRENT_TIMESTAMP
+        WHERE token_hash = ?
+          AND used_at IS NULL
+      `,
+      [tokenHash]
+    );
+
+    return result.affectedRows > 0;
+  },
+
+  async updatePasswordHash(userId, passwordHash) {
+    await query(
+      `
+        UPDATE users
+        SET password_hash = ?
+        WHERE id = ?
+          AND deleted_at IS NULL
+      `,
+      [passwordHash, userId]
+    );
+  },
+
+  async addEmailVerificationToken(input) {
+    await query(
+      `
+        INSERT INTO email_verification_tokens (
+          user_id,
+          token_hash,
+          expires_at
+        )
+        VALUES (?, ?, ?)
+      `,
+      [input.userId, input.tokenHash, input.expiresAt]
+    );
+  },
+
+  async findEmailVerificationToken(tokenHash) {
+    const rows = await query(
+      `
+        SELECT
+          id,
+          user_id,
+          expires_at,
+          verified_at
+        FROM email_verification_tokens
+        WHERE token_hash = ?
+        LIMIT 1
+      `,
+      [tokenHash]
+    );
+
+    return rows[0] ?? null;
+  },
+
+  async markEmailVerificationTokenVerified(tokenHash) {
+    const result = await query(
+      `
+        UPDATE email_verification_tokens
+        SET verified_at = CURRENT_TIMESTAMP
+        WHERE token_hash = ?
+          AND verified_at IS NULL
+      `,
+      [tokenHash]
+    );
+
+    return result.affectedRows > 0;
+  },
+
+  async markUserEmailVerified(userId) {
+    await query(
+      `
+        UPDATE users
+        SET
+          email_verified_at = COALESCE(email_verified_at, CURRENT_TIMESTAMP),
+          status = IF(status = 'PENDING', 'ACTIVE', status)
+        WHERE id = ?
+          AND deleted_at IS NULL
+      `,
+      [userId]
     );
   }
 };

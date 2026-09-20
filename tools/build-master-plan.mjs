@@ -54,10 +54,10 @@ const taskGroups = [
       task('1.1', 'SRS, ERD, use case/flow và sơ đồ kiến trúc hệ thống', '1d', '2026-09-09', '2026-09-10', 'Đã hoàn thành', 1),
       task('1.2', 'SQL schema v1 theo food_delivery_db.sql: 66 bảng, khóa ngoại, index, view và trigger', '2d', '2026-09-09', '2026-09-10', 'Đã hoàn thành', 1),
       task('1.3', 'Node.js API foundation: Express, env validation, MySQL pool/transaction, lỗi HTTP, liveness/readiness và graceful shutdown', '2d', '2026-09-10', '2026-09-11', 'Đã hoàn thành', 1),
-      task('1.4', 'Đăng ký/đăng nhập JWT, access/refresh token, hash mật khẩu, logout, /me và login_history', '3d', '2026-09-10', '2026-09-12', 'Đang thực hiện', 0.8),
-      task('1.5', 'RBAC 4 vai trò, permission theo hành động, reset/email verification, audit log và soft-delete', '4d', '2026-09-13', '2026-09-16', 'Đang thực hiện', 0.65),
-      task('1.6', 'Hồ sơ khách hàng và địa chỉ giao hàng: CRUD, mặc định, xóa mềm, kiểm tra quyền và audit', '3d', '2026-09-13', '2026-09-15', 'Đang thực hiện', 0.85),
-      task('1.7', 'Design system Tailwind CSS thống nhất màu sắc, bố cục, typography, spacing và component cho Food Delivery; UI đăng ký/đăng nhập/hồ sơ 4 vai trò', '3d', '2026-09-16', '2026-09-18', 'Chưa thực hiện', 0)
+      task('1.4', 'Đăng ký/đăng nhập JWT, access/refresh token, hash mật khẩu, logout, /me và login_history', '3d', '2026-09-10', '2026-09-12', 'Đã hoàn thành', 1),
+      task('1.5', 'RBAC 4 vai trò, permission theo hành động, reset/email verification, audit log và soft-delete', '4d', '2026-09-13', '2026-09-16', 'Đã hoàn thành', 1),
+      task('1.6', 'Hồ sơ khách hàng và địa chỉ giao hàng: CRUD, mặc định, xóa mềm, kiểm tra quyền và audit', '3d', '2026-09-13', '2026-09-15', 'Đã hoàn thành', 1),
+      task('1.7', 'Design system Tailwind CSS thống nhất màu sắc, bố cục, typography, spacing và component cho Food Delivery; UI đăng ký/đăng nhập/hồ sơ 4 vai trò', '3d', '2026-09-16', '2026-09-18', 'Đã hoàn thành', 1)
     ]
   },
   {
@@ -68,7 +68,7 @@ const taskGroups = [
     start: '2026-09-19',
     deadline: '2026-10-07',
     tasks: [
-      task('2.1', 'CRUD restaurant_categories, restaurants, operating_hours, restaurant_images; validation, audit, xóa mềm', '3d', '2026-09-19', '2026-09-22', 'Đang thực hiện', 0.9),
+      task('2.1', 'CRUD restaurant_categories, restaurants, operating_hours, restaurant_images; validation, audit, xóa mềm', '3d', '2026-09-19', '2026-09-22', 'Đã hoàn thành', 1),
       task('2.2', 'CRUD menus, menu_categories, menu_items; giá gốc/giảm, trạng thái bán và thông tin món', '4d', '2026-09-23', '2026-09-26', 'Chưa thực hiện', 0),
       task('2.3', 'Variants, topping_groups, toppings và liên kết topping theo món; kiểm tra min/max lựa chọn', '3d', '2026-09-27', '2026-09-29', 'Chưa thực hiện', 0),
       task('2.4', 'Catalog cho khách: tìm kiếm/lọc/sắp xếp/phân trang nhà hàng và menu; lưu search_history', '2d', '2026-09-30', '2026-10-01', 'Đang thực hiện', 0.7),
@@ -180,15 +180,15 @@ const taskGroups = [
 ];
 
 const sqlRows = [
-  ['Identity & access', 'roles', 'Vai trò hệ thống', '1.5', 'Đang thực hiện'],
-  ['Identity & access', 'users', 'Tài khoản dùng chung cho 4 vai trò', '1.4, 1.5, 2.7', 'Đang thực hiện'],
-  ['Identity & access', 'permissions', 'Danh sách quyền theo hành động', '1.5', 'Đang thực hiện'],
-  ['Identity & access', 'role_permissions', 'Gán quyền cho role', '1.5', 'Đang thực hiện'],
-  ['Identity & access', 'customer_profiles', 'Hồ sơ khách hàng', '1.6', 'Đang thực hiện'],
-  ['Identity & access', 'customer_addresses', 'Địa chỉ giao hàng', '1.6', 'Đang thực hiện'],
-  ['Restaurant & menu', 'restaurant_categories', 'Danh mục nhà hàng', '2.1', 'Đang thực hiện'],
-  ['Restaurant & menu', 'restaurants', 'Thông tin nhà hàng', '2.1', 'Đang thực hiện'],
-  ['Restaurant & menu', 'restaurant_operating_hours', 'Giờ hoạt động', '2.1', 'Đang thực hiện'],
+  ['Identity & access', 'roles', 'Vai trò hệ thống', '1.5', 'Đã hoàn thành'],
+  ['Identity & access', 'users', 'Tài khoản dùng chung cho 4 vai trò', '1.4, 1.5, 2.7', 'Đã hoàn thành'],
+  ['Identity & access', 'permissions', 'Danh sách quyền theo hành động', '1.5', 'Đã hoàn thành'],
+  ['Identity & access', 'role_permissions', 'Gán quyền cho role', '1.5', 'Đã hoàn thành'],
+  ['Identity & access', 'customer_profiles', 'Hồ sơ khách hàng', '1.6', 'Đã hoàn thành'],
+  ['Identity & access', 'customer_addresses', 'Địa chỉ giao hàng', '1.6', 'Đã hoàn thành'],
+  ['Restaurant & menu', 'restaurant_categories', 'Danh mục nhà hàng', '2.1', 'Đã hoàn thành'],
+  ['Restaurant & menu', 'restaurants', 'Thông tin nhà hàng', '2.1', 'Đã hoàn thành'],
+  ['Restaurant & menu', 'restaurant_operating_hours', 'Giờ hoạt động', '2.1', 'Đã hoàn thành'],
   ['Restaurant & menu', 'restaurant_images', 'Ảnh logo/cover/gallery', '2.1, 2.7', 'Đang thực hiện'],
   ['Restaurant & menu', 'menus', 'Menu theo nhà hàng', '2.2', 'Chưa thực hiện'],
   ['Restaurant & menu', 'menu_categories', 'Nhóm món', '2.2', 'Chưa thực hiện'],
@@ -235,10 +235,10 @@ const sqlRows = [
   ['Settlement', 'restaurant_settlements', 'Đối soát nhà hàng', '4.8', 'Chưa thực hiện'],
   ['Settlement', 'restaurant_commissions', 'Hoa hồng nền tảng', '4.8', 'Chưa thực hiện'],
   ['Audit & auth', 'audit_logs', 'Lịch sử thao tác trong web', '1.5, 6.3', 'Đang thực hiện'],
-  ['Audit & auth', 'refresh_tokens', 'Refresh token dạng hash', '1.4', 'Đang thực hiện'],
-  ['Audit & auth', 'password_reset_tokens', 'Token đặt lại mật khẩu', '1.5', 'Chưa thực hiện'],
-  ['Audit & auth', 'email_verification_tokens', 'Token xác thực email', '1.5', 'Chưa thực hiện'],
-  ['Audit & auth', 'login_history', 'Lịch sử đăng nhập thành công/thất bại', '1.4', 'Đang thực hiện'],
+  ['Audit & auth', 'refresh_tokens', 'Refresh token dạng hash', '1.4', 'Đã hoàn thành'],
+  ['Audit & auth', 'password_reset_tokens', 'Token đặt lại mật khẩu', '1.5', 'Đã hoàn thành'],
+  ['Audit & auth', 'email_verification_tokens', 'Token xác thực email', '1.5', 'Đã hoàn thành'],
+  ['Audit & auth', 'login_history', 'Lịch sử đăng nhập thành công/thất bại', '1.4', 'Đã hoàn thành'],
   ['Jobs & exchange', 'import_jobs', 'Theo dõi import', '5.1', 'Chưa thực hiện'],
   ['Jobs & exchange', 'export_jobs', 'Theo dõi export', '5.2', 'Chưa thực hiện'],
   ['Jobs & exchange', 'background_jobs', 'Hàng đợi tác vụ nền', '5.3', 'Chưa thực hiện'],
@@ -249,16 +249,16 @@ const sqlRows = [
 ];
 
 const requirementsRows = [
-  ['Tài khoản', 'Đăng ký/đăng nhập, JWT, refresh token, reset mật khẩu', '1.4, 1.5', 'Đang làm', 'users, refresh_tokens, password_reset_tokens, login_history'],
-  ['Phân quyền', 'Ít nhất 3 vai trò; đề tài dùng ADMIN/RESTAURANT/SHIPPER/CUSTOMER', '1.5, 1.7', 'Đang làm', 'roles, permissions, role_permissions'],
+  ['Tài khoản', 'Đăng ký/đăng nhập, JWT, refresh token, reset mật khẩu', '1.4, 1.5', 'Đã hoàn thành nền tảng', 'users, refresh_tokens, password_reset_tokens, login_history'],
+  ['Phân quyền', 'Ít nhất 3 vai trò; đề tài dùng ADMIN/RESTAURANT/SHIPPER/CUSTOMER', '1.5, 1.7', 'Đã hoàn thành nền tảng', 'roles, permissions, role_permissions'],
   ['CRUD & tra cứu', 'CRUD có tìm kiếm, lọc, sắp xếp, phân trang', '2.1-2.5, 3.1-3.4', 'Đã đưa vào kế hoạch', 'restaurant_*, menu_*, carts, orders'],
   ['Ảnh & icon', 'Chọn/upload/thay/xóa; toolbar crop, xoay, zoom, căn khung/reset; hiển thị đồng đều và không méo ảnh', '2.7, 6.1', 'Đã đưa vào kế hoạch', 'restaurant_images, restaurant_categories.image_url, menu_items.image_url, users.avatar_url, banners.image_url'],
-  ['Giao diện & design system', 'Tailwind CSS, token màu, bố cục, typography, spacing và component dùng chung; responsive theo nghiệp vụ giao đồ ăn', '1.7, 2.7, 3.4', 'Đã đưa vào kế hoạch', 'Tham khảo sản phẩm giao đồ ăn hiện hành khi chốt theme; dùng chung cho 4 vai trò và kiểm tra tương phản/mobile'],
+  ['Giao diện & design system', 'Tailwind CSS, token màu, bố cục, typography, spacing và component dùng chung; responsive theo nghiệp vụ giao đồ ăn', '1.7, 2.7, 3.4', 'Đã hoàn thành nền tảng', 'UI tĩnh đăng nhập/đăng ký/hồ sơ cho 4 vai trò; mở rộng workflow ở 2.7 và 3.4'],
   ['Import/export/PDF', 'Excel/CSV, hóa đơn PDF, báo cáo và job lớn', '4.5, 5.1-5.3', 'Đã đưa vào kế hoạch', 'invoices, import_jobs, export_jobs, background_jobs'],
-  ['Audit & dữ liệu', 'Ai làm gì, lúc nào; soft-delete; snapshot/versioning cơ bản', '1.5, 1.6, 3.2, 6.3', 'Đang làm', 'audit_logs, deleted_at, order snapshots'],
+  ['Audit & dữ liệu', 'Ai làm gì, lúc nào; soft-delete; snapshot/versioning cơ bản', '1.5, 1.6, 3.2, 6.3', 'Đang làm', 'Đã phủ auth/profile/address/restaurant; order snapshots và system audit nâng cấp ở 3.2/6.3'],
   ['Thông báo & job', 'Email/in-app notification, hàng đợi tác vụ lâu', '4.6, 5.3', 'Đã đưa vào kế hoạch', 'notifications, notification_preferences, background_jobs'],
   ['API tài liệu', 'OpenAPI/Swagger đầy đủ và Postman collection', '8.3', 'Đã đưa vào kế hoạch', 'Toàn bộ API'],
-  ['Kiểm thử', 'Unit service, integration API, E2E, coverage mục tiêu 30-40%', '3.5, 7.1-7.3, 9.1', 'Đang làm', 'Đã có 28 kiểm tra foundation và validation nhà hàng; integration/E2E làm tiếp'],
+  ['Kiểm thử', 'Unit service, integration API, E2E, coverage mục tiêu 30-40%', '3.5, 7.1-7.3, 9.1', 'Đang làm', 'Đã có 54 kiểm tra foundation, auth, RBAC, customer/address, validation, service và controller nhà hàng; integration/E2E làm tiếp'],
   ['Triển khai', 'Docker Compose và CI/CD build-test-deploy', '8.1, 8.2', 'Đã đưa vào kế hoạch', 'API + MySQL + Redis + MailHog'],
   ['Bảo mật & hiệu năng', 'SQLi/XSS/CSRF, rate limit, CORS, cache Redis, seed >= 2.000', '2.6, 6.1, 6.2', 'Đã đưa vào kế hoạch', 'Validation, Redis, seed'],
   ['Giám sát', 'Structured logging và health check', '1.3, 6.3', 'Đang làm', 'Đã có /health, /health/live, /health/ready; structured logs và system_settings làm ở 6.3'],
@@ -569,7 +569,7 @@ function buildSummarySheet() {
   summary.getRange('A1:Q1').format.rowHeight = 34;
 
   summary.mergeCells('A2:Q2');
-  summary.getRange('A2').values = [['Kế hoạch triển khai bám theo food_delivery_db.sql và yêu cầu chung của bài tập lớn | Cập nhật: 09/09/2026']];
+  summary.getRange('A2').values = [['Kế hoạch triển khai bám theo food_delivery_db.sql và yêu cầu chung của bài tập lớn | Cập nhật: 20/09/2026']];
   summary.getRange('A2:Q2').format = {
     fill: colors.blueSoft,
     font: { typeface: 'Arial', fontSize: 10, italic: true, color: colors.navyDark },
@@ -599,7 +599,7 @@ function buildSummarySheet() {
   summary.getRange('E5:F5').merge();
   summary.getRange('G5:H5').merge();
   summary.getRange('I5:J5').merge();
-  summary.getRange('I5').values = [['5/20']];
+  summary.getRange('I5').values = [['10/20']];
   summary.getRange('A5:J5').format = {
     fill: colors.gray,
     font: { typeface: 'Arial', fontSize: 15, bold: true, color: colors.navyDark },
@@ -627,8 +627,8 @@ function buildSummarySheet() {
     ['Node.js + Express, ES modules, MySQL2'],
     ['MySQL 8.0+ | 66 bảng | 62 index | 8 view | 15 trigger'],
     ['ADMIN | RESTAURANT | SHIPPER | CUSTOMER'],
-    ['API foundation, health live/ready, graceful shutdown; auth, audit, catalog, địa chỉ và hồ sơ nhà hàng'],
-    ['HTTP end-to-end phần nhà hàng, UI Tailwind theo design system 4 vai trò, test tích hợp/E2E và Docker']
+    ['API foundation, health live/ready, graceful shutdown; auth JWT/reset/verify, RBAC, customer profile/address, UI 4 vai trò và Restaurant API 2.1 đã có test'],
+    ['Menu API, cart/order workflow, media picker/editor, test tích hợp/E2E và Docker']
   ];
   summary.getRange('A8:H12').format = {
     borders: { preset: 'all', style: 'thin', color: colors.border },
@@ -736,9 +736,9 @@ function buildInfrastructureSheet() {
   const values = [
     [1, 'Backend', 'Node.js 20+ / Express 4 / ES modules', 'Đã có env validation, MySQL pool/transaction, lỗi HTTP và graceful shutdown'],
     [2, 'Database', 'MySQL 8.0+ / food_delivery_db.sql', '66 bảng, 62 index, 8 view, 15 trigger; là nguồn dữ liệu chuẩn'],
-    [3, 'Frontend', 'HTML, JavaScript, Tailwind CSS + design tokens dùng chung', 'Chưa làm giao diện; một quy chuẩn màu, bố cục và component cho cả 4 vai trò'],
-    [4, 'Auth', 'JWT access/refresh + node:crypto PBKDF2/HMAC', 'Đã có register/login/logout/me, lưu token hash'],
-    [5, 'Phân quyền', 'RBAC ADMIN/RESTAURANT/SHIPPER/CUSTOMER', 'Đã kiểm tra role và permission từ database cho API nhà hàng; tiếp tục phủ các module sau'],
+    [3, 'Frontend', 'HTML, JavaScript, Tailwind CSS + design tokens dùng chung', 'Đã có app shell tĩnh cho đăng nhập/đăng ký/hồ sơ 4 vai trò; mở trực tiếp bằng index.html'],
+    [4, 'Auth', 'JWT access/refresh + node:crypto PBKDF2/HMAC', 'Đã có register/login/logout/me, login_history, refresh token hash, reset mật khẩu và xác thực email'],
+    [5, 'Phân quyền', 'RBAC ADMIN/RESTAURANT/SHIPPER/CUSTOMER', 'Đã kiểm tra role và permission từ database, phủ middleware bằng unit test'],
     [6, 'Audit', 'audit_logs + request audit middleware', 'Lưu thao tác web vào database để mở lại trong hệ thống'],
     [7, 'Cache / realtime', 'Redis + WebSocket/Socket.IO', 'Đưa vào Sprint 3; phục vụ catalog, GPS và trạng thái đơn'],
     [8, 'Job queue', 'background_jobs + worker', 'Đưa vào Sprint 3; mail, export lớn, dọn token'],
@@ -746,7 +746,7 @@ function buildInfrastructureSheet() {
     [10, 'PDF / report', 'PDFKit + query từ các view báo cáo SQL', 'Đưa vào Sprint 2-3'],
     [11, 'Import / export', 'CSV/Excel + import_jobs/export_jobs', 'Đưa vào Sprint 3'],
     [12, 'API docs', 'OpenAPI/Swagger + Postman', 'Đưa vào hạng mục 8.3'],
-    [13, 'Testing', 'Node test runner + API integration/E2E', 'Đã có 28 kiểm tra foundation và validation nhà hàng; coverage 30-40% hoàn thiện ở hạng mục 7.3'],
+    [13, 'Testing', 'Node test runner + API integration/E2E', 'Đã có 54 kiểm tra foundation, auth, RBAC, customer/address, validation, service và controller nhà hàng; coverage 30-40% hoàn thiện ở hạng mục 7.3'],
     [14, 'Container', 'Docker Compose: API + MySQL + Redis + MailHog', 'Đưa vào hạng mục 8.1'],
     [15, 'CI/CD', 'Pipeline install - check - test - build - deploy', 'Đưa vào hạng mục 8.2'],
     [16, 'Logging', 'Morgan/structured logging + health/readiness', 'Đã có liveness/readiness và graceful shutdown; structured logging nâng cấp ở 6.3'],
@@ -800,14 +800,16 @@ function buildSqlCoverageSheet() {
     status,
     table === 'audit_logs'
       ? 'Log thao tác lưu trong web/database'
+      : table === 'customer_profiles'
+        ? 'Đã có API hồ sơ khách hàng, audit và test service'
       : table === 'customer_addresses'
-        ? 'Đã có API Node.js'
+        ? 'Đã có CRUD địa chỉ, default/soft-delete/audit và test service'
+        : ['restaurant_categories', 'restaurants', 'restaurant_operating_hours'].includes(table)
+          ? 'Đã hoàn tất API Node.js và test service/controller ở hạng mục 2.1'
         : table === 'restaurant_images'
-          ? 'Đã có backend CRUD; UI chọn/chỉnh ảnh ở hạng mục 2.7'
-        : ['restaurant_categories', 'restaurants', 'restaurant_operating_hours', 'restaurant_images'].includes(table)
-          ? 'Đã có API Node.js; còn xác nhận HTTP end-to-end'
-        : table === 'login_history' || table === 'refresh_tokens'
-          ? 'Đã có repository/service'
+          ? 'Backend CRUD và test service/controller hoàn tất ở 2.1; UI chọn/chỉnh ảnh ở 2.7'
+        : ['login_history', 'refresh_tokens', 'password_reset_tokens', 'email_verification_tokens'].includes(table)
+          ? 'Đã có repository/service và test auth'
           : ''
   ]);
   sqlCoverage.getRange(`A4:F${3 + rows.length}`).values = rows;

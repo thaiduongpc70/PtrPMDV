@@ -11,7 +11,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "check": "node scripts/check-syntax.mjs",
-    "test": "node --test"
+    "test": "node --import ./scripts/setup-test-env.mjs --test"
   },
   "dependencies": {
     "cors": "^2.8.5",

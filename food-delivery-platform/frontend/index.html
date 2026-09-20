@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Food Delivery Account Workspace</title>
+    <link rel="stylesheet" href="./src/styles.css">
+    <script src="./src/app.js" defer></script>
+  </head>
+  <body data-role="customer">
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Food Delivery workspace">
+          <img src="./assets/food-delivery-mark.svg" alt="" width="40" height="40">
+          <span>Food Delivery</span>
+        </a>
+        <div class="topbar-actions" aria-label="Workspace actions">
+          <button class="icon-button" type="button" aria-label="Refresh session" title="Refresh session">R</button>
+          <button class="icon-button" type="button" aria-label="Open notifications" title="Notifications">N</button>
+          <button class="avatar-button" type="button" aria-label="Current account">
+            <span id="avatarInitials">DN</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="role-panel" aria-labelledby="role-title">
+          <div class="section-title">
+            <p class="eyebrow">Role</p>
+            <h1 id="role-title">Account workspace</h1>
+          </div>
+          <div class="role-selector" id="roleSelector" aria-label="Role selector"></div>
+          <dl class="role-metrics" aria-label="Role metrics">
+            <div>
+              <dt>Scope</dt>
+              <dd id="metricScope">Orders</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd id="metricStatus">Active</dd>
+            </div>
+            <div>
+              <dt>Permissions</dt>
+              <dd id="metricPermissions">6</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="auth-panel" aria-labelledby="auth-title">
+          <div class="section-title inline-title">
+            <div>
+              <p class="eyebrow">Session</p>
+              <h2 id="auth-title">Access</h2>
+            </div>
+            <span class="status-pill" id="statusPill">Customer</span>
+          </div>
+
+          <div class="segmented" role="tablist" aria-label="Authentication mode">
+            <button class="segment is-active" type="button" data-mode="login" role="tab" aria-selected="true">Sign in</button>
+            <button class="segment" type="button" data-mode="register" role="tab" aria-selected="false">Create</button>
+          </div>
+
+          <form id="authForm" class="stacked-form">
+            <label>
+              Email or username
+              <input id="authIdentifier" name="identifier" autocomplete="username" required>
+            </label>
+            <label>
+              Password
+              <input id="authPassword" name="password" type="password" autocomplete="current-password" required minlength="8">
+            </label>
+            <label class="register-only">
+              Full name
+              <input id="authFullName" name="fullName" autocomplete="name">
+            </label>
+            <label class="register-only">
+              Phone
+              <input id="authPhone" name="phone" autocomplete="tel">
+            </label>
+            <div class="form-row">
+              <label class="checkbox-line">
+                <input id="rememberDevice" type="checkbox" checked>
+                <span>Remember device</span>
+              </label>
+              <button class="text-button" type="button" id="resetPasswordButton">Reset password</button>
+            </div>
+            <button class="primary-button" type="submit">
+              <span id="authSubmitText">Sign in</span>
+              <span aria-hidden="true">></span>
+            </button>
+            <p class="form-status" id="authStatus" role="status"></p>
+          </form>
+        </section>
+
+        <section class="profile-panel" aria-labelledby="profile-title">
+          <div class="section-title inline-title">
+            <div>
+              <p class="eyebrow">Profile</p>
+              <h2 id="profile-title">Customer account</h2>
+            </div>
+            <button class="secondary-button" type="button" id="verifyEmailButton">Verify email</button>
+          </div>
+
+          <div class="profile-strip">
+            <img src="./assets/food-delivery-mark.svg" alt="" width="56" height="56">
+            <div>
+              <strong id="profileName">Duong Nguyen</strong>
+              <span id="profileEmail">duong@example.com</span>
+            </div>
+          </div>
+
+          <form id="profileForm" class="profile-grid"></form>
+          <div class="toolbar">
+            <button class="secondary-button" type="button" id="discardProfileButton">Discard</button>
+            <button class="primary-button" type="button" id="saveProfileButton">Save profile</button>
+          </div>
+          <p class="form-status" id="profileStatus" role="status"></p>
+        </section>
+
+        <section class="work-panel" aria-labelledby="work-title">
+          <div class="section-title inline-title">
+            <div>
+              <p class="eyebrow">Queue</p>
+              <h2 id="work-title">Today</h2>
+            </div>
+            <span class="swatch-row" aria-label="Theme swatches">
+              <span class="swatch primary"></span>
+              <span class="swatch warm"></span>
+              <span class="swatch cool"></span>
+            </span>
+          </div>
+
+          <div class="permission-list" id="permissionList" aria-label="Permissions"></div>
+
+          <div class="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>State</th>
+                  <th>Owner</th>
+                </tr>
+              </thead>
+              <tbody id="queueRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

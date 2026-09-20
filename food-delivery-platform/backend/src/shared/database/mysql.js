@@ -1,11 +1,13 @@
-import mysql from 'mysql2/promise';
+import { createRequire } from 'node:module';
 import { env } from '../config/env.js';
 
+const require = createRequire(import.meta.url);
+let mysql;
 let pool;
 
 export function getPool() {
   if (!pool) {
-    pool = mysql.createPool({
+    pool = getMysqlClient().createPool({
       host: env.database.host,
       port: env.database.port,
       database: env.database.name,
@@ -24,6 +26,14 @@ export function getPool() {
   }
 
   return pool;
+}
+
+function getMysqlClient() {
+  if (!mysql) {
+    mysql = require('mysql2/promise');
+  }
+
+  return mysql;
 }
 
 export async function query(sql, params = []) {

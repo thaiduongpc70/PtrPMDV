@@ -1,6 +1,14 @@
-import dotenv from 'dotenv';
+import { createRequire } from 'node:module';
 
-dotenv.config();
+const require = createRequire(import.meta.url);
+
+try {
+  require('dotenv').config();
+} catch (error) {
+  if (error?.code !== 'MODULE_NOT_FOUND') {
+    throw error;
+  }
+}
 
 function readNumber(name, fallback) {
   const value = process.env[name];
@@ -59,7 +67,19 @@ export const env = Object.freeze({
       60,
       86400
     ),
-    refreshTokenTtlDays: readInteger('REFRESH_TOKEN_TTL_DAYS', 30, 1, 365)
+    refreshTokenTtlDays: readInteger('REFRESH_TOKEN_TTL_DAYS', 30, 1, 365),
+    passwordResetTokenTtlMinutes: readInteger(
+      'PASSWORD_RESET_TOKEN_TTL_MINUTES',
+      30,
+      5,
+      1440
+    ),
+    emailVerificationTokenTtlHours: readInteger(
+      'EMAIL_VERIFICATION_TOKEN_TTL_HOURS',
+      24,
+      1,
+      168
+    )
   },
   database: {
     host: readString('DB_HOST', 'localhost'),

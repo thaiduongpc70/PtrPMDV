@@ -141,6 +141,133 @@ export const authService = {
     }
 
     return toPublicUser(user);
+  },
+
+  async requestPasswordReset(input) {
+    const email = readEmail(input?.email);
+    const response = {
+      message: 'If the email exists, a password reset token has been created'
+    };
+    const user = await authRepository.findUserByEmail(email);
+
+    if (!user || user.status === 'LOCKED') {
+      return response;
+    }
+
+    const resetToken = createRefreshToken();
+    const expiresAt = new Date(
+      Date.now() + env.auth.passwordResetTokenTtlMinutes * 60 * 1000
+    );
+
+    await authRepository.addPasswordResetToken({
+      userId: user.id,
+      tokenHash: hashRefreshToken(resetToken),
+      expiresAt
+    });
+
+    return {
+      ...response,
+      resetToken,
+      expiresAt
+    };
+  },
+
+  async resetPassword(input) {
+    const token = trim(input?.token, 500);
+    const password = readPassword(input?.password);
+
+    if (!token) {
+      throw new HttpError(400, 'Password reset token is required');
+    }
+
+    const tokenHash = hashRefreshToken(token);
+    const storedToken = await authRepository.findPasswordResetToken(tokenHash);
+
+    if (!storedToken || storedToken.used_at) {
+      throw new HttpError(401, 'Invalid password reset token');
+    }
+
+    if (new Date(storedToken.expires_at).getTime() <= Date.now()) {
+      throw new HttpError(401, 'Password reset token expired');
+    }
+
+    const user = await authRepository.findUserById(Number(storedToken.user_id));
+    if (!user || user.status === 'LOCKED') {
+      throw new HttpError(401, 'Invalid password reset token');
+    }
+
+    if (!await authRepository.markPasswordResetTokenUsed(tokenHash)) {
+      throw new HttpError(401, 'Invalid password reset token');
+    }
+
+    await authRepository.updatePasswordHash(user.id, await hashPassword(password));
+    await authRepository.revokeRefreshTokensForUser(user.id);
+
+    return { message: 'Password has been reset' };
+  },
+
+  async requestEmailVerification(input) {
+    const email = readEmail(input?.email);
+    const response = {
+      message: 'If the email exists, a verification token has been created'
+    };
+    const user = await authRepository.findUserByEmail(email);
+
+    if (!user || user.emailVerifiedAt || user.status === 'LOCKED') {
+      return response;
+    }
+
+    const verificationToken = createRefreshToken();
+    const expiresAt = new Date(
+      Date.now() + env.auth.emailVerificationTokenTtlHours * 60 * 60 * 1000
+    );
+
+    await authRepository.addEmailVerificationToken({
+      userId: user.id,
+      tokenHash: hashRefreshToken(verificationToken),
+      expiresAt
+    });
+
+    return {
+      ...response,
+      verificationToken,
+      expiresAt
+    };
+  },
+
+  async verifyEmail(token) {
+    const rawToken = trim(token, 500);
+
+    if (!rawToken) {
+      throw new HttpError(400, 'Email verification token is required');
+    }
+
+    const tokenHash = hashRefreshToken(rawToken);
+    const storedToken = await authRepository.findEmailVerificationToken(tokenHash);
+
+    if (!storedToken || storedToken.verified_at) {
+      throw new HttpError(401, 'Invalid email verification token');
+    }
+
+    if (new Date(storedToken.expires_at).getTime() <= Date.now()) {
+      throw new HttpError(401, 'Email verification token expired');
+    }
+
+    if (!await authRepository.markEmailVerificationTokenVerified(tokenHash)) {
+      throw new HttpError(401, 'Invalid email verification token');
+    }
+
+    await authRepository.markUserEmailVerified(Number(storedToken.user_id));
+
+    const user = await authRepository.findUserById(Number(storedToken.user_id));
+    if (!user) {
+      throw new HttpError(401, 'Invalid email verification token');
+    }
+
+    return {
+      message: 'Email has been verified',
+      user: toPublicUser(user)
+    };
   }
 };
 
@@ -193,9 +320,7 @@ function validateRegisterCustomer(input) {
     throw new HttpError(400, 'Phone number is invalid');
   }
 
-  if (password.length < 8 || password.length > 72) {
-    throw new HttpError(400, 'Password must be 8-72 characters');
-  }
+  readPassword(password);
 
   if (!fullName) {
     throw new HttpError(400, 'Full name is required');
@@ -210,6 +335,26 @@ function validateRegisterCustomer(input) {
     dateOfBirth,
     gender
   };
+}
+
+function readEmail(value) {
+  const email = trim(value, 150)?.toLowerCase();
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new HttpError(400, 'Valid email is required');
+  }
+
+  return email;
+}
+
+function readPassword(value) {
+  const password = String(value ?? '');
+
+  if (password.length < 8 || password.length > 72) {
+    throw new HttpError(400, 'Password must be 8-72 characters');
+  }
+
+  return password;
 }
 
 function getDuplicateMessage(existing, data) {
