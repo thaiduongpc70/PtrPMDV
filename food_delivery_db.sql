@@ -772,6 +772,9 @@ CREATE TABLE orders (
 
     order_code VARCHAR(50) NOT NULL UNIQUE,
 
+    -- Client supplied retry key; NULL keeps backward compatibility for imported orders.
+    idempotency_key VARCHAR(100) NULL,
+
     customer_id BIGINT UNSIGNED NOT NULL,
     restaurant_id BIGINT UNSIGNED NOT NULL,
     shipper_id BIGINT UNSIGNED NULL,
@@ -839,6 +842,8 @@ CREATE TABLE orders (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
+
+    UNIQUE KEY uk_order_customer_idempotency (customer_id, idempotency_key),
 
     CONSTRAINT chk_order_subtotal
         CHECK (subtotal >= 0),

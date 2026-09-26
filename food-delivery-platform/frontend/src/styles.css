@@ -110,6 +110,33 @@ button {
   gap: 8px;
 }
 
+.app-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+}
+
+.nav-link {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.nav-link.is-active {
+  color: #ffffff;
+  background: var(--accent);
+}
+
 .icon-button,
 .avatar-button {
   display: inline-grid;
@@ -131,10 +158,37 @@ button {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(280px, 0.9fr) minmax(320px, 1.2fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
-  margin-top: 16px;
+  max-width: 1180px;
+  margin: 16px auto 0;
   align-items: start;
+}
+
+.view-layer[hidden],
+.screen-panel[hidden] {
+  display: none !important;
+}
+
+.auth-layer {
+  min-height: calc(100vh - 36px);
+  display: grid;
+  place-items: center;
+}
+
+.auth-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.2fr);
+  width: min(940px, 100%);
+  gap: 16px;
+}
+
+.app-layer {
+  min-height: calc(100vh - 98px);
+}
+
+body[data-view="auth"] .topbar {
+  display: none;
 }
 
 .role-panel,
@@ -154,9 +208,86 @@ button {
   padding: 18px;
 }
 
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.workspace[data-screen="home"] .work-panel,
+.workspace[data-screen="orders"] .ordering-panel,
+.workspace[data-screen="account"] .profile-panel,
+.workspace[data-screen="account"] .image-panel {
+  width: 100%;
+}
+
+.workspace[data-screen="account"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .work-panel {
   grid-column: span 1;
 }
+
+.ordering-panel {
+  grid-column: 1 / -1;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.image-panel { grid-column: 1 / -1; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+.image-panel[hidden] { display: none; }
+.image-editor { display: grid; grid-template-columns: minmax(240px, 420px) minmax(240px, 1fr); gap: 18px; align-items: start; }
+.image-canvas-wrap { display: grid; place-items: center; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: #12202a; }
+.image-canvas-wrap canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+.image-tools { display: grid; gap: 12px; }
+.session-card { display: grid; gap: 14px; padding: 14px; border: 1px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+.session-card strong, .session-card span { display: block; }
+.session-card span { margin-top: 4px; color: var(--muted); font-size: 0.82rem; }
+.session-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.order-toolbar,
+.order-grid,
+.cart-heading,
+.catalog-card,
+.order-row {
+  display: flex;
+  gap: 12px;
+}
+
+.order-toolbar { align-items: end; margin-bottom: 18px; }
+.search-field { flex: 1; }
+.order-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr); align-items: start; }
+.order-grid h3, .restaurant-queue h3, .customer-orders h3 { margin: 0 0 10px; font-size: 0.98rem; }
+.catalog-subtitle { margin-top: 20px !important; }
+.catalog-list { display: grid; gap: 8px; }
+.catalog-card { align-items: center; justify-content: space-between; min-height: 66px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-strong); }
+.catalog-card-main { min-width: 0; }
+.catalog-card strong, .catalog-card span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.catalog-card span { color: var(--muted); font-size: 0.78rem; }
+.catalog-card .price { color: var(--accent-dark); font-weight: 900; }
+.catalog-card button { flex: 0 0 auto; min-height: 34px; padding: 6px 10px; }
+.cart-drawer { padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-strong); }
+.cart-heading { align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cart-heading h3 { margin: 0; }
+.cart-items { display: grid; gap: 8px; max-height: 260px; overflow: auto; }
+.cart-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.cart-row:last-child { border-bottom: 0; }
+.cart-row small { color: var(--muted); }
+.quantity-control { display: inline-flex; align-items: center; gap: 6px; }
+.quantity-control button { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); }
+.checkout-form { display: grid; gap: 10px; margin-top: 14px; }
+.empty-state { margin: 0; color: var(--muted); font-size: 0.86rem; }
+.restaurant-queue, .customer-orders { margin-top: 20px; }
+.restaurant-queue[hidden], .customer-orders[hidden] { display: none; }
+.order-row { align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.order-row:last-child { border-bottom: 0; }
+.order-row strong, .order-row span { display: block; }
+.order-row span { color: var(--muted); font-size: 0.78rem; }
 
 .section-title {
   display: grid;
@@ -534,12 +665,9 @@ tr:last-child td {
 }
 
 @media (max-width: 1100px) {
-  .workspace {
-    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
-  }
-
-  .work-panel {
-    grid-column: 1 / -1;
+  .auth-layout {
+    grid-template-columns: 1fr;
+    max-width: 620px;
   }
 }
 
@@ -549,19 +677,33 @@ tr:last-child td {
   }
 
   .topbar {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .app-nav {
+    order: 3;
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .nav-link {
+    flex: 1;
   }
 
   .topbar-actions {
-    width: 100%;
+    width: auto;
     justify-content: flex-end;
   }
 
   .workspace,
-  .profile-grid {
+  .profile-grid,
+  .order-grid,
+  .image-editor {
     grid-template-columns: 1fr;
   }
+
+  .order-toolbar { align-items: stretch; flex-direction: column; }
 
   .inline-title {
     grid-template-columns: 1fr;

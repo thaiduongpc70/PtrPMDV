@@ -3,8 +3,18 @@ import { HttpError } from '../../shared/http/http-error.js';
 import { catalogService } from './catalog.service.js';
 
 export const searchRestaurants = asyncHandler(async (req, res) => {
-  const restaurants = await catalogService.searchRestaurants(req.query);
+  const restaurants = await catalogService.searchRestaurants({ ...req.query, userId: req.user?.id });
   res.json(restaurants);
+});
+
+export const searchMenuItems = asyncHandler(async (req, res) => {
+  const result = await catalogService.searchMenuItems({ ...req.query, userId: req.user?.id });
+  res.json(result);
+});
+
+export const listSearchHistory = asyncHandler(async (req, res) => {
+  const items = await catalogService.listSearchHistory(req.user.id);
+  res.json({ items, totalItems: items.length });
 });
 
 export const getRestaurant = asyncHandler(async (req, res) => {

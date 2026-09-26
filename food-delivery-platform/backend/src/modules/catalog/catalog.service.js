@@ -1,4 +1,5 @@
 import { readPagination, toPagedResponse } from '../../shared/http/pagination.js';
+import { HttpError } from '../../shared/http/http-error.js';
 import { catalogRepository } from './catalog.repository.js';
 
 export const catalogService = {
@@ -14,6 +15,9 @@ export const catalogService = {
     };
 
     const result = await catalogRepository.searchRestaurants(filters);
+    if (filters.keyword && query.userId) {
+      await catalogRepository.addSearchHistory(query.userId, filters.keyword);
+    }
     return toPagedResponse(
       result.items,
       pagination.pageNumber,
@@ -28,6 +32,31 @@ export const catalogService = {
 
   getRestaurantMenu(restaurantId) {
     return catalogRepository.getRestaurantMenu(restaurantId);
+  },
+
+  async searchMenuItems(query) {
+    const pagination = readPagination(query, 100);
+    const sort = trim(query.sort);
+    if (sort && !new Set(['price_asc', 'price_desc', 'popular', 'featured']).has(sort)) {
+      throw new HttpError(400, 'Menu sort is invalid');
+    }
+    const filters = {
+      restaurantId: readPositiveInteger(query.restaurantId),
+      categoryId: readPositiveInteger(query.categoryId),
+      keyword: trim(query.keyword),
+      sort: sort ?? 'featured',
+      pageSize: pagination.pageSize,
+      offset: pagination.offset
+    };
+    const result = await catalogRepository.searchMenuItems(filters);
+    if (filters.keyword && query.userId) {
+      await catalogRepository.addSearchHistory(query.userId, filters.keyword);
+    }
+    return toPagedResponse(result.items, pagination.pageNumber, pagination.pageSize, result.totalItems);
+  },
+
+  async listSearchHistory(userId) {
+    return catalogRepository.listSearchHistory(userId);
   }
 };
 

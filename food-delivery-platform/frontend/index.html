@@ -14,16 +14,22 @@
           <img src="./assets/food-delivery-mark.svg" alt="" width="40" height="40">
           <span>Food Delivery</span>
         </a>
+        <nav class="app-nav" id="appNav" aria-label="Workspace navigation">
+          <button class="nav-link is-active" type="button" data-screen="home">Overview</button>
+          <button class="nav-link" type="button" data-screen="orders">Orders</button>
+          <button class="nav-link" type="button" data-screen="account">Account</button>
+        </nav>
         <div class="topbar-actions" aria-label="Workspace actions">
           <button class="icon-button" type="button" aria-label="Refresh session" title="Refresh session">R</button>
           <button class="icon-button" type="button" aria-label="Open notifications" title="Notifications">N</button>
-          <button class="avatar-button" type="button" aria-label="Current account">
+          <button class="avatar-button" type="button" id="accountButton" aria-label="Open account">
             <span id="avatarInitials">DN</span>
           </button>
         </div>
       </header>
 
-      <main class="workspace">
+      <section class="view-layer auth-layer" id="authLayer">
+        <div class="auth-layout">
         <section class="role-panel" aria-labelledby="role-title">
           <div class="section-title">
             <p class="eyebrow">Role</p>
@@ -90,15 +96,34 @@
             </button>
             <p class="form-status" id="authStatus" role="status"></p>
           </form>
-        </section>
 
-        <section class="profile-panel" aria-labelledby="profile-title">
+          <div class="session-card" id="sessionCard" hidden>
+            <div>
+              <strong id="sessionAccount">Signed in</strong>
+              <span id="sessionRole">Customer workspace is ready.</span>
+            </div>
+            <div class="session-actions">
+              <button class="secondary-button" type="button" id="switchAccountButton">Switch account</button>
+              <button class="primary-button" type="button" id="logoutButton">Sign out</button>
+            </div>
+          </div>
+        </section>
+        </div>
+      </section>
+
+      <section class="view-layer app-layer" id="appLayer" hidden>
+      <main class="workspace" id="workspace">
+        <section class="screen-panel profile-panel" data-screen-panel="account" aria-labelledby="profile-title" hidden>
           <div class="section-title inline-title">
             <div>
               <p class="eyebrow">Profile</p>
               <h2 id="profile-title">Customer account</h2>
             </div>
-            <button class="secondary-button" type="button" id="verifyEmailButton">Verify email</button>
+            <div class="profile-actions">
+              <button class="secondary-button" type="button" id="backToWorkspaceButton">Back</button>
+              <button class="secondary-button" type="button" id="verifyEmailButton">Verify email</button>
+              <button class="secondary-button" type="button" id="accountLogoutButton">Sign out</button>
+            </div>
           </div>
 
           <div class="profile-strip">
@@ -117,7 +142,7 @@
           <p class="form-status" id="profileStatus" role="status"></p>
         </section>
 
-        <section class="work-panel" aria-labelledby="work-title">
+        <section class="screen-panel work-panel" data-screen-panel="home" aria-labelledby="work-title">
           <div class="section-title inline-title">
             <div>
               <p class="eyebrow">Queue</p>
@@ -145,7 +170,74 @@
             </table>
           </div>
         </section>
+
+        <section class="screen-panel ordering-panel" data-screen-panel="orders" id="orderingPanel" aria-labelledby="ordering-title" hidden>
+          <div class="section-title inline-title">
+            <div>
+              <p class="eyebrow">Ordering</p>
+              <h2 id="ordering-title">Discover and checkout</h2>
+            </div>
+            <span class="status-pill" id="orderingStatus">Ready</span>
+          </div>
+          <div class="order-toolbar">
+            <label class="search-field">
+              Search restaurants or dishes
+              <input id="catalogSearch" type="search" placeholder="Try: pho, pizza, lunch">
+            </label>
+            <button class="secondary-button" type="button" id="searchCatalogButton">Search</button>
+            <button class="secondary-button" type="button" id="loadOrdersButton">Orders</button>
+          </div>
+          <div class="order-grid">
+            <div>
+              <h3>Restaurants</h3>
+              <div class="catalog-list" id="restaurantResults"></div>
+              <h3 class="catalog-subtitle">Menu items</h3>
+              <div class="catalog-list" id="menuResults"></div>
+            </div>
+            <aside class="cart-drawer" aria-labelledby="cart-title">
+              <div class="cart-heading">
+                <h3 id="cart-title">Cart</h3>
+                <span id="cartSubtotal">0 VND</span>
+              </div>
+              <div id="cartItems" class="cart-items"><p class="empty-state">Choose a dish to start an order.</p></div>
+              <form id="checkoutForm" class="checkout-form">
+                <label>Delivery address ID<input id="checkoutAddressId" type="number" min="1" placeholder="e.g. 31" required></label>
+                <label>Payment
+                  <select id="checkoutPayment"><option value="COD">Cash on delivery</option><option value="CARD">Card</option><option value="MOMO">MoMo</option></select>
+                </label>
+                <label>Promotion code<input id="checkoutPromotion" maxlength="50" placeholder="Optional"></label>
+                <button class="primary-button" type="submit">Place order <span aria-hidden="true">&gt;</span></button>
+              </form>
+              <p class="form-status" id="orderingMessage" role="status"></p>
+            </aside>
+          </div>
+          <div class="restaurant-queue" id="restaurantQueue" hidden>
+            <div class="cart-heading"><h3>Kitchen queue</h3><button class="secondary-button" type="button" id="refreshQueueButton">Refresh</button></div>
+            <div class="table-shell"><table><thead><tr><th>Order</th><th>Status</th><th>Action</th></tr></thead><tbody id="restaurantQueueRows"></tbody></table></div>
+          </div>
+          <div class="customer-orders" id="customerOrders" hidden><h3>Recent orders</h3><div class="catalog-list" id="customerOrderRows"></div></div>
+        </section>
+
+        <section class="screen-panel image-panel" data-screen-panel="account" id="imagePanel" aria-labelledby="image-title" hidden>
+          <div class="section-title inline-title">
+            <div><p class="eyebrow">Media</p><h2 id="image-title">Restaurant image editor</h2></div>
+            <span class="status-pill">1:1 preview</span>
+          </div>
+          <div class="image-editor">
+            <div class="image-canvas-wrap"><canvas id="imageCanvas" width="420" height="420" aria-label="Image preview"></canvas></div>
+            <div class="image-tools">
+              <label>Restaurant ID<input id="imageRestaurantId" type="number" min="1" placeholder="e.g. 11" required></label>
+              <label>Choose image<input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp"></label>
+              <label>Image type<select id="imageType"><option value="COVER">Cover</option><option value="LOGO">Logo</option><option value="GALLERY">Gallery</option></select></label>
+              <label>Zoom<input id="imageZoom" type="range" min="1" max="3" step="0.05" value="1"></label>
+              <div class="toolbar"><button class="secondary-button" type="button" id="rotateImageButton" aria-label="Rotate image">Rotate</button><button class="secondary-button" type="button" id="resetImageButton">Reset</button></div>
+              <button class="primary-button" type="button" id="uploadImageButton">Upload image</button>
+              <p class="form-status" id="imageStatus" role="status"></p>
+            </div>
+          </div>
+        </section>
       </main>
+      </section>
     </div>
   </body>
 </html>

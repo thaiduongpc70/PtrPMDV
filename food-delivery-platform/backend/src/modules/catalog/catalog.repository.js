@@ -284,6 +284,76 @@ export const catalogRepository = {
       toppingGroups,
       toppings
     });
+  },
+
+  async searchMenuItems(filters) {
+    const where = [
+      "r.status = 'ACTIVE'",
+      'r.deleted_at IS NULL',
+      'mi.deleted_at IS NULL',
+      'mi.is_available = TRUE'
+    ];
+    const params = [];
+    if (filters.restaurantId) { where.push('mi.restaurant_id = ?'); params.push(filters.restaurantId); }
+    if (filters.categoryId) { where.push('mi.category_id = ?'); params.push(filters.categoryId); }
+    if (filters.keyword) {
+      where.push('(mi.name LIKE ? OR mi.description LIKE ? OR r.name LIKE ?)');
+      const keyword = `%${filters.keyword}%`;
+      params.push(keyword, keyword, keyword);
+    }
+    const whereSql = where.join(' AND ');
+    const orderBy = filters.sort === 'price_asc'
+      ? 'effective_price ASC, mi.id DESC'
+      : filters.sort === 'price_desc'
+        ? 'effective_price DESC, mi.id DESC'
+        : filters.sort === 'popular'
+          ? 'mi.sold_count DESC, mi.id DESC'
+          : 'mi.is_featured DESC, mi.sold_count DESC, mi.id DESC';
+    const totalRows = await query(
+      `SELECT COUNT(*) AS total FROM menu_items mi
+       INNER JOIN restaurants r ON r.id = mi.restaurant_id
+       WHERE ${whereSql}`,
+      params
+    );
+    const rows = await query(
+      `SELECT mi.id, mi.restaurant_id, r.name AS restaurant_name, mi.category_id,
+              mi.name, mi.description, mi.image_url, mi.base_price, mi.discount_price,
+              COALESCE(mi.discount_price, mi.base_price) AS effective_price,
+              mi.preparation_time, mi.is_available, mi.is_featured, mi.sold_count
+       FROM menu_items mi INNER JOIN restaurants r ON r.id = mi.restaurant_id
+       WHERE ${whereSql}
+       ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+      [...params, filters.pageSize, filters.offset]
+    );
+    return {
+      items: rows.map(row => ({
+        id: Number(row.id), restaurantId: Number(row.restaurant_id), restaurantName: row.restaurant_name,
+        categoryId: row.category_id === null ? null : Number(row.category_id), name: row.name,
+        description: row.description ?? null, imageUrl: row.image_url ?? null,
+        basePrice: Number(row.base_price), discountPrice: row.discount_price === null ? null : Number(row.discount_price),
+        effectivePrice: Number(row.effective_price), preparationTime: Number(row.preparation_time),
+        isAvailable: Boolean(row.is_available), isFeatured: Boolean(row.is_featured), soldCount: Number(row.sold_count)
+      })),
+      totalItems: Number(totalRows[0]?.total ?? 0)
+    };
+  },
+
+  async addSearchHistory(userId, keyword) {
+    await query(
+      `INSERT INTO search_history (customer_id, keyword)
+       SELECT cp.id, ? FROM customer_profiles cp WHERE cp.user_id = ? LIMIT 1`,
+      [keyword, userId]
+    );
+  },
+
+  async listSearchHistory(userId, limit = 20) {
+    const rows = await query(
+      `SELECT sh.id, sh.keyword, sh.searched_at
+       FROM search_history sh INNER JOIN customer_profiles cp ON cp.id = sh.customer_id
+       WHERE cp.user_id = ? ORDER BY sh.searched_at DESC, sh.id DESC LIMIT ?`,
+      [userId, limit]
+    );
+    return rows.map(row => ({ id: Number(row.id), keyword: row.keyword, searchedAt: row.searched_at }));
   }
 };
 

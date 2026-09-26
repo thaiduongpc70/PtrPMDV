@@ -1,6 +1,7 @@
 import { readPagination, toPagedResponse } from '../../shared/http/pagination.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { restaurantRepository } from './restaurant.repository.js';
+import { storeImageData } from './image.storage.js';
 import {
   validateAdminRestaurantCreate,
   validateAdminRestaurantState,
@@ -84,7 +85,10 @@ export const restaurantService = {
 
   async addImage(userId, restaurantId, input) {
     await this.getOwned(userId, restaurantId);
-    const data = validateImageCreate(input);
+    const normalizedInput = input?.imageData
+      ? { ...input, imageUrl: await storeImageData(input.imageData) }
+      : input;
+    const data = validateImageCreate(normalizedInput);
     const result = await restaurantRepository.addImage(userId, restaurantId, data);
     handleImageMutationError(result);
 
@@ -113,7 +117,10 @@ export const restaurantService = {
       throw new HttpError(404, 'Restaurant image not found');
     }
 
-    const data = validateImagePatch(current, input);
+    const normalizedInput = input?.imageData
+      ? { ...input, imageUrl: await storeImageData(input.imageData) }
+      : input;
+    const data = validateImagePatch(current, normalizedInput);
     const result = await restaurantRepository.updateImage(
       userId,
       restaurantId,
