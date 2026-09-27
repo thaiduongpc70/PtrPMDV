@@ -10,6 +10,14 @@ import { catalogRoutes } from './modules/catalog/catalog.routes.js';
 import { engagementAdminRoutes, engagementCustomerRoutes, engagementPublicRoutes, engagementRestaurantRoutes } from './modules/engagement/engagement.routes.js';
 import { notificationRoutes } from './modules/notifications/notification.routes.js';
 import { customerOrderRoutes, restaurantOrderRoutes } from './modules/orders/order.routes.js';
+import {
+  accountRoutes,
+  communicationRoutes,
+  deliveryRoutes,
+  paymentRoutes,
+  settlementRoutes,
+  shipperRoutes
+} from './modules/operations/operations.routes.js';
 import { restaurantMenuRoutes } from './modules/menus/menu.routes.js';
 import { customerProfileRoutes } from './modules/customers/customer.routes.js';
 import { healthRoutes } from './modules/health/health.routes.js';
@@ -40,6 +48,7 @@ export function createApp() {
   app.use('/health', healthRoutes);
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/accounts', accountRoutes);
   app.use('/api/customer/profile', customerProfileRoutes);
   app.use('/api/customer/addresses', addressRoutes);
   app.use('/api/catalog', catalogRoutes);
@@ -48,6 +57,11 @@ export function createApp() {
   app.use('/api/customer', engagementCustomerRoutes);
   app.use('/api/customer', customerOrderRoutes);
   app.use('/api/notifications', notificationRoutes);
+  app.use('/api/shippers', shipperRoutes);
+  app.use('/api/deliveries', deliveryRoutes);
+  app.use('/api/payments', paymentRoutes);
+  app.use('/api/communications', communicationRoutes);
+  app.use('/api/settlements', settlementRoutes);
   app.use('/api/catalog', restaurantPublicRoutes);
   app.use('/api/restaurant/restaurants', restaurantOwnerRoutes);
   app.use('/api/restaurant/restaurants', restaurantMenuRoutes);
