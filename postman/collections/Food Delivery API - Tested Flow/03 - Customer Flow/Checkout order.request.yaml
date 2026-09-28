@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/orders/checkout"
+method: POST
+headers:
+  Content-Type: application/json
+  Idempotency-Key: postman-{{$timestamp}}
+body:
+  type: text
+  content: |-
+    {
+      "restaurantId": {{restaurantId}},
+      "addressId": {{addressId}},
+      "paymentMethod": "COD",
+      "promotionCode": null,
+      "customerNote": "Gọi trước khi giao"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+      if (json.id) pm.collectionVariables.set('orderId', json.id);
+      if (json.orderCode) pm.collectionVariables.set('orderCode', json.orderCode);
+    language: text/javascript
+order: 5000

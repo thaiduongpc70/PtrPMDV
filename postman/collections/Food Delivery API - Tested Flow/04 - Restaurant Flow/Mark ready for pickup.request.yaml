@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/orders/{{orderId}}/ready"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "note": "Món đã sẵn sàng"
+    }
+order: 7000

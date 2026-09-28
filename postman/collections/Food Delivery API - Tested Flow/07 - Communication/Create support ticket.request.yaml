@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/communications/support/tickets"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "orderId": {{orderId}},
+      "subject": "Cần hỗ trợ đơn hàng",
+      "description": "Tôi muốn kiểm tra trạng thái giao hàng.",
+      "category": "ORDER",
+      "priority": "NORMAL"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+      if (json.id) pm.collectionVariables.set('ticketId', json.id);
+    language: text/javascript
+order: 3000

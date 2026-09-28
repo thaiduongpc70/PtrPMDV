@@ -1,644 +1,1085 @@
 (function () {
-  const roleData = {
-    customer: {
-      label: 'Customer',
-      count: 6,
-      scope: 'Orders',
-      status: 'Active',
-      title: 'Customer account',
-      identifier: 'demo.customer',
-      password: 'FoodDemo!2026',
-      initials: 'DN',
-      profile: {
-        fullName: 'Duong Nguyen',
-        email: 'duong@example.com',
-        phone: '0901234567',
-        address: '12 Nguyen Trai',
-        city: 'Ho Chi Minh',
-        gender: 'MALE'
-      },
-      fields: [
-        ['fullName', 'Full name', 'text'],
-        ['email', 'Email', 'email'],
-        ['phone', 'Phone', 'tel'],
-        ['address', 'Default address', 'text'],
-        ['city', 'City', 'text'],
-        ['gender', 'Gender', 'select']
-      ],
-      permissions: ['auth.login', 'profile.update', 'address.manage', 'order.create', 'review.create', 'payment.create'],
-      queue: [
-        ['Pho thin combo', 'Draft cart', 'Customer'],
-        ['District 1 address', 'Default', 'Customer'],
-        ['Email verification', 'Pending', 'System']
-      ]
-    },
-    restaurant: {
-      label: 'Restaurant',
-      count: 7,
-      scope: 'Menu',
-      status: 'Open',
-      title: 'Restaurant operator',
-      identifier: 'demo.restaurant',
-      password: 'FoodDemo!2026',
-      initials: 'BX',
-      profile: {
-        fullName: 'Bep Xanh',
-        email: 'owner@bepxanh.vn',
-        phone: '02839990000',
-        address: '45 Le Loi',
-        city: 'Ho Chi Minh',
-        gender: 'OTHER'
-      },
-      fields: [
-        ['fullName', 'Restaurant name', 'text'],
-        ['email', 'Owner email', 'email'],
-        ['phone', 'Phone', 'tel'],
-        ['address', 'Pickup address', 'text'],
-        ['city', 'City', 'text'],
-        ['gender', 'Contact type', 'select']
-      ],
-      permissions: ['restaurant.view', 'restaurant.update', 'menu.manage', 'order.accept', 'promotion.manage', 'settlement.view', 'image.manage'],
-      queue: [
-        ['Lunch menu', 'Published', 'Kitchen'],
-        ['Operating hours', 'Updated', 'Manager'],
-        ['Cover photo', 'Review', 'Owner']
-      ]
-    },
-    shipper: {
-      label: 'Shipper',
-      count: 5,
-      scope: 'Delivery',
-      status: 'Online',
-      title: 'Shipper profile',
-      identifier: 'demo.shipper',
-      password: 'FoodDemo!2026',
-      initials: 'SP',
-      profile: {
-        fullName: 'Tran Phong',
-        email: 'phong.shipper@example.com',
-        phone: '0907654321',
-        address: 'Hub Thu Duc',
-        city: 'Ho Chi Minh',
-        gender: 'MALE'
-      },
-      fields: [
-        ['fullName', 'Full name', 'text'],
-        ['email', 'Email', 'email'],
-        ['phone', 'Phone', 'tel'],
-        ['address', 'Active hub', 'text'],
-        ['city', 'City', 'text'],
-        ['gender', 'Gender', 'select']
-      ],
-      permissions: ['delivery.view', 'delivery.accept', 'delivery.update', 'location.update', 'earning.view'],
-      queue: [
-        ['Order FD-1024', 'Assigned', 'Dispatcher'],
-        ['GPS heartbeat', 'Live', 'Device'],
-        ['Cash handoff', 'Due', 'Finance']
-      ]
-    },
-    admin: {
-      label: 'Admin',
-      count: 9,
-      scope: 'Platform',
-      status: 'Secure',
-      title: 'Admin console',
-      identifier: 'demo.admin',
-      password: 'FoodDemo!2026',
-      initials: 'AD',
-      profile: {
-        fullName: 'Platform Admin',
-        email: 'admin@fooddelivery.local',
-        phone: '0900000000',
-        address: 'Operations center',
-        city: 'Ho Chi Minh',
-        gender: 'OTHER'
-      },
-      fields: [
-        ['fullName', 'Display name', 'text'],
-        ['email', 'Admin email', 'email'],
-        ['phone', 'Phone', 'tel'],
-        ['address', 'Office', 'text'],
-        ['city', 'City', 'text'],
-        ['gender', 'Contact type', 'select']
-      ],
-      permissions: ['user.manage', 'role.manage', 'restaurant.manage', 'shipper.manage', 'audit.view', 'system.setting', 'promotion.manage', 'refund.manage', 'report.view'],
-      queue: [
-        ['Restaurant approval', 'Review', 'Admin'],
-        ['Permission matrix', 'Synced', 'RBAC'],
-        ['Audit export', 'Ready', 'System']
-      ]
-    }
+  const apiBase = document.body.dataset.apiBase || window.location.origin;
+  const money = new Intl.NumberFormat('vi-VN');
+
+  const state = {
+    user: null,
+    permissions: [],
+    token: localStorage.getItem('fd_access_token') || '',
+    refreshToken: localStorage.getItem('fd_refresh_token') || '',
+    restaurants: [],
+    selectedRestaurant: null,
+    selectedMenu: [],
+    selectedMenuItem: null,
+    addresses: [],
+    cart: null,
+    ownerRestaurants: [],
+    ownerRestaurantId: null,
+    apiLog: []
   };
 
-  const roleSelector = document.querySelector('#roleSelector');
-  const metricScope = document.querySelector('#metricScope');
-  const metricStatus = document.querySelector('#metricStatus');
-  const metricPermissions = document.querySelector('#metricPermissions');
-  const statusPill = document.querySelector('#statusPill');
-  const profileTitle = document.querySelector('#profile-title');
-  const profileName = document.querySelector('#profileName');
-  const profileEmail = document.querySelector('#profileEmail');
-  const profileForm = document.querySelector('#profileForm');
-  const permissionList = document.querySelector('#permissionList');
-  const queueRows = document.querySelector('#queueRows');
-  const authIdentifier = document.querySelector('#authIdentifier');
-  const authPassword = document.querySelector('#authPassword');
-  const authFullName = document.querySelector('#authFullName');
-  const authPhone = document.querySelector('#authPhone');
-  const authSubmitText = document.querySelector('#authSubmitText');
-  const authStatus = document.querySelector('#authStatus');
-  const authForm = document.querySelector('#authForm');
-  const sessionCard = document.querySelector('#sessionCard');
-  const sessionAccount = document.querySelector('#sessionAccount');
-  const sessionRole = document.querySelector('#sessionRole');
-  const switchAccountButton = document.querySelector('#switchAccountButton');
-  const logoutButton = document.querySelector('#logoutButton');
-  const accountLogoutButton = document.querySelector('#accountLogoutButton');
-  const backToWorkspaceButton = document.querySelector('#backToWorkspaceButton');
-  const profileStatus = document.querySelector('#profileStatus');
-  const avatarInitials = document.querySelector('#avatarInitials');
-  const segments = document.querySelectorAll('[data-mode]');
-  const root = document.body;
-  const orderingPanel = document.querySelector('#orderingPanel');
-  const orderingStatus = document.querySelector('#orderingStatus');
-  const orderingMessage = document.querySelector('#orderingMessage');
-  const restaurantResults = document.querySelector('#restaurantResults');
-  const menuResults = document.querySelector('#menuResults');
-  const cartItems = document.querySelector('#cartItems');
-  const cartSubtotal = document.querySelector('#cartSubtotal');
-  const restaurantQueue = document.querySelector('#restaurantQueue');
-  const restaurantQueueRows = document.querySelector('#restaurantQueueRows');
-  const customerOrders = document.querySelector('#customerOrders');
-  const customerOrderRows = document.querySelector('#customerOrderRows');
-  const imagePanel = document.querySelector('#imagePanel');
-  const imageCanvas = document.querySelector('#imageCanvas');
-  const imageFile = document.querySelector('#imageFile');
-  const imageZoom = document.querySelector('#imageZoom');
-  const imageStatus = document.querySelector('#imageStatus');
-  const authLayer = document.querySelector('#authLayer');
-  const appLayer = document.querySelector('#appLayer');
-  const appNav = document.querySelector('#appNav');
-  const accountButton = document.querySelector('#accountButton');
-  const workspace = document.querySelector('#workspace');
-  const screenPanels = document.querySelectorAll('[data-screen-panel]');
-  let imageState = { source: null, rotation: 0, zoom: 1 };
-  const apiBase = document.body.dataset.apiBase || 'http://localhost:3000';
-  let selectedRestaurantId = null;
-  let localCart = [];
+  const $ = selector => document.querySelector(selector);
 
-  let currentRole = 'customer';
-  let authMode = 'login';
-  let currentScreen = 'home';
-  let sessionUser = null;
-
-  function init() {
-    root.dataset.view = 'auth';
-    root.dataset.authMode = authMode;
-    roleSelector.innerHTML = Object.entries(roleData).map(([key, role]) => (
-      `<button class="role-button" type="button" data-role-key="${key}">
-        <span class="role-dot" aria-hidden="true"></span>
-        <span class="role-name">${role.label}</span>
-        <span class="role-count">${role.count}</span>
-      </button>`
-    )).join('');
-
-    roleSelector.addEventListener('click', event => {
-      const button = event.target.closest('[data-role-key]');
-      if (button) {
-        setRole(button.dataset.roleKey);
-      }
-    });
-
-    segments.forEach(button => {
-      button.addEventListener('click', () => setAuthMode(button.dataset.mode));
-    });
-
-    appNav.querySelectorAll('[data-screen]').forEach(button => {
-      button.addEventListener('click', () => setScreen(button.dataset.screen));
-    });
-    accountButton.addEventListener('click', () => setScreen('account'));
-    document.querySelector('.brand').addEventListener('click', event => {
-      event.preventDefault();
-      if (sessionUser) setScreen('home');
-    });
-
-    authForm.addEventListener('submit', async event => {
-      event.preventDefault();
-      const role = roleData[currentRole];
-      try {
-        const isRegister = authMode === 'register';
-        const payload = isRegister
-          ? { username: authIdentifier.value, email: authIdentifier.value, password: authPassword.value, fullName: authFullName.value, phone: authPhone.value }
-          : { emailOrUsername: authIdentifier.value, password: authPassword.value };
-        const result = await apiFetch(isRegister ? '/api/auth/register/customer' : '/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
-        saveSession(result);
-        setAuthenticated(result.user);
-        authStatus.textContent = `${role.label} session ready`;
-        if (currentRole === 'customer') { loadCatalog(); loadCustomerOrders(); }
-        if (currentRole === 'restaurant') loadRestaurantQueue();
-      } catch (error) {
-        authStatus.textContent = error.message;
-      }
-    });
-
-    switchAccountButton.addEventListener('click', () => {
-      clearSession();
-      authStatus.textContent = 'Choose an account to sign in.';
-    });
-
-    logoutButton.addEventListener('click', logout);
-    accountLogoutButton.addEventListener('click', logout);
-    backToWorkspaceButton.addEventListener('click', () => setScreen('home'));
-
-    document.querySelector('#saveProfileButton').addEventListener('click', () => {
-      const role = roleData[currentRole];
-      profileStatus.textContent = `${role.label} profile saved`;
-    });
-
-    document.querySelector('#discardProfileButton').addEventListener('click', () => {
-      renderProfile(roleData[currentRole]);
-      profileStatus.textContent = 'Profile restored';
-    });
-
-    document.querySelector('#verifyEmailButton').addEventListener('click', () => {
-      profileStatus.textContent = 'Verification token requested';
-    });
-
-    document.querySelector('#resetPasswordButton').addEventListener('click', () => {
-      authStatus.textContent = 'Password reset token requested';
-    });
-
-    document.querySelector('#searchCatalogButton').addEventListener('click', () => loadCatalog());
-    document.querySelector('#catalogSearch').addEventListener('keydown', event => {
-      if (event.key === 'Enter') { event.preventDefault(); loadCatalog(); }
-    });
-    document.querySelector('#checkoutForm').addEventListener('submit', submitCheckout);
-    document.querySelector('#loadOrdersButton').addEventListener('click', loadCustomerOrders);
-    document.querySelector('#refreshQueueButton').addEventListener('click', loadRestaurantQueue);
-    imageFile.addEventListener('change', loadImageFile);
-    imageZoom.addEventListener('input', () => { imageState.zoom = Number(imageZoom.value); drawImage(); });
-    document.querySelector('#rotateImageButton').addEventListener('click', () => { imageState.rotation = (imageState.rotation + 90) % 360; drawImage(); });
-    document.querySelector('#resetImageButton').addEventListener('click', resetImage);
-    document.querySelector('#uploadImageButton').addEventListener('click', uploadImage);
-
-    setRole(currentRole);
-    restoreSession();
+  function formatMoney(value) {
+    return `${money.format(Number(value) || 0)} VND`;
   }
 
-  function setRole(roleKey) {
-    currentRole = roleKey;
-    const role = roleData[roleKey];
-    root.dataset.role = roleKey;
-
-    document.querySelectorAll('[data-role-key]').forEach(button => {
-      button.classList.toggle('is-active', button.dataset.roleKey === roleKey);
-    });
-
-    metricScope.textContent = role.scope;
-    metricStatus.textContent = role.status;
-    metricPermissions.textContent = String(role.permissions.length);
-    statusPill.textContent = role.label;
-    profileTitle.textContent = role.title;
-    avatarInitials.textContent = role.initials;
-
-    authIdentifier.value = role.identifier;
-    authPassword.value = role.password;
-    authFullName.value = role.profile.fullName;
-    authPhone.value = role.profile.phone;
-
-    renderProfile(role);
-    renderPermissions(role);
-    renderQueue(role);
-    renderOrderingMode(roleKey);
-    authStatus.textContent = '';
-    profileStatus.textContent = '';
-    if (sessionUser) {
-      sessionRole.textContent = `${role.label} workspace is ready.`;
-      refreshScreenPanels();
-    }
-  }
-
-  function setScreen(screen) {
-    currentScreen = screen;
-    workspace.dataset.screen = screen;
-    appNav.querySelectorAll('[data-screen]').forEach(button => {
-      button.classList.toggle('is-active', button.dataset.screen === screen);
-    });
-    refreshScreenPanels();
-  }
-
-  function refreshScreenPanels() {
-    screenPanels.forEach(panel => {
-      const matchesScreen = panel.dataset.screenPanel === currentScreen;
-      const restaurantOnly = panel.id === 'imagePanel' && currentRole !== 'restaurant';
-      panel.hidden = !matchesScreen || restaurantOnly;
-    });
-  }
-
-  function setAuthMode(mode) {
-    authMode = mode;
-    root.dataset.authMode = mode;
-    segments.forEach(button => {
-      const isActive = button.dataset.mode === mode;
-      button.classList.toggle('is-active', isActive);
-      button.setAttribute('aria-selected', String(isActive));
-    });
-    authSubmitText.textContent = mode === 'register' ? 'Create account' : 'Sign in';
-    authPassword.autocomplete = mode === 'register' ? 'new-password' : 'current-password';
-    authStatus.textContent = '';
-  }
-
-  function renderProfile(role) {
-    profileName.textContent = role.profile.fullName;
-    profileEmail.textContent = role.profile.email;
-    profileForm.innerHTML = role.fields.map(([name, label, type]) => {
-      if (type === 'select') {
-        return `<label>${label}
-          <select name="${name}" data-profile-field="${name}">
-            ${['MALE', 'FEMALE', 'OTHER'].map(option => (
-              `<option value="${option}"${role.profile[name] === option ? ' selected' : ''}>${option}</option>`
-            )).join('')}
-          </select>
-        </label>`;
-      }
-
-      return `<label>${label}
-        <input name="${name}" type="${type}" value="${escapeAttribute(role.profile[name])}" data-profile-field="${name}">
-      </label>`;
-    }).join('');
-
-    profileForm.querySelectorAll('[data-profile-field]').forEach(input => {
-      input.addEventListener('input', updateProfilePreview);
-    });
-  }
-
-  function updateProfilePreview() {
-    const nameInput = profileForm.querySelector('[name="fullName"]');
-    const emailInput = profileForm.querySelector('[name="email"]');
-    profileName.textContent = nameInput.value || roleData[currentRole].profile.fullName;
-    profileEmail.textContent = emailInput.value || roleData[currentRole].profile.email;
-  }
-
-  function renderPermissions(role) {
-    permissionList.innerHTML = role.permissions.map(permission => (
-      `<span class="permission-chip">${permission}</span>`
-    )).join('');
-  }
-
-  function renderQueue(role) {
-    queueRows.innerHTML = role.queue.map(([item, state, owner]) => (
-      `<tr>
-        <td>${item}</td>
-        <td><span class="queue-state">${state}</span></td>
-        <td>${owner}</td>
-      </tr>`
-    )).join('');
-  }
-
-  function escapeAttribute(value) {
+  function escapeHtml(value) {
     return String(value ?? '')
       .replaceAll('&', '&amp;')
-      .replaceAll('"', '&quot;')
       .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;');
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
   }
 
-  function authHeaders() {
-    const token = localStorage.getItem('food_delivery_access_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }
-
-  function saveSession(result) {
-    if (result.accessToken) localStorage.setItem('food_delivery_access_token', result.accessToken);
-    if (result.refreshToken) localStorage.setItem('food_delivery_refresh_token', result.refreshToken);
-  }
-
-  function setAuthenticated(user) {
-    sessionUser = user || {};
-    const resolvedRole = resolveRoleKey(sessionUser);
-    if (resolvedRole && resolvedRole !== currentRole) {
-      setRole(resolvedRole);
-    }
-    root.dataset.view = 'app';
-    authLayer.hidden = true;
-    appLayer.hidden = false;
-    authForm.hidden = true;
-    document.querySelector('.segmented').hidden = true;
-    sessionCard.hidden = false;
-    const accountName = sessionUser.username || sessionUser.email || authIdentifier.value;
-    sessionAccount.textContent = `Signed in as ${accountName}`;
-    sessionRole.textContent = `${roleData[currentRole].label} workspace is ready.`;
-    setScreen(currentRole === 'customer' || currentRole === 'restaurant' ? 'orders' : 'home');
-  }
-
-  function resolveRoleKey(user) {
-    const roleValue = typeof user?.role === 'string'
+  function roleOf(user) {
+    const raw = typeof user?.role === 'string'
       ? user.role
       : user?.role?.name || user?.role?.code || '';
-    const normalizedRole = String(roleValue).toLowerCase();
-    return Object.keys(roleData).find(roleKey => normalizedRole.includes(roleKey)) || null;
+    return String(raw).toUpperCase();
   }
 
-  function clearSession() {
-    localStorage.removeItem('food_delivery_access_token');
-    localStorage.removeItem('food_delivery_refresh_token');
-    sessionUser = null;
-    root.dataset.view = 'auth';
-    authLayer.hidden = false;
-    appLayer.hidden = true;
-    authForm.hidden = false;
-    document.querySelector('.segmented').hidden = false;
-    sessionCard.hidden = true;
-    customerOrders.hidden = true;
-    restaurantQueue.hidden = true;
-    imagePanel.hidden = true;
-    orderingMessage.textContent = '';
-    setScreen('home');
+  function roleLabel(role) {
+    return {
+      ADMIN: 'Quản trị viên',
+      RESTAURANT: 'Nhà hàng',
+      SHIPPER: 'Tài xế',
+      CUSTOMER: 'Khách hàng'
+    }[String(role || '').toUpperCase()] || 'Người dùng';
   }
 
-  async function logout() {
-    const refreshToken = localStorage.getItem('food_delivery_refresh_token');
-    try {
-      if (refreshToken) {
-        await apiFetch('/api/auth/logout', {
-          method: 'POST',
-          body: JSON.stringify({ refreshToken })
-        });
-      }
-    } catch {
-      // Clear the local session even if the server cannot revoke the token.
-    } finally {
-      clearSession();
-      authStatus.textContent = 'Signed out.';
-    }
+  function statusLabel(status) {
+    return {
+      PENDING: 'Chờ xác nhận',
+      CONFIRMED: 'Đã xác nhận',
+      PREPARING: 'Đang chuẩn bị',
+      READY_FOR_PICKUP: 'Sẵn sàng lấy hàng',
+      SHIPPER_ASSIGNED: 'Đã có tài xế',
+      PICKED_UP: 'Đã lấy hàng',
+      DELIVERING: 'Đang giao',
+      DELIVERED: 'Đã giao',
+      CANCELLED: 'Đã hủy',
+      FAILED: 'Thất bại',
+      OFFERED: 'Đang chờ phản hồi',
+      ACCEPTED: 'Đã nhận',
+      REJECTED: 'Đã từ chối',
+      EXPIRED: 'Đã hết hạn',
+      OFFLINE: 'Ngoại tuyến',
+      AVAILABLE: 'Sẵn sàng',
+      BUSY: 'Đang bận',
+      SUSPENDED: 'Tạm khóa',
+      ACTIVE: 'Đang hoạt động',
+      INACTIVE: 'Ngừng hoạt động',
+      LOCKED: 'Đã khóa',
+      PAID: 'Đã thanh toán',
+      PROCESSING: 'Đang xử lý',
+      REFUNDED: 'Đã hoàn tiền'
+    }[String(status || '').toUpperCase()] || status || 'Chưa rõ';
   }
 
-  async function restoreSession() {
-    if (!localStorage.getItem('food_delivery_access_token')) return;
-    try {
-      const user = await apiFetch('/api/auth/me');
-      setAuthenticated(user);
-      if (currentRole === 'customer') { loadCatalog(); loadCustomerOrders(); }
-      if (currentRole === 'restaurant') loadRestaurantQueue();
-    } catch {
-      clearSession();
-    }
+  function activityLabel(action) {
+    const normalized = String(action || '').toUpperCase();
+    if (normalized.includes('ORDER')) return 'Cập nhật đơn hàng';
+    if (normalized.includes('RESTAURANT')) return 'Cập nhật nhà hàng';
+    if (normalized.includes('MENU')) return 'Cập nhật thực đơn';
+    if (normalized.includes('DELIVERY')) return 'Cập nhật giao hàng';
+    if (normalized.includes('PAYMENT') || normalized.includes('COD')) return 'Cập nhật thanh toán';
+    if (normalized.includes('USER')) return 'Cập nhật tài khoản';
+    if (normalized.includes('SUPPORT')) return 'Cập nhật hỗ trợ';
+    if (normalized.includes('CHAT')) return 'Tin nhắn mới';
+    return 'Hoạt động hệ thống';
   }
 
-  async function apiFetch(path, options = {}) {
+  function paymentLabel(method) {
+    return {
+      COD: 'Tiền mặt khi nhận hàng',
+      BANK_TRANSFER: 'Chuyển khoản',
+      MOMO: 'MoMo',
+      VNPAY: 'VNPay',
+      ZALOPAY: 'ZaloPay',
+      CARD: 'Thẻ ngân hàng',
+      WALLET: 'Ví cá nhân'
+    }[String(method || '').toUpperCase()] || method || 'Chưa chọn';
+  }
+
+  function friendlyAction(method, path) {
+    if (path.includes('/auth/login')) return 'Đăng nhập';
+    if (path.includes('/auth/logout')) return 'Đăng xuất';
+    if (path.includes('/accounts/session')) return 'Tải thông tin tài khoản';
+    if (path.includes('/catalog/restaurants')) return 'Tải nhà hàng';
+    if (path.includes('/catalog/menu-items')) return 'Tải món ăn';
+    if (path.includes('/customer/cart')) return method === 'POST' ? 'Thêm vào giỏ hàng' : 'Tải giỏ hàng';
+    if (path.includes('/customer/orders/checkout')) return 'Đặt hàng';
+    if (path.includes('/customer/orders')) return 'Tải đơn hàng';
+    if (path.includes('/restaurant/orders')) return 'Cập nhật đơn nhà hàng';
+    if (path.includes('/shippers/assignments')) return 'Xử lý đề nghị giao hàng';
+    if (path.includes('/shippers/deliveries')) return 'Cập nhật chuyến giao';
+    if (path.includes('/shippers/earnings')) return 'Tải thu nhập tài xế';
+    if (path.includes('/payments/wallet')) return 'Tải ví cá nhân';
+    if (path.includes('/admin')) return 'Tải dữ liệu quản trị';
+    return 'Đồng bộ dữ liệu';
+  }
+
+  function headers(extra = {}) {
+    return {
+      'Content-Type': 'application/json',
+      ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
+      ...extra
+    };
+  }
+
+  async function api(path, options = {}) {
+    const started = performance.now();
+    const method = options.method || 'GET';
     const response = await fetch(`${apiBase}${path}`, {
       ...options,
-      headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(options.headers || {}) }
+      headers: headers(options.headers || {})
     });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.message || `Request failed (${response.status})`);
+    const text = await response.text();
+    let payload = null;
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = text;
+      }
+    }
+    logApi({ method, path, status: response.status, ms: Math.round(performance.now() - started), payload });
+    if (!response.ok) {
+      const message = payload?.message || payload?.error || `HTTP ${response.status}`;
+      throw new Error(message);
+    }
     return payload;
   }
 
-  function renderOrderingMode(roleKey) {
-    if (!orderingPanel) return;
-    restaurantQueue.hidden = roleKey !== 'restaurant';
-    customerOrders.hidden = roleKey !== 'customer';
-    document.querySelector('#checkoutForm').hidden = roleKey !== 'customer';
-    orderingStatus.textContent = roleKey === 'restaurant' ? 'Kitchen' : roleKey === 'customer' ? 'Customer' : 'Catalog';
-    refreshScreenPanels();
-    if (sessionUser && roleKey === 'restaurant') loadRestaurantQueue();
-    if (sessionUser && roleKey === 'customer') { loadCatalog(); renderLocalCart(); }
+  function logApi(entry) {
+    state.apiLog.unshift({
+      time: new Date().toLocaleTimeString('vi-VN'),
+      ...entry
+    });
+    state.apiLog = state.apiLog.slice(0, 80);
+    renderApiLog();
   }
 
-  async function loadCatalog() {
-    const keyword = document.querySelector('#catalogSearch').value.trim();
-    orderingMessage.textContent = '';
+  function renderApiLog() {
+    const node = $('#apiLog');
+    if (!node) return;
+    node.textContent = state.apiLog.length
+      ? state.apiLog.map(item => {
+        const result = item.status >= 200 && item.status < 300 ? 'Thành công' : 'Không thành công';
+        return `[${item.time}] ${friendlyAction(item.method, item.path)} - ${result} (${item.ms}ms)`;
+      }).join('\n\n')
+      : 'Chưa có hoạt động.';
+  }
+
+  function setStatus(message, isError = false) {
+    const node = $('#authStatus');
+    node.textContent = message || '';
+    node.style.color = isError ? 'var(--danger)' : 'var(--success)';
+  }
+
+  function empty() {
+    return $('#emptyTemplate').content.firstElementChild.cloneNode(true).outerHTML;
+  }
+
+  function errorBox(error) {
+    return `<div class="error-box">${escapeHtml(error.message || error)}</div>`;
+  }
+
+  function saveSession(result) {
+    state.token = result.accessToken || '';
+    state.refreshToken = result.refreshToken || '';
+    state.user = result.user || null;
+    localStorage.setItem('fd_access_token', state.token);
+    localStorage.setItem('fd_refresh_token', state.refreshToken);
+    renderSession();
+  }
+
+  function clearSession() {
+    state.token = '';
+    state.refreshToken = '';
+    state.user = null;
+    localStorage.removeItem('fd_access_token');
+    localStorage.removeItem('fd_refresh_token');
+    renderSession();
+  }
+
+  function renderSession() {
+    const role = roleOf(state.user);
+    $('#sessionPill').textContent = state.user
+      ? `${state.user.username || state.user.email} · ${roleLabel(role)}`
+      : 'Chưa đăng nhập';
+    renderRoleNavigation();
+    renderSessionDetail();
+  }
+
+  function can(permission) {
+    return state.permissions.includes(permission) || roleOf(state.user) === 'ADMIN';
+  }
+
+  function defaultScreenForRole(role = roleOf(state.user)) {
+    return {
+      CUSTOMER: 'customer',
+      RESTAURANT: 'restaurant',
+      SHIPPER: 'shipper',
+      ADMIN: 'admin'
+    }[role] || 'customer';
+  }
+
+  function allowedScreensForRole(role = roleOf(state.user)) {
+    return new Set([defaultScreenForRole(role)]);
+  }
+
+  function renderRoleNavigation() {
+    const role = roleOf(state.user);
+    const allowedScreens = allowedScreensForRole(role);
+    document.querySelectorAll('[data-screen-target]').forEach(button => {
+      const screen = button.dataset.screenTarget;
+      button.hidden = !allowedScreens.has(screen);
+      button.classList.toggle('is-active', screen === document.body.dataset.screen && !button.hidden);
+    });
+    if (!allowedScreens.has(document.body.dataset.screen)) {
+      showScreen(defaultScreenForRole(role));
+    }
+  }
+
+  async function login(identifier, password) {
+    const result = await api('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ emailOrUsername: identifier, password })
+    });
+    saveSession(result);
+    await loadSessionPermissions();
+    renderSession();
+    setStatus(`Đã đăng nhập ${identifier}`);
+    await bootstrapForRole();
+  }
+
+  async function loadMe() {
+    if (!state.token) return;
+    try {
+      state.user = await api('/api/auth/me');
+      await loadSessionPermissions();
+      renderSession();
+      await bootstrapForRole();
+    } catch (error) {
+      clearSession();
+      setStatus(`Phiên đăng nhập hết hạn: ${error.message}`, true);
+    }
+  }
+
+  async function bootstrapForRole() {
+    const role = roleOf(state.user);
+    await loadPublicData();
+    if (role === 'CUSTOMER') {
+      await Promise.allSettled([loadAddresses(), loadCart(), loadCustomerOrders(), loadNotifications()]);
+      showScreen('customer');
+    } else if (role === 'RESTAURANT') {
+      await loadOwnerRestaurants();
+      await Promise.allSettled([loadRestaurantQueue(), loadNotifications()]);
+      showScreen('restaurant');
+    } else if (role === 'ADMIN') {
+      await Promise.allSettled([loadAdminDashboard(), loadAccountDashboard()]);
+      showScreen('admin');
+    } else if (role === 'SHIPPER') {
+      await loadShipperDashboard();
+      showScreen('shipper');
+    }
+  }
+
+  async function loadSessionPermissions() {
+    const result = await api('/api/accounts/session');
+    state.permissions = result.permissions || [];
+    state.user = result.user || state.user;
+  }
+
+  function renderSessionDetail() {
+    const role = roleOf(state.user);
+    const node = $('#sessionDetail');
+    if (!node) return;
+    node.innerHTML = state.user ? `
+      <strong>${escapeHtml(state.user.username || state.user.email)}</strong><br>
+      Vai trò: ${escapeHtml(roleLabel(role))}<br>
+      Trạng thái: ${escapeHtml(statusLabel(state.user.status))}<br>
+      Quyền truy cập: ${state.permissions.length ? 'Đã được cấu hình' : 'Chưa tải'}
+    ` : 'Chưa đăng nhập.';
+  }
+
+  async function loadPublicData() {
+    await Promise.allSettled([loadBanners(), loadCategories(), searchCatalog()]);
+  }
+
+  async function loadBanners() {
+    try {
+      const result = await api('/api/catalog/banners');
+      const items = result?.items || [];
+      $('#bannerStrip').innerHTML = items.length ? items.map(item => `
+        <article class="banner-card">
+          <span>${escapeHtml(statusLabel(item.status || 'ACTIVE'))}</span>
+          <strong>${escapeHtml(item.title)}</strong>
+        </article>
+      `).join('') : `
+        <article class="banner-card">
+          <span>Ưu đãi</span>
+          <strong>Chưa có chương trình nổi bật.</strong>
+        </article>
+      `;
+    } catch (error) {
+      $('#bannerStrip').innerHTML = errorBox(error);
+    }
+  }
+
+  async function loadCategories() {
+    try {
+      const result = await api('/api/catalog/restaurant-categories');
+      const items = result.items || [];
+      $('#categoryStrip').innerHTML = items.length
+        ? items.map(item => `<span class="category-chip">${escapeHtml(item.name)}</span>`).join('')
+        : '<span class="category-chip">Chưa có danh mục</span>';
+    } catch (error) {
+      $('#categoryStrip').innerHTML = errorBox(error);
+    }
+  }
+
+  async function searchCatalog() {
+    const keyword = $('#catalogKeyword').value.trim();
+    const query = keyword ? `?keyword=${encodeURIComponent(keyword)}` : '';
     try {
       const [restaurants, menu] = await Promise.all([
-        apiFetch(`/api/catalog/restaurants?keyword=${encodeURIComponent(keyword)}`),
-        apiFetch(`/api/catalog/menu-items?keyword=${encodeURIComponent(keyword)}&sort=featured`)
+        api(`/api/catalog/restaurants${query}`),
+        api(`/api/catalog/menu-items${keyword ? `?keyword=${encodeURIComponent(keyword)}&sort=featured` : '?sort=featured'}`)
       ]);
-      renderRestaurants(restaurants.items || []);
-      renderMenuItems(menu.items || []);
-      orderingStatus.textContent = `${restaurants.totalItems ?? 0} restaurants`;
+      state.restaurants = restaurants.items || [];
+      renderRestaurants(restaurants.totalItems ?? state.restaurants.length);
+      renderMenuList(menu.items || []);
     } catch (error) {
-      orderingStatus.textContent = 'Offline preview';
-      orderingMessage.textContent = error.message;
-      renderRestaurants([]);
-      renderMenuItems([]);
+      $('#restaurantList').innerHTML = errorBox(error);
+      $('#menuList').innerHTML = errorBox(error);
     }
   }
 
-  function renderRestaurants(items) {
-    restaurantResults.innerHTML = items.length ? items.map(restaurant => `<article class="catalog-card"><div class="catalog-card-main"><strong>${escapeHtml(restaurant.name)}</strong><span>${escapeHtml(restaurant.district || restaurant.city || 'Open restaurant')} - ${Number(restaurant.rating || 0).toFixed(1)} stars</span></div><button class="secondary-button" type="button" data-restaurant-id="${restaurant.id}">View menu</button></article>`).join('') : '<p class="empty-state">No restaurants match this search.</p>';
-    restaurantResults.querySelectorAll('[data-restaurant-id]').forEach(button => button.addEventListener('click', () => loadRestaurantMenu(button.dataset.restaurantId)));
+  function renderRestaurants(total) {
+    $('#restaurantCount').textContent = `${total} kết quả`;
+    $('#restaurantList').innerHTML = state.restaurants.length ? state.restaurants.map(item => `
+      <article class="restaurant-card">
+        <div class="thumb">${escapeHtml(item.name.slice(0, 2).toUpperCase())}</div>
+        <div>
+          <strong>${escapeHtml(item.name)}</strong>
+          <span>${escapeHtml(item.district || item.city)} · ${Number(item.rating || 0).toFixed(1)} sao · ${item.averagePrepareTime || 0} phút</span>
+          <span>Đơn tối thiểu ${formatMoney(item.minimumOrder)}</span>
+        </div>
+        <button class="secondary-button" type="button" data-view-restaurant="${item.id}">Xem</button>
+      </article>
+    `).join('') : empty();
+    document.querySelectorAll('[data-view-restaurant]').forEach(button => {
+      button.addEventListener('click', () => selectRestaurant(Number(button.dataset.viewRestaurant)));
+    });
   }
 
-  function renderMenuItems(items) {
-    menuResults.innerHTML = items.length ? items.map(item => `<article class="catalog-card"><div class="catalog-card-main"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.restaurantName || 'Menu')} - ${formatMoney(item.effectivePrice)}</span></div><button class="primary-button" type="button" data-add-item="${item.id}" data-restaurant-id="${item.restaurantId}" data-item-name="${escapeAttribute(item.name)}" data-item-price="${item.effectivePrice}">Add</button></article>`).join('') : '<p class="empty-state">Search for a dish or open a restaurant menu.</p>';
-    menuResults.querySelectorAll('[data-add-item]').forEach(button => button.addEventListener('click', () => addLocalItem(button.dataset)));
+  function renderMenuList(items) {
+    $('#menuCount').textContent = `${items.length} món`;
+    $('#menuList').innerHTML = items.length ? items.map(item => `
+      <article class="menu-card">
+        <div>
+          <strong>${escapeHtml(item.name)}</strong>
+          <span>${escapeHtml(item.restaurantName || '')} · ${item.preparationTime || 0} phút · bán ${item.soldCount || 0}</span>
+          <span>${formatMoney(item.effectivePrice)}</span>
+        </div>
+        <button class="secondary-button" type="button" data-search-item-restaurant="${item.restaurantId}">Mở menu</button>
+      </article>
+    `).join('') : empty();
+    document.querySelectorAll('[data-search-item-restaurant]').forEach(button => {
+      button.addEventListener('click', () => selectRestaurant(Number(button.dataset.searchItemRestaurant)));
+    });
   }
 
-  async function loadRestaurantMenu(restaurantId) {
-    selectedRestaurantId = Number(restaurantId);
+  async function selectRestaurant(restaurantId) {
     try {
-      const menu = await apiFetch(`/api/catalog/restaurants/${restaurantId}/menu`);
-      const items = (menu || []).flatMap(menuItem => (menuItem.categories || []).flatMap(category => category.items || []).concat(menuItem.uncategorizedItems || []));
-      renderMenuItems(items.map(item => ({ ...item, restaurantId: selectedRestaurantId, restaurantName: menu[0]?.name || 'Menu' })));
-      orderingStatus.textContent = 'Menu loaded';
-    } catch (error) { orderingMessage.textContent = error.message; }
-  }
-
-  function addLocalItem(data) {
-    const restaurantId = Number(data.restaurantId) || selectedRestaurantId;
-    if (localCart.length > 0 && localCart[0].restaurantId !== restaurantId) {
-      localCart = [];
-      orderingMessage.textContent = 'Cart changed to the selected restaurant.';
+      const [detail, menu] = await Promise.all([
+        api(`/api/catalog/restaurants/${restaurantId}`),
+        api(`/api/catalog/restaurants/${restaurantId}/menu`)
+      ]);
+      state.selectedRestaurant = detail;
+      state.selectedMenu = flattenMenu(menu);
+      $('#selectedRestaurantTitle').textContent = detail.name;
+      renderRestaurantDetail(detail, state.selectedMenu);
+    } catch (error) {
+      $('#restaurantDetail').innerHTML = errorBox(error);
     }
-    selectedRestaurantId = restaurantId;
-    const existing = localCart.find(item => item.menuItemId === Number(data.addItem));
-    if (existing) existing.quantity += 1;
-    else localCart.push({ menuItemId: Number(data.addItem), restaurantId: selectedRestaurantId, name: data.itemName, unitPrice: Number(data.itemPrice), quantity: 1 });
-    renderLocalCart();
-    orderingMessage.textContent = 'Added to cart. Checkout recalculates prices on the server.';
   }
 
-  function renderLocalCart() {
-    const subtotal = localCart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-    cartSubtotal.textContent = formatMoney(subtotal);
-    cartItems.innerHTML = localCart.length ? localCart.map((item, index) => `<div class="cart-row"><div><strong>${escapeHtml(item.name)}</strong><small>${formatMoney(item.unitPrice)}</small></div><div class="quantity-control"><button type="button" data-decrease="${index}" aria-label="Decrease quantity">-</button><span>${item.quantity}</span><button type="button" data-increase="${index}" aria-label="Increase quantity">+</button></div><strong>${formatMoney(item.unitPrice * item.quantity)}</strong></div>`).join('') : '<p class="empty-state">Choose a dish to start an order.</p>';
-    cartItems.querySelectorAll('[data-increase]').forEach(button => button.addEventListener('click', () => { localCart[Number(button.dataset.increase)].quantity += 1; renderLocalCart(); }));
-    cartItems.querySelectorAll('[data-decrease]').forEach(button => button.addEventListener('click', () => { const index = Number(button.dataset.decrease); localCart[index].quantity -= 1; if (localCart[index].quantity <= 0) localCart.splice(index, 1); renderLocalCart(); }));
+  function flattenMenu(menuResponse) {
+    return (menuResponse || []).flatMap(menu => [
+      ...(menu.categories || []).flatMap(category => (category.items || []).map(item => ({
+        ...item,
+        categoryName: category.name
+      }))),
+      ...(menu.uncategorizedItems || [])
+    ]);
   }
 
-  async function submitCheckout(event) {
+  function renderRestaurantDetail(detail, items) {
+    $('#restaurantDetail').innerHTML = `
+      <div class="muted-block">
+        <strong>${escapeHtml(detail.name)}</strong><br>
+        ${escapeHtml(detail.address)}, ${escapeHtml(detail.district || '')}, ${escapeHtml(detail.city)}<br>
+        Giờ mở cửa: ${escapeHtml(detail.openingTime || '--')} - ${escapeHtml(detail.closingTime || '--')} · Đánh giá ${Number(detail.rating || 0).toFixed(1)}
+      </div>
+      <div class="card-list">
+        ${items.length ? items.slice(0, 30).map(item => renderDetailMenuItem(item, detail.id)).join('') : empty()}
+      </div>
+    `;
+    document.querySelectorAll('[data-add-cart]').forEach(button => {
+      button.addEventListener('click', () => addItemFromDetail(Number(button.dataset.addCart)));
+    });
+  }
+
+  function renderDetailMenuItem(item, restaurantId) {
+    const variantOptions = (item.variants || []).map(variant => `<option value="${variant.id}">${escapeHtml(variant.name)} +${formatMoney(variant.priceAdjustment)}</option>`).join('');
+    const toppingOptions = (item.toppingGroups || []).flatMap(group => (group.toppings || []).map(topping => `
+      <label class="muted">
+        <input type="checkbox" data-topping-for="${item.id}" value="${topping.id}"> ${escapeHtml(group.name)}: ${escapeHtml(topping.name)} +${formatMoney(topping.price)}
+      </label>
+    `)).join('');
+    return `
+      <article class="menu-card">
+        <div>
+          <strong>${escapeHtml(item.name)}</strong>
+          <span>${escapeHtml(item.categoryName || 'Menu')} · ${item.preparationTime || 0} phút · ${formatMoney(item.effectivePrice)}</span>
+          <input type="hidden" data-restaurant-for="${item.id}" value="${restaurantId}">
+          ${variantOptions ? `<select data-variant-for="${item.id}"><option value="">Size mặc định</option>${variantOptions}</select>` : ''}
+          ${toppingOptions ? `<div>${toppingOptions}</div>` : ''}
+        </div>
+        <div class="menu-actions">
+          <select data-quantity-for="${item.id}">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+          <button class="primary-button" type="button" data-add-cart="${item.id}">Thêm</button>
+        </div>
+      </article>
+    `;
+  }
+
+  async function addItemFromDetail(menuItemId) {
+    if (!state.user || roleOf(state.user) !== 'CUSTOMER') {
+      setStatus('Cần đăng nhập tài khoản khách hàng để thêm món vào giỏ.', true);
+      return;
+    }
+    const restaurantId = Number(document.querySelector(`[data-restaurant-for="${menuItemId}"]`).value);
+    const variantValue = document.querySelector(`[data-variant-for="${menuItemId}"]`)?.value || null;
+    const quantity = Number(document.querySelector(`[data-quantity-for="${menuItemId}"]`)?.value || 1);
+    const toppingIds = Array.from(document.querySelectorAll(`[data-topping-for="${menuItemId}"]:checked`)).map(input => Number(input.value));
+    try {
+      state.cart = await api('/api/customer/cart/items', {
+        method: 'POST',
+        body: JSON.stringify({
+          restaurantId,
+          menuItemId,
+          variantId: variantValue ? Number(variantValue) : null,
+          quantity,
+          toppingIds
+        })
+      });
+      renderCart();
+      setStatus('Đã thêm món vào giỏ hàng.');
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  async function loadAddresses() {
+    if (!state.token || roleOf(state.user) !== 'CUSTOMER') return;
+    try {
+      const result = await api('/api/customer/addresses');
+      state.addresses = result.items || [];
+      renderAddresses();
+    } catch (error) {
+      $('#defaultAddressText').textContent = error.message;
+    }
+  }
+
+  function renderAddresses() {
+    const selected = state.addresses.find(item => item.isDefault) || state.addresses[0];
+    $('#defaultAddressText').textContent = selected
+      ? `${selected.receiverName} · ${selected.addressLine}, ${selected.district || ''}, ${selected.city}`
+      : 'Chưa có địa chỉ';
+    $('#checkoutAddress').innerHTML = state.addresses.length
+      ? state.addresses.map(item => `<option value="${item.id}" ${item.isDefault ? 'selected' : ''}>${escapeHtml(item.label || 'Địa chỉ')} · ${escapeHtml(item.addressLine)}</option>`).join('')
+      : '<option value="">Chưa có địa chỉ</option>';
+  }
+
+  async function loadCart() {
+    if (!state.token || roleOf(state.user) !== 'CUSTOMER') return;
+    try {
+      state.cart = await api('/api/customer/cart');
+      renderCart();
+    } catch (error) {
+      $('#cartItems').innerHTML = errorBox(error);
+    }
+  }
+
+  function renderCart() {
+    const cart = state.cart;
+    if (!cart || !cart.items || cart.items.length === 0) {
+      $('#cartTitle').textContent = 'Giỏ trống';
+      $('#cartItems').innerHTML = empty();
+      return;
+    }
+    $('#cartTitle').textContent = `${cart.restaurantName} · ${formatMoney(cart.subtotal)}`;
+    const rows = cart.items.map(item => `
+      <div class="cart-row">
+        <div>
+          <strong>${escapeHtml(item.name)}</strong>
+          <span class="muted">${item.variantName ? `${escapeHtml(item.variantName)} · ` : ''}SL ${item.quantity}</span>
+        </div>
+        <b>${formatMoney(item.lineTotal)}</b>
+      </div>
+    `).join('');
+    const fees = `
+      <div class="fee-row"><span>Tạm tính</span><b>${formatMoney(cart.subtotal)}</b></div>
+      <div class="fee-row"><span>Phí giao hàng, dịch vụ và thuế sẽ được tính khi đặt hàng</span><b>Tự động</b></div>
+    `;
+    $('#cartItems').innerHTML = rows + fees;
+  }
+
+  async function checkout(event) {
     event.preventDefault();
-    if (!localCart.length) { orderingMessage.textContent = 'Your cart is empty.'; return; }
-    if (!authHeaders().Authorization) { orderingMessage.textContent = 'Sign in to submit checkout.'; return; }
+    if (!state.cart?.restaurantId) {
+      setStatus('Giỏ hàng trống hoặc chưa tải.', true);
+      return;
+    }
+    const addressId = Number($('#checkoutAddress').value);
+    if (!addressId) {
+      setStatus('Chưa có địa chỉ giao hàng.', true);
+      return;
+    }
     try {
-      for (const item of localCart) await apiFetch('/api/customer/cart/items', { method: 'POST', body: JSON.stringify({ restaurantId: item.restaurantId, menuItemId: item.menuItemId, quantity: item.quantity }) });
-      const order = await apiFetch('/api/customer/orders/checkout', { method: 'POST', headers: { 'Idempotency-Key': `web-${Date.now()}` }, body: JSON.stringify({ restaurantId: localCart[0].restaurantId, addressId: Number(document.querySelector('#checkoutAddressId').value), paymentMethod: document.querySelector('#checkoutPayment').value, promotionCode: document.querySelector('#checkoutPromotion').value.trim() || undefined }) });
-      localCart = [];
-      renderLocalCart();
-      orderingMessage.textContent = `Order ${order.orderCode} created. Watch notifications for status updates.`;
-      loadCustomerOrders();
-    } catch (error) { orderingMessage.textContent = error.message; }
+      const order = await api('/api/customer/orders/checkout', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': `web-${Date.now()}` },
+        body: JSON.stringify({
+          restaurantId: state.cart.restaurantId,
+          addressId,
+          paymentMethod: $('#paymentMethod').value,
+          promotionCode: $('#promotionCode').value.trim() || undefined,
+          customerNote: $('#customerNote').value.trim() || undefined
+        })
+      });
+      state.cart = null;
+      renderCart();
+      setStatus(`Đã tạo đơn ${order.orderCode} · Tổng ${formatMoney(order.totalAmount)}`);
+      await loadCustomerOrders();
+    } catch (error) {
+      setStatus(error.message, true);
+    }
   }
 
   async function loadCustomerOrders() {
-    if (!authHeaders().Authorization) { orderingMessage.textContent = 'Sign in to view orders.'; return; }
-    try { const result = await apiFetch('/api/customer/orders'); customerOrderRows.innerHTML = (result.items || []).map(order => `<div class="order-row"><div><strong>${escapeHtml(order.orderCode)}</strong><span>${escapeHtml(order.restaurantName)} - ${formatMoney(order.totalAmount)}</span></div><span>${escapeHtml(order.status)}</span></div>`).join('') || '<p class="empty-state">No orders yet.</p>'; customerOrders.hidden = false; } catch (error) { orderingMessage.textContent = error.message; }
+    if (!state.token || roleOf(state.user) !== 'CUSTOMER') return;
+    try {
+      const result = await api('/api/customer/orders');
+      const items = result.items || [];
+      $('#customerOrders').innerHTML = items.length ? items.map(renderOrderSummary).join('') : empty();
+      bindCustomerOrderActions();
+    } catch (error) {
+      $('#customerOrders').innerHTML = errorBox(error);
+    }
+  }
+
+  function renderOrderSummary(order) {
+    return `
+      <article class="order-card">
+        <strong>${escapeHtml(order.orderCode)}</strong>
+        <span>${escapeHtml(order.restaurantName)} · ${escapeHtml(statusLabel(order.status))} · ${escapeHtml(paymentLabel(order.paymentMethod))}</span>
+        <span>Tổng: ${formatMoney(order.totalAmount)} · Phí giao: ${formatMoney(order.deliveryFee)} · Giảm: ${formatMoney(order.discountAmount)}</span>
+        ${['PENDING', 'CONFIRMED', 'PREPARING'].includes(order.status) && can('order.cancel') ? `<button type="button" data-cancel-order="${order.id}">Hủy đơn</button>` : ''}
+      </article>
+    `;
+  }
+
+  function bindCustomerOrderActions() {
+    document.querySelectorAll('[data-cancel-order]').forEach(button => {
+      button.addEventListener('click', () => cancelOrder(button.dataset.cancelOrder));
+    });
+  }
+
+  async function cancelOrder(orderId) {
+    try {
+      await api(`/api/payments/orders/${orderId}/cancel`, {
+        method: 'POST',
+        body: JSON.stringify({ reasonCode: 'CUSTOMER_CHANGED_MIND', reason: 'Hủy từ giao diện web' })
+      });
+      await loadCustomerOrders();
+      setStatus('Đã hủy đơn.');
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  async function loadNotifications() {
+    if (!state.token) return;
+    await api('/api/notifications').catch(() => null);
+  }
+
+  async function loadShipperDashboard() {
+    if (!state.token || roleOf(state.user) !== 'SHIPPER') return;
+    await Promise.allSettled([loadShipperProfile(), loadShipperAssignments(), loadShipperDeliveries(), loadShipperEarnings()]);
+  }
+
+  async function loadShipperProfile() {
+    try {
+      const profile = await api('/api/shippers/profile');
+      $('#shipperProfile').innerHTML = `
+        <strong>${escapeHtml(profile.fullName)}</strong><br>
+        Trạng thái: ${escapeHtml(statusLabel(profile.availabilityStatus))}<br>
+        Xe: ${escapeHtml(profile.vehicleType)} ${escapeHtml(profile.vehiclePlate || '')}<br>
+        Đánh giá: ${Number(profile.rating || 0).toFixed(1)} · ${profile.totalDeliveries || 0} chuyến
+      `;
+    } catch (error) {
+      $('#shipperProfile').innerHTML = errorBox(error);
+    }
+  }
+
+  async function updateAvailability(status) {
+    try {
+      await api('/api/shippers/availability', {
+        method: 'PATCH',
+        body: JSON.stringify({ availabilityStatus: status })
+      });
+      await loadShipperProfile();
+      setStatus(`Đã chuyển trạng thái ${statusLabel(status)}.`);
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  async function loadShipperAssignments() {
+    try {
+      const result = await api('/api/shippers/assignments');
+      const items = result.items || [];
+      $('#shipperAssignments').innerHTML = items.length ? items.map(item => `
+        <article class="order-card">
+          <strong>${escapeHtml(item.orderCode)}</strong>
+          <span>${escapeHtml(item.restaurantName)} · ${formatMoney(item.totalAmount)} · ${escapeHtml(statusLabel(item.status))}</span>
+          <span>${escapeHtml(item.deliveryAddress || '')}</span>
+          ${item.status === 'OFFERED' ? `
+            <div class="button-row">
+              <button class="secondary-button" type="button" data-accept-assignment="${item.id}">Nhận</button>
+              <button class="secondary-button" type="button" data-reject-assignment="${item.id}">Từ chối</button>
+            </div>
+          ` : ''}
+        </article>
+      `).join('') : empty();
+      document.querySelectorAll('[data-accept-assignment]').forEach(button => {
+        button.addEventListener('click', () => respondAssignment(button.dataset.acceptAssignment, 'accept'));
+      });
+      document.querySelectorAll('[data-reject-assignment]').forEach(button => {
+        button.addEventListener('click', () => respondAssignment(button.dataset.rejectAssignment, 'reject'));
+      });
+    } catch (error) {
+      $('#shipperAssignments').innerHTML = errorBox(error);
+    }
+  }
+
+  async function respondAssignment(id, action) {
+    try {
+      await api(`/api/shippers/assignments/${id}/${action}`, {
+        method: 'POST',
+        body: JSON.stringify(action === 'reject' ? { reason: 'Từ chối từ web' } : {})
+      });
+      await loadShipperDashboard();
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  async function loadShipperDeliveries() {
+    try {
+      const result = await api('/api/shippers/deliveries');
+      const items = result.items || [];
+      $('#shipperDeliveries').innerHTML = items.length ? items.map(item => `
+        <article class="order-card">
+          <strong>${escapeHtml(item.orderCode || `Chuyến giao #${item.id}`)}</strong>
+          <span>${escapeHtml(item.restaurantName || '')} · ${escapeHtml(statusLabel(item.status))} · ${formatMoney(item.deliveryFee)}</span>
+          <span>${escapeHtml(item.pickupAddress)} → ${escapeHtml(item.deliveryAddress)}</span>
+          <div class="button-row">
+            <button class="secondary-button" type="button" data-delivery-status="${item.id}:PICKED_UP">Đã lấy hàng</button>
+            <button class="secondary-button" type="button" data-delivery-status="${item.id}:DELIVERING">Đang giao</button>
+            <button class="secondary-button" type="button" data-delivery-status="${item.id}:DELIVERED">Đã giao</button>
+          </div>
+        </article>
+      `).join('') : empty();
+      document.querySelectorAll('[data-delivery-status]').forEach(button => {
+        button.addEventListener('click', () => {
+          const [id, status] = button.dataset.deliveryStatus.split(':');
+          updateDeliveryStatus(id, status);
+        });
+      });
+    } catch (error) {
+      $('#shipperDeliveries').innerHTML = errorBox(error);
+    }
+  }
+
+  async function updateDeliveryStatus(id, status) {
+    try {
+      await api(`/api/shippers/deliveries/${id}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ status, note: `Cập nhật ${statusLabel(status)}` })
+      });
+      await loadShipperDashboard();
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  async function loadShipperEarnings() {
+    try {
+      const result = await api('/api/shippers/earnings');
+      $('#shipperEarnings').innerHTML = `
+        <article class="order-card">
+          <strong>Tổng thu nhập: ${formatMoney(result.totalEarnings || 0)}</strong>
+          <span>${(result.items || []).length} dòng thu nhập · ${(result.withdrawals || []).length} yêu cầu rút</span>
+        </article>
+      `;
+    } catch (error) {
+      $('#shipperEarnings').innerHTML = errorBox(error);
+    }
+  }
+
+  async function loadOwnerRestaurants() {
+    if (!state.token || roleOf(state.user) !== 'RESTAURANT') return;
+    try {
+      const result = await api('/api/restaurant/restaurants');
+      state.ownerRestaurants = result.items || [];
+      state.ownerRestaurantId = state.ownerRestaurantId || state.ownerRestaurants[0]?.id || null;
+      renderOwnerRestaurants();
+    } catch (error) {
+      $('#ownerRestaurantSummary').innerHTML = errorBox(error);
+    }
+  }
+
+  function renderOwnerRestaurants() {
+    $('#ownerRestaurantSelect').innerHTML = state.ownerRestaurants.length
+      ? state.ownerRestaurants.map(item => `<option value="${item.id}" ${item.id === state.ownerRestaurantId ? 'selected' : ''}>${escapeHtml(item.name)} · ${escapeHtml(statusLabel(item.status))}</option>`).join('')
+      : '<option value="">Chưa có nhà hàng</option>';
+    const current = state.ownerRestaurants.find(item => item.id === state.ownerRestaurantId);
+    $('#ownerRestaurantSummary').innerHTML = current
+      ? `<strong>${escapeHtml(current.name)}</strong><br><span>${escapeHtml(current.address || '')} · ${escapeHtml(current.city || '')}</span>`
+      : 'Chưa chọn nhà hàng.';
   }
 
   async function loadRestaurantQueue() {
-    if (!authHeaders().Authorization) { orderingMessage.textContent = 'Sign in as a restaurant operator to view the kitchen queue.'; return; }
+    if (!state.token || roleOf(state.user) !== 'RESTAURANT') return;
     try {
-      const result = await apiFetch('/api/restaurant/orders');
-      restaurantQueueRows.innerHTML = (result.items || []).map(order => `<tr><td>${escapeHtml(order.orderCode)}</td><td><span class="queue-state">${escapeHtml(order.status)}</span></td><td>${queueAction(order)}</td></tr>`).join('') || '<tr><td colspan="3">No orders in the queue.</td></tr>';
-      restaurantQueueRows.querySelectorAll('[data-order-action]').forEach(button => button.addEventListener('click', () => advanceRestaurantOrder(button.dataset.orderId, button.dataset.orderAction)));
-    } catch (error) { orderingMessage.textContent = error.message; }
+      const result = await api('/api/restaurant/orders');
+      renderRestaurantBoard(result.items || []);
+    } catch (error) {
+      $('#restaurantOrderBoard').innerHTML = errorBox(error);
+    }
   }
 
-  function queueAction(order) {
-    const next = { PENDING: ['confirm', 'Confirm'], CONFIRMED: ['prepare', 'Start preparing'], PREPARING: ['ready', 'Mark ready'] }[order.status];
-    return next ? `<button class="secondary-button" type="button" data-order-id="${order.id}" data-order-action="${next[0]}">${next[1]}</button>` : '<span class="empty-state">Waiting</span>';
+  function renderRestaurantBoard(orders) {
+    const groups = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'];
+    $('#restaurantOrderBoard').innerHTML = groups.map(status => {
+      const items = orders.filter(order => order.status === status);
+      return `
+        <section class="order-column">
+          <h3>${statusLabel(status)} (${items.length})</h3>
+          ${items.length ? items.map(renderRestaurantOrder).join('') : '<div class="empty-state">Trống</div>'}
+        </section>
+      `;
+    }).join('');
+    document.querySelectorAll('[data-order-action]').forEach(button => {
+      button.addEventListener('click', () => transitionOrder(Number(button.dataset.orderId), button.dataset.orderAction));
+    });
   }
 
-  async function advanceRestaurantOrder(orderId, action) {
-    try { await apiFetch(`/api/restaurant/orders/${orderId}/${action}`, { method: 'POST', body: JSON.stringify({}) }); loadRestaurantQueue(); } catch (error) { orderingMessage.textContent = error.message; }
+  function renderRestaurantOrder(order) {
+    const action = order.status === 'PENDING'
+      ? ['confirm', 'Xác nhận']
+      : order.status === 'CONFIRMED'
+        ? ['prepare', 'Bắt đầu nấu']
+        : order.status === 'PREPARING'
+          ? ['ready', 'Sẵn sàng']
+          : null;
+    return `
+      <article class="order-card">
+        <strong>${escapeHtml(order.orderCode)}</strong>
+        <span>${escapeHtml(paymentLabel(order.paymentMethod))} · ${formatMoney(order.totalAmount)}</span>
+        <span>${escapeHtml(order.customerNote || 'Không có ghi chú')}</span>
+        ${action ? `<button type="button" data-order-id="${order.id}" data-order-action="${action[0]}">${action[1]}</button>` : '<span class="status-chip">Chờ shipper</span>'}
+      </article>
+    `;
   }
 
-  function loadImageFile() {
-    const file = imageFile.files?.[0];
-    if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { imageStatus.textContent = 'Use a JPEG, PNG or WebP image up to 5 MB.'; return; }
-    const reader = new FileReader();
-    reader.onload = () => { const image = new Image(); image.onload = () => { imageState.source = image; imageState.rotation = 0; imageState.zoom = 1; imageZoom.value = '1'; drawImage(); imageStatus.textContent = 'Preview ready'; }; image.src = reader.result; };
-    reader.readAsDataURL(file);
-  }
-
-  function resetImage() { imageState.rotation = 0; imageState.zoom = 1; imageZoom.value = '1'; drawImage(); imageStatus.textContent = ''; }
-
-  function drawImage() {
-    const context = imageCanvas.getContext('2d');
-    context.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
-    context.fillStyle = '#12202a'; context.fillRect(0, 0, imageCanvas.width, imageCanvas.height);
-    const source = imageState.source;
-    if (!source) return;
-    const radians = imageState.rotation * Math.PI / 180;
-    const scale = Math.max(imageCanvas.width / source.width, imageCanvas.height / source.height) * imageState.zoom;
-    context.save(); context.translate(imageCanvas.width / 2, imageCanvas.height / 2); context.rotate(radians); context.drawImage(source, -source.width * scale / 2, -source.height * scale / 2, source.width * scale, source.height * scale); context.restore();
-  }
-
-  async function uploadImage() {
-    if (!imageState.source) { imageStatus.textContent = 'Choose an image first.'; return; }
-    const restaurantId = Number(document.querySelector('#imageRestaurantId').value);
-    if (!restaurantId || !authHeaders().Authorization) { imageStatus.textContent = 'Sign in and enter a restaurant ID.'; return; }
+  async function transitionOrder(orderId, action) {
     try {
-      const dataUrl = imageCanvas.toDataURL('image/jpeg', 0.88);
-      const result = await apiFetch(`/api/restaurant/restaurants/${restaurantId}/images`, { method: 'POST', body: JSON.stringify({ imageData: dataUrl, imageType: document.querySelector('#imageType').value }) });
-      imageStatus.textContent = `Uploaded ${result.imageType || 'image'}`;
-    } catch (error) { imageStatus.textContent = error.message; }
+      await api(`/api/restaurant/orders/${orderId}/${action}`, {
+        method: 'POST',
+        body: JSON.stringify({ note: `Cập nhật từ web: ${action}` })
+      });
+      await loadRestaurantQueue();
+      setStatus('Đã cập nhật trạng thái đơn.');
+    } catch (error) {
+      setStatus(error.message, true);
+    }
   }
 
-  function formatMoney(value) { return `${new Intl.NumberFormat('vi-VN').format(Number(value) || 0)} VND`; }
-  function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }
+  async function loadOwnerMenu() {
+    const restaurantId = Number($('#ownerRestaurantSelect').value || state.ownerRestaurantId);
+    if (!restaurantId) return;
+    state.ownerRestaurantId = restaurantId;
+    try {
+      const result = await api(`/api/restaurant/restaurants/${restaurantId}/menu-items?pageSize=50`);
+      renderOwnerMenu(result.items || []);
+    } catch (error) {
+      $('#ownerMenuRows').innerHTML = `<tr><td colspan="4">${escapeHtml(error.message)}</td></tr>`;
+    }
+  }
 
-  init();
+  function renderOwnerMenu(items) {
+    $('#ownerMenuRows').innerHTML = items.length ? items.map(item => `
+      <tr>
+        <td><strong>${escapeHtml(item.name)}</strong><br><span class="muted">${escapeHtml(item.description || '')}</span></td>
+        <td>${formatMoney(item.effectivePrice)}</td>
+        <td>${item.preparationTime} phút</td>
+        <td><span class="status-chip">${item.isAvailable ? 'Đang bán' : 'Tạm ẩn'}</span></td>
+      </tr>
+    `).join('') : '<tr><td colspan="4">Chưa có món</td></tr>';
+  }
+
+  async function createMenuItem(event) {
+    event.preventDefault();
+    const restaurantId = Number($('#ownerRestaurantSelect').value || state.ownerRestaurantId);
+    if (!restaurantId) return;
+    try {
+      await api(`/api/restaurant/restaurants/${restaurantId}/menu-items`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: $('#newItemName').value.trim(),
+          basePrice: Number($('#newItemPrice').value),
+          preparationTime: Number($('#newItemPrep').value),
+          isAvailable: true,
+          isFeatured: false
+        })
+      });
+      $('#createItemForm').hidden = true;
+      await loadOwnerMenu();
+      setStatus('Đã tạo món mới.');
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  async function loadAdminDashboard() {
+    if (!state.token || roleOf(state.user) !== 'ADMIN') return;
+    const [restaurants, audit, users] = await Promise.allSettled([
+      api('/api/admin/restaurants'),
+      api('/api/admin/audit-logs'),
+      api('/api/accounts/admin/users')
+    ]);
+    if (restaurants.status === 'fulfilled') {
+      const items = restaurants.value.items || [];
+      $('#adminRestaurants').innerHTML = items.length ? items.slice(0, 12).map(item => `
+        <article class="restaurant-card">
+          <div class="thumb">${escapeHtml(item.name.slice(0, 2).toUpperCase())}</div>
+          <div>
+            <strong>${escapeHtml(item.name)}</strong>
+          <span>${escapeHtml(statusLabel(item.status))} · ${escapeHtml(item.city || '')}</span>
+          </div>
+          <span class="status-chip">${item.id}</span>
+        </article>
+      `).join('') : empty();
+    } else {
+      $('#adminRestaurants').innerHTML = errorBox(restaurants.reason);
+    }
+    if (audit.status === 'fulfilled') {
+      const items = audit.value.items || [];
+      $('#auditLogs').innerHTML = items.length ? items.slice(0, 12).map(item => `
+        <article class="log-card">
+          <strong>${escapeHtml(activityLabel(item.action || item.auditAction))}</strong>
+          <span>${escapeHtml(item.username || 'Hệ thống')} · ${escapeHtml(new Date(item.createdAt).toLocaleString('vi-VN'))}</span>
+        </article>
+      `).join('') : empty();
+    } else {
+      $('#auditLogs').innerHTML = errorBox(audit.reason);
+    }
+    if (users.status === 'fulfilled') {
+      renderUsers(users.value.items || []);
+    } else {
+      $('#userManagement').innerHTML = errorBox(users.reason);
+    }
+    $('#adminOps').innerHTML = `
+      <article class="order-card"><strong>Vận hành giao hàng</strong><span>Theo dõi tài xế, chuyến giao, thanh toán và đối soát.</span></article>
+      <article class="order-card"><strong>Phân quyền</strong><span>Mỗi vai trò chỉ nhìn thấy khu vực và thao tác phù hợp.</span></article>
+    `;
+  }
+
+  async function loadAccountDashboard() {
+    if (!state.token) return;
+    await Promise.allSettled([loadSessionPermissions(), loadWallet(), roleOf(state.user) === 'ADMIN' ? loadUsers() : Promise.resolve()]);
+    renderSession();
+  }
+
+  async function loadWallet() {
+    try {
+      const result = await api('/api/payments/wallet');
+      $('#walletPanel').innerHTML = `
+        <article class="order-card">
+          <strong>Số dư: ${formatMoney(result.wallet?.balance || 0)}</strong>
+          <span>${(result.transactions || []).length} giao dịch gần đây · ${escapeHtml(result.wallet?.status || '')}</span>
+        </article>
+      `;
+    } catch (error) {
+      $('#walletPanel').innerHTML = errorBox(error);
+    }
+  }
+
+  async function depositWallet(event) {
+    event.preventDefault();
+    try {
+      await api('/api/payments/wallet/deposit', {
+        method: 'POST',
+        body: JSON.stringify({ amount: Number($('#walletDepositAmount').value) })
+      });
+      await loadWallet();
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  async function loadUsers() {
+    if (!can('user.view')) {
+      $('#userManagement').innerHTML = '<div class="empty-state">Tài khoản hiện tại không có quyền xem danh sách người dùng.</div>';
+      return;
+    }
+    try {
+      const result = await api('/api/accounts/admin/users');
+      renderUsers(result.items || []);
+    } catch (error) {
+      $('#userManagement').innerHTML = errorBox(error);
+    }
+  }
+
+  function renderUsers(items) {
+    const node = $('#userManagement');
+    if (!node) return;
+    node.innerHTML = items.length ? items.slice(0, 50).map(item => `
+      <article class="order-card">
+        <strong>${escapeHtml(item.username)}</strong>
+        <span>${escapeHtml(item.email)} · ${escapeHtml(roleLabel(item.role))} · ${escapeHtml(statusLabel(item.status))}</span>
+        ${can('user.manage') ? `
+          <div class="button-row">
+            <button class="secondary-button" type="button" data-user-status="${item.id}:ACTIVE">Mở</button>
+            <button class="secondary-button" type="button" data-user-status="${item.id}:LOCKED">Khóa</button>
+            <button class="secondary-button" type="button" data-user-status="${item.id}:INACTIVE">Tạm ngưng</button>
+          </div>
+        ` : ''}
+      </article>
+    `).join('') : empty();
+    document.querySelectorAll('[data-user-status]').forEach(button => {
+      button.addEventListener('click', () => {
+        const [id, status] = button.dataset.userStatus.split(':');
+        updateUserStatus(id, status);
+      });
+    });
+  }
+
+  async function updateUserStatus(id, status) {
+    try {
+      await api(`/api/accounts/admin/users/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status })
+      });
+      await loadUsers();
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  function showScreen(screen) {
+    const allowedScreens = allowedScreensForRole();
+    const target = allowedScreens.has(screen) ? screen : defaultScreenForRole();
+    document.body.dataset.screen = target;
+    document.querySelectorAll('[data-screen-panel]').forEach(panel => {
+      panel.classList.toggle('is-active', panel.dataset.screenPanel === target);
+    });
+    document.querySelectorAll('[data-screen-target]').forEach(button => {
+      button.classList.toggle('is-active', button.dataset.screenTarget === target && !button.hidden);
+    });
+    if (target === 'account' && state.token) loadAccountDashboard();
+  }
+
+  function bind() {
+    document.querySelectorAll('[data-screen-target]').forEach(button => {
+      button.addEventListener('click', () => showScreen(button.dataset.screenTarget));
+    });
+    $('#loginForm').addEventListener('submit', event => {
+      event.preventDefault();
+      login($('#loginIdentifier').value, $('#loginPassword').value).catch(error => setStatus(error.message, true));
+    });
+    $('#logoutButton').addEventListener('click', async () => {
+      if (state.refreshToken) {
+        await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: state.refreshToken }) }).catch(() => null);
+      }
+      clearSession();
+      setStatus('Đã đăng xuất.');
+    });
+    $('#loadMeButton').addEventListener('click', () => loadMe());
+    $('#searchForm').addEventListener('submit', event => {
+      event.preventDefault();
+      searchCatalog();
+    });
+    $('#refreshCustomerButton').addEventListener('click', () => Promise.allSettled([loadPublicData(), loadAddresses(), loadCart(), loadCustomerOrders()]));
+    $('#loadAddressesButton').addEventListener('click', () => loadAddresses());
+    $('#loadCartButton').addEventListener('click', () => loadCart());
+    $('#checkoutForm').addEventListener('submit', checkout);
+    $('#loadCustomerOrdersButton').addEventListener('click', () => loadCustomerOrders());
+    $('#refreshRestaurantButton').addEventListener('click', () => loadOwnerRestaurants());
+    $('#ownerRestaurantSelect').addEventListener('change', event => {
+      state.ownerRestaurantId = Number(event.target.value);
+      renderOwnerRestaurants();
+    });
+    $('#loadRestaurantQueueButton').addEventListener('click', () => loadRestaurantQueue());
+    $('#loadOwnerMenuButton').addEventListener('click', () => loadOwnerMenu());
+    $('#toggleCreateItemButton').addEventListener('click', () => {
+      $('#createItemForm').hidden = !$('#createItemForm').hidden;
+    });
+    $('#createItemForm').addEventListener('submit', createMenuItem);
+    $('#loadAdminButton').addEventListener('click', () => loadAdminDashboard());
+    $('#refreshShipperButton').addEventListener('click', () => loadShipperDashboard());
+    document.querySelectorAll('[data-availability]').forEach(button => {
+      button.addEventListener('click', () => updateAvailability(button.dataset.availability));
+    });
+    $('#withdrawForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      try {
+        await api('/api/shippers/withdrawals', {
+          method: 'POST',
+          body: JSON.stringify({
+            amount: Number($('#withdrawAmount').value),
+            bankName: $('#withdrawBank').value,
+            bankAccount: $('#withdrawAccount').value
+          })
+        });
+        await loadShipperEarnings();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    });
+    $('#refreshAccountButton').addEventListener('click', () => loadAccountDashboard());
+    $('#walletDepositForm').addEventListener('submit', depositWallet);
+    $('#clearLogButton').addEventListener('click', () => {
+      state.apiLog = [];
+      renderApiLog();
+    });
+  }
+
+  bind();
+  renderSession();
+  loadPublicData();
+  if (state.token) loadMe();
 }());

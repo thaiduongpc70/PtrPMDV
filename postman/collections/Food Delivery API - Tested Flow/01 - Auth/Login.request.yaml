@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "emailOrUsername": "customer01",
+      "password": "FoodDemo!2026"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+      pm.test('Login success', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));
+      if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);
+      if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);
+      if (json.user?.id) pm.collectionVariables.set('userId', json.user.id);
+      if (json.user?.role) pm.collectionVariables.set('currentRole', json.user.role);
+    language: text/javascript
+order: 2000

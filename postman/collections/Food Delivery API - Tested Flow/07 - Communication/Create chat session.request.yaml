@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/communications/chat/sessions"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "orderId": {{orderId}}
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+      if (json.id) pm.collectionVariables.set('chatSessionId', json.id);
+    language: text/javascript
+order: 1000

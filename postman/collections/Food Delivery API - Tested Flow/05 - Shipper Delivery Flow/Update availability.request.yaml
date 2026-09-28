@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/shippers/availability"
+method: PATCH
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "availabilityStatus": "AVAILABLE"
+    }
+order: 2000

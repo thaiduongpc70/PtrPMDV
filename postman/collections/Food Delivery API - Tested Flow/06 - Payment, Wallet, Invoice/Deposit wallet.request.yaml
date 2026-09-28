@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/payments/wallet/deposit"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "amount": 100000
+    }
+order: 5000

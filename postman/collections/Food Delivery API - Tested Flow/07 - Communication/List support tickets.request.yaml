@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/api/communications/support/tickets"
+method: GET
+order: 4000

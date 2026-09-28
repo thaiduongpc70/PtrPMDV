@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/api/settlements/admin/settlements/generate"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "periodStart": "2026-09-01",
+      "periodEnd": "2026-09-30",
+      "commissionRate": 0.18
+    }
+order: 6000

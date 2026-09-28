@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/shippers/deliveries/{{deliveryId}}/status"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "status": "DELIVERING",
+      "latitude": 10.7769,
+      "longitude": 106.7009,
+      "note": "Đang giao cho khách"
+    }
+order: 7000

@@ -1,0 +1,755 @@
+{
+  "info": {
+    "_postman_id": "9f80727a-0f0f-4a24-a132-food-delivery-api",
+    "name": "Food Delivery API - Tested Flow",
+    "description": "Collection tổng hợp các API chính để test hệ thống Food Delivery: auth, customer, restaurant, shipper, admin, payment, chat/support và settlement. Import vào Postman, tạo environment hoặc dùng collection variables có sẵn.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "restaurantId", "value": "1" },
+    { "key": "menuItemId", "value": "1" },
+    { "key": "variantId", "value": "" },
+    { "key": "toppingId", "value": "" },
+    { "key": "addressId", "value": "1" },
+    { "key": "orderId", "value": "1" },
+    { "key": "orderCode", "value": "" },
+    { "key": "shipperId", "value": "1" },
+    { "key": "assignmentId", "value": "1" },
+    { "key": "deliveryId", "value": "1" },
+    { "key": "paymentId", "value": "1" },
+    { "key": "codId", "value": "1" },
+    { "key": "chatSessionId", "value": "1" },
+    { "key": "ticketId", "value": "1" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{accessToken}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "00 - Health",
+      "item": [
+        {
+          "name": "Health live",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/health"
+          }
+        },
+        {
+          "name": "Health ready",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/health/ready"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Auth",
+      "item": [
+        {
+          "name": "Register customer",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"customer01\",\n  \"email\": \"customer01@example.com\",\n  \"phone\": \"0900000001\",\n  \"password\": \"FoodDemo!2026\",\n  \"fullName\": \"Nguyen Van A\",\n  \"gender\": \"OTHER\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register/customer"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "if (json.user?.id) pm.collectionVariables.set('userId', json.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailOrUsername\": \"customer01\",\n  \"password\": \"FoodDemo!2026\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Login success', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "if (json.user?.id) pm.collectionVariables.set('userId', json.user.id);",
+                  "if (json.user?.role) pm.collectionVariables.set('currentRole', json.user.role);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        },
+        {
+          "name": "Session permissions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/accounts/session"
+          }
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/refresh"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Public Catalog",
+      "item": [
+        {
+          "name": "List restaurant categories",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/restaurant-categories"
+          }
+        },
+        {
+          "name": "List banners",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/banners"
+          }
+        },
+        {
+          "name": "Search restaurants",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/restaurants?keyword=com&page=1&pageSize=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const first = json.items?.[0];",
+                  "if (first?.id) pm.collectionVariables.set('restaurantId', first.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search menu items",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/menu-items?sort=featured&page=1&pageSize=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const first = json.items?.[0];",
+                  "if (first?.id) pm.collectionVariables.set('menuItemId', first.id);",
+                  "if (first?.restaurantId) pm.collectionVariables.set('restaurantId', first.restaurantId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restaurant detail",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/restaurants/{{restaurantId}}"
+          }
+        },
+        {
+          "name": "Restaurant menu",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/restaurants/{{restaurantId}}/menu"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Customer Flow",
+      "item": [
+        {
+          "name": "Create address",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Nhà\",\n  \"receiverName\": \"Nguyen Van A\",\n  \"receiverPhone\": \"0900000001\",\n  \"addressLine\": \"123 Nguyen Trai\",\n  \"ward\": \"Phuong 1\",\n  \"district\": \"Quan 1\",\n  \"city\": \"TP.HCM\",\n  \"latitude\": 10.7769,\n  \"longitude\": 106.7009,\n  \"isDefault\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/customer/addresses"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('addressId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List addresses",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/customer/addresses"
+          }
+        },
+        {
+          "name": "Add item to cart",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": {{restaurantId}},\n  \"menuItemId\": {{menuItemId}},\n  \"variantId\": null,\n  \"quantity\": 2,\n  \"toppingIds\": [],\n  \"note\": \"Ít cay\"\n}"
+            },
+            "url": "{{baseUrl}}/api/customer/cart/items"
+          }
+        },
+        {
+          "name": "Get cart",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/customer/cart"
+          }
+        },
+        {
+          "name": "Checkout order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "postman-{{$timestamp}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": {{restaurantId}},\n  \"addressId\": {{addressId}},\n  \"paymentMethod\": \"COD\",\n  \"promotionCode\": null,\n  \"customerNote\": \"Gọi trước khi giao\"\n}"
+            },
+            "url": "{{baseUrl}}/api/customer/orders/checkout"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('orderId', json.id);",
+                  "if (json.orderCode) pm.collectionVariables.set('orderCode', json.orderCode);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List customer orders",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/customer/orders"
+          }
+        },
+        {
+          "name": "Get customer order detail",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/customer/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "Cancel order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonCode\": \"CUSTOMER_CHANGED_MIND\",\n  \"reason\": \"Khách đổi ý\"\n}"
+            },
+            "url": "{{baseUrl}}/api/payments/orders/{{orderId}}/cancel"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Restaurant Flow",
+      "item": [
+        {
+          "name": "List owned restaurants",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/restaurant/restaurants"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const first = json.items?.[0];",
+                  "if (first?.id) pm.collectionVariables.set('restaurantId', first.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create menu item",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cơm gà xối mỡ\",\n  \"description\": \"Cơm gà dùng để test API\",\n  \"basePrice\": 45000,\n  \"discountPrice\": null,\n  \"preparationTime\": 15,\n  \"isAvailable\": true,\n  \"isFeatured\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/restaurant/restaurants/{{restaurantId}}/menu-items"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('menuItemId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List owner menu items",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/restaurant/restaurants/{{restaurantId}}/menu-items?pageSize=50"
+          }
+        },
+        {
+          "name": "List restaurant orders",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/restaurant/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const first = json.items?.[0];",
+                  "if (first?.id) pm.collectionVariables.set('orderId', first.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"note\": \"Nhà hàng xác nhận đơn\"\n}" },
+            "url": "{{baseUrl}}/api/restaurant/orders/{{orderId}}/confirm"
+          }
+        },
+        {
+          "name": "Start preparing",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"note\": \"Bắt đầu chuẩn bị món\"\n}" },
+            "url": "{{baseUrl}}/api/restaurant/orders/{{orderId}}/prepare"
+          }
+        },
+        {
+          "name": "Mark ready for pickup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"note\": \"Món đã sẵn sàng\"\n}" },
+            "url": "{{baseUrl}}/api/restaurant/orders/{{orderId}}/ready"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Shipper Delivery Flow",
+      "item": [
+        {
+          "name": "Shipper profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/shippers/profile"
+          }
+        },
+        {
+          "name": "Update availability",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"availabilityStatus\": \"AVAILABLE\"\n}" },
+            "url": "{{baseUrl}}/api/shippers/availability"
+          }
+        },
+        {
+          "name": "List assignments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/shippers/assignments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const first = json.items?.[0];",
+                  "if (first?.id) pm.collectionVariables.set('assignmentId', first.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Accept assignment",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/shippers/assignments/{{assignmentId}}/accept"
+          }
+        },
+        {
+          "name": "List deliveries",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/shippers/deliveries"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const first = json.items?.[0];",
+                  "if (first?.id) pm.collectionVariables.set('deliveryId', first.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send GPS location",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliveryId\": {{deliveryId}},\n  \"latitude\": 10.7769,\n  \"longitude\": 106.7009,\n  \"speed\": 25,\n  \"heading\": 90,\n  \"accuracy\": 10\n}"
+            },
+            "url": "{{baseUrl}}/api/shippers/locations"
+          }
+        },
+        {
+          "name": "Update delivery status",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DELIVERING\",\n  \"latitude\": 10.7769,\n  \"longitude\": 106.7009,\n  \"note\": \"Đang giao cho khách\"\n}"
+            },
+            "url": "{{baseUrl}}/api/shippers/deliveries/{{deliveryId}}/status"
+          }
+        },
+        {
+          "name": "Shipper earnings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/shippers/earnings"
+          }
+        },
+        {
+          "name": "Request withdrawal",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50000,\n  \"bankName\": \"VCB\",\n  \"bankAccount\": \"0123456789\",\n  \"accountHolder\": \"NGUYEN VAN A\"\n}"
+            },
+            "url": "{{baseUrl}}/api/shippers/withdrawals"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Payment, Wallet, Invoice",
+      "item": [
+        {
+          "name": "Order payments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/payments/orders/{{orderId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const first = json.items?.[0];",
+                  "if (first?.id) pm.collectionVariables.set('paymentId', first.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Payment callback",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"PAID\",\n  \"providerReference\": \"POSTMAN-TEST\"\n}" },
+            "url": "{{baseUrl}}/api/payments/{{paymentId}}/callback"
+          }
+        },
+        {
+          "name": "Create invoice",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/payments/orders/{{orderId}}/invoice"
+          }
+        },
+        {
+          "name": "Get wallet",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/payments/wallet"
+          }
+        },
+        {
+          "name": "Deposit wallet",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 100000\n}" },
+            "url": "{{baseUrl}}/api/payments/wallet/deposit"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Communication",
+      "item": [
+        {
+          "name": "Create chat session",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderId\": {{orderId}}\n}" },
+            "url": "{{baseUrl}}/api/communications/chat/sessions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('chatSessionId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send chat message",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"message\": \"Xin chào, tôi muốn hỏi về đơn hàng này.\",\n  \"messageType\": \"TEXT\"\n}" },
+            "url": "{{baseUrl}}/api/communications/chat/sessions/{{chatSessionId}}/messages"
+          }
+        },
+        {
+          "name": "Create support ticket",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": {{orderId}},\n  \"subject\": \"Cần hỗ trợ đơn hàng\",\n  \"description\": \"Tôi muốn kiểm tra trạng thái giao hàng.\",\n  \"category\": \"ORDER\",\n  \"priority\": \"NORMAL\"\n}"
+            },
+            "url": "{{baseUrl}}/api/communications/support/tickets"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('ticketId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List support tickets",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/communications/support/tickets"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Admin",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/accounts/admin/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const first = json.items?.[0];",
+                  "if (first?.id) pm.collectionVariables.set('userId', first.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update user status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"ACTIVE\"\n}" },
+            "url": "{{baseUrl}}/api/accounts/admin/users/{{userId}}/status"
+          }
+        },
+        {
+          "name": "Admin restaurants",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/restaurants"
+          }
+        },
+        {
+          "name": "Audit logs",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/audit-logs"
+          }
+        },
+        {
+          "name": "Assign delivery to shipper",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": {{orderId}},\n  \"shipperId\": {{shipperId}},\n  \"distanceKm\": 3.5,\n  \"deliveryFee\": 18000\n}"
+            },
+            "url": "{{baseUrl}}/api/deliveries/assign"
+          }
+        },
+        {
+          "name": "Generate settlements",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodStart\": \"2026-09-01\",\n  \"periodEnd\": \"2026-09-30\",\n  \"commissionRate\": 0.18\n}"
+            },
+            "url": "{{baseUrl}}/api/settlements/admin/settlements/generate"
+          }
+        }
+      ]
+    }
+  ]
+}

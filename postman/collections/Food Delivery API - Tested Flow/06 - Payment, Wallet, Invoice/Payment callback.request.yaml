@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/payments/{{paymentId}}/callback"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "status": "PAID",
+      "providerReference": "POSTMAN-TEST"
+    }
+order: 2000

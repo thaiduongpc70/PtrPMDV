@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/shippers/locations"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "deliveryId": {{deliveryId}},
+      "latitude": 10.7769,
+      "longitude": 106.7009,
+      "speed": 25,
+      "heading": 90,
+      "accuracy": 10
+    }
+order: 6000

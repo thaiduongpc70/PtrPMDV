@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/communications/chat/sessions/{{chatSessionId}}/messages"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "message": "Xin chào, tôi muốn hỏi về đơn hàng này.",
+      "messageType": "TEXT"
+    }
+order: 2000

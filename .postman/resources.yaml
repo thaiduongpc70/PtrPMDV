@@ -1,0 +1,13 @@
+# Use this workspace to collaborate
+workspace:
+  id: bca047c0-9bd2-48a8-8c95-285cc7a4de3b
+
+cloudResources:
+  collections:
+    ../postman/collections/Food Delivery API - Tested Flow: ed7dfc29-e10c-4b9e-b11b-9061e6878487
+
+# All resources in the `postman/` folder are automatically registered in Local View.
+# Point to additional files outside the `postman/` folder to register them individually. Example:
+#localResources:
+#  collections:
+#    - ../tests/E2E Test Collection/

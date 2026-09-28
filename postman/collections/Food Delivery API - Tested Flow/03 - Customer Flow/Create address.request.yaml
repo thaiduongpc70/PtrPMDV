@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/addresses"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "label": "Nhà",
+      "receiverName": "Nguyen Van A",
+      "receiverPhone": "0900000001",
+      "addressLine": "123 Nguyen Trai",
+      "ward": "Phuong 1",
+      "district": "Quan 1",
+      "city": "TP.HCM",
+      "latitude": 10.7769,
+      "longitude": 106.7009,
+      "isDefault": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+      if (json.id) pm.collectionVariables.set('addressId', json.id);
+    language: text/javascript
+order: 1000

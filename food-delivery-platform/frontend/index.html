@@ -1,243 +1,392 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Food Delivery Account Workspace</title>
+    <title>Food Delivery Platform</title>
     <link rel="stylesheet" href="./src/styles.css">
     <script src="./src/app.js" defer></script>
   </head>
-  <body data-role="customer">
-    <div class="app-shell">
-      <header class="topbar">
-        <a class="brand" href="#" aria-label="Food Delivery workspace">
-          <img src="./assets/food-delivery-mark.svg" alt="" width="40" height="40">
-          <span>Food Delivery</span>
-        </a>
-        <nav class="app-nav" id="appNav" aria-label="Workspace navigation">
-          <button class="nav-link is-active" type="button" data-screen="home">Overview</button>
-          <button class="nav-link" type="button" data-screen="orders">Orders</button>
-          <button class="nav-link" type="button" data-screen="account">Account</button>
-        </nav>
-        <div class="topbar-actions" aria-label="Workspace actions">
-          <button class="icon-button" type="button" aria-label="Refresh session" title="Refresh session">R</button>
-          <button class="icon-button" type="button" aria-label="Open notifications" title="Notifications">N</button>
-          <button class="avatar-button" type="button" id="accountButton" aria-label="Open account">
-            <span id="avatarInitials">DN</span>
-          </button>
-        </div>
-      </header>
+  <body data-screen="customer">
+    <header class="app-header">
+      <a class="brand" href="#" aria-label="Food Delivery Platform">
+        <img src="./assets/food-delivery-mark.svg" alt="" width="42" height="42">
+        <span>Food Delivery</span>
+      </a>
+      <nav class="main-tabs" aria-label="Phân hệ">
+        <button class="is-active" type="button" data-screen-target="customer" data-role-tab="CUSTOMER">Khách hàng</button>
+        <button type="button" data-screen-target="restaurant" data-role-tab="RESTAURANT" hidden>Nhà hàng</button>
+        <button type="button" data-screen-target="shipper" data-role-tab="SHIPPER" hidden>Tài xế</button>
+        <button type="button" data-screen-target="admin" data-role-tab="ADMIN" hidden>Quản trị</button>
+        <button type="button" data-screen-target="account" hidden>Tài khoản</button>
+        <button type="button" data-screen-target="api" hidden>Hoạt động</button>
+      </nav>
+      <div class="session-pill" id="sessionPill">Chưa đăng nhập</div>
+    </header>
 
-      <section class="view-layer auth-layer" id="authLayer">
-        <div class="auth-layout">
-        <section class="role-panel" aria-labelledby="role-title">
-          <div class="section-title">
-            <p class="eyebrow">Role</p>
-            <h1 id="role-title">Account workspace</h1>
+    <main class="app-shell">
+      <aside class="side-panel">
+        <section class="panel auth-panel">
+          <div class="panel-title">
+            <p>Xin chào</p>
+            <h1>Đăng nhập</h1>
           </div>
-          <div class="role-selector" id="roleSelector" aria-label="Role selector"></div>
-          <dl class="role-metrics" aria-label="Role metrics">
-            <div>
-              <dt>Scope</dt>
-              <dd id="metricScope">Orders</dd>
-            </div>
-            <div>
-              <dt>Status</dt>
-              <dd id="metricStatus">Active</dd>
-            </div>
-            <div>
-              <dt>Permissions</dt>
-              <dd id="metricPermissions">6</dd>
-            </div>
-          </dl>
-        </section>
-
-        <section class="auth-panel" aria-labelledby="auth-title">
-          <div class="section-title inline-title">
-            <div>
-              <p class="eyebrow">Session</p>
-              <h2 id="auth-title">Access</h2>
-            </div>
-            <span class="status-pill" id="statusPill">Customer</span>
-          </div>
-
-          <div class="segmented" role="tablist" aria-label="Authentication mode">
-            <button class="segment is-active" type="button" data-mode="login" role="tab" aria-selected="true">Sign in</button>
-            <button class="segment" type="button" data-mode="register" role="tab" aria-selected="false">Create</button>
-          </div>
-
-          <form id="authForm" class="stacked-form">
+          <form class="stacked-form" id="loginForm">
             <label>
-              Email or username
-              <input id="authIdentifier" name="identifier" autocomplete="username" required>
+              Email hoặc username
+              <input id="loginIdentifier" autocomplete="username" placeholder="Nhập username hoặc email">
             </label>
             <label>
-              Password
-              <input id="authPassword" name="password" type="password" autocomplete="current-password" required minlength="8">
+              Mật khẩu
+              <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu">
             </label>
-            <label class="register-only">
-              Full name
-              <input id="authFullName" name="fullName" autocomplete="name">
-            </label>
-            <label class="register-only">
-              Phone
-              <input id="authPhone" name="phone" autocomplete="tel">
-            </label>
-            <div class="form-row">
-              <label class="checkbox-line">
-                <input id="rememberDevice" type="checkbox" checked>
-                <span>Remember device</span>
-              </label>
-              <button class="text-button" type="button" id="resetPasswordButton">Reset password</button>
-            </div>
-            <button class="primary-button" type="submit">
-              <span id="authSubmitText">Sign in</span>
-              <span aria-hidden="true">></span>
-            </button>
-            <p class="form-status" id="authStatus" role="status"></p>
+            <button class="primary-button" type="submit">Đăng nhập</button>
           </form>
+          <div class="button-row">
+            <button class="secondary-button" type="button" id="loadMeButton">Làm mới phiên</button>
+            <button class="secondary-button" type="button" id="logoutButton">Đăng xuất</button>
+          </div>
+          <p class="status-line" id="authStatus"></p>
+        </section>
 
-          <div class="session-card" id="sessionCard" hidden>
-            <div>
-              <strong id="sessionAccount">Signed in</strong>
-              <span id="sessionRole">Customer workspace is ready.</span>
+        <section class="panel">
+          <div class="panel-title">
+            <p>Trải nghiệm khách hàng</p>
+            <h2>Tìm món, đặt hàng và theo dõi đơn dễ dàng</h2>
+          </div>
+          <ul class="progress-list">
+            <li><strong>Khám phá:</strong> tìm nhà hàng, danh mục món và ưu đãi đang có.</li>
+            <li><strong>Đặt món:</strong> chọn địa chỉ, thanh toán và theo dõi trạng thái đơn.</li>
+            <li><strong>Cá nhân:</strong> đăng nhập để xem đúng không gian của tài khoản.</li>
+          </ul>
+        </section>
+      </aside>
+
+      <section class="screen is-active" id="customerScreen" data-screen-panel="customer">
+        <div class="workspace-head">
+          <div>
+            <p class="eyebrow">Khách hàng</p>
+            <h2>Khám phá, chọn món, giỏ hàng và thanh toán</h2>
+          </div>
+          <button class="secondary-button" type="button" id="refreshCustomerButton">Tải lại dữ liệu</button>
+        </div>
+
+        <section class="customer-home">
+          <div class="discovery-panel">
+            <div class="location-bar">
+              <div>
+                <span>Giao đến</span>
+                <strong id="defaultAddressText">Chưa tải địa chỉ</strong>
+              </div>
+              <button class="icon-button" type="button" id="loadAddressesButton" title="Tải địa chỉ">↻</button>
             </div>
-            <div class="session-actions">
-              <button class="secondary-button" type="button" id="switchAccountButton">Switch account</button>
-              <button class="primary-button" type="button" id="logoutButton">Sign out</button>
+
+            <form class="search-card" id="searchForm">
+              <label>
+                Tìm món hoặc nhà hàng
+                <input id="catalogKeyword" type="search" placeholder="Ví dụ: phở, cơm, trà sữa">
+              </label>
+              <button class="primary-button" type="submit">Tìm kiếm</button>
+            </form>
+
+            <div class="banner-strip" id="bannerStrip"></div>
+            <div class="category-strip" id="categoryStrip"></div>
+
+            <div class="content-grid two-columns">
+              <section class="panel">
+                <div class="panel-title inline-title">
+                  <div>
+                    <p>Nhà hàng</p>
+                    <h3 id="restaurantCount">Đang tải...</h3>
+                  </div>
+                </div>
+                <div class="card-list" id="restaurantList"></div>
+              </section>
+
+              <section class="panel">
+                <div class="panel-title inline-title">
+                  <div>
+                    <p>Món phổ biến</p>
+                    <h3 id="menuCount">Đang tải...</h3>
+                  </div>
+                </div>
+                <div class="card-list" id="menuList"></div>
+              </section>
             </div>
           </div>
+
+          <aside class="checkout-rail">
+            <section class="panel restaurant-detail-panel">
+              <div class="panel-title">
+                <p>Chi tiết nhà hàng</p>
+                <h3 id="selectedRestaurantTitle">Chọn một nhà hàng</h3>
+              </div>
+              <div id="restaurantDetail" class="muted-block">Chọn một nhà hàng để xem món, giờ mở cửa và đánh giá.</div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-title inline-title">
+                <div>
+                  <p>Giỏ hàng</p>
+                  <h3 id="cartTitle">Chưa có giỏ</h3>
+                </div>
+                <button class="text-button" type="button" id="loadCartButton">Tải giỏ</button>
+              </div>
+              <div id="cartItems" class="cart-list"></div>
+              <form class="stacked-form checkout-form" id="checkoutForm">
+                <label>
+                  Địa chỉ giao hàng
+                  <select id="checkoutAddress"></select>
+                </label>
+                <label>
+                  Phương thức thanh toán
+                  <select id="paymentMethod">
+                    <option value="COD">Tiền mặt khi nhận hàng</option>
+                    <option value="BANK_TRANSFER">Chuyển khoản</option>
+                    <option value="MOMO">MoMo</option>
+                    <option value="VNPAY">VNPay</option>
+                    <option value="ZALOPAY">ZaloPay</option>
+                    <option value="CARD">Thẻ</option>
+                    <option value="WALLET">Ví</option>
+                  </select>
+                </label>
+                <label>
+                  Mã khuyến mãi
+                  <input id="promotionCode" placeholder="Không bắt buộc">
+                </label>
+                <label>
+                  Ghi chú
+                  <input id="customerNote" placeholder="Ít cay, gọi trước khi giao...">
+                </label>
+                <button class="primary-button" type="submit">Đặt hàng</button>
+              </form>
+            </section>
+
+            <section class="panel">
+              <div class="panel-title inline-title">
+                <div>
+                  <p>Đơn gần đây</p>
+                  <h3>Theo dõi trạng thái</h3>
+                </div>
+                <button class="text-button" type="button" id="loadCustomerOrdersButton">Tải</button>
+              </div>
+              <div class="order-list" id="customerOrders"></div>
+            </section>
+          </aside>
         </section>
+      </section>
+
+      <section class="screen" id="shipperScreen" data-screen-panel="shipper">
+        <div class="workspace-head">
+          <div>
+            <p class="eyebrow">Tài xế</p>
+            <h2>Nhận đơn, giao hàng và quản lý thu nhập</h2>
+          </div>
+          <button class="secondary-button" type="button" id="refreshShipperButton">Làm mới</button>
+        </div>
+
+        <div class="admin-grid">
+          <section class="panel">
+            <div class="panel-title">
+              <p>Hồ sơ & trạng thái</p>
+              <h3>Thông tin tài xế</h3>
+            </div>
+            <div id="shipperProfile" class="muted-block">Chưa tải hồ sơ.</div>
+            <div class="button-row">
+              <button class="secondary-button" type="button" data-availability="OFFLINE">Ngưng nhận đơn</button>
+              <button class="secondary-button" type="button" data-availability="AVAILABLE">Sẵn sàng</button>
+              <button class="secondary-button" type="button" data-availability="BUSY">Đang bận</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-title">
+              <p>Đề nghị giao hàng</p>
+              <h3>Đơn đang chờ phản hồi</h3>
+            </div>
+            <div id="shipperAssignments" class="card-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-title">
+              <p>Thu nhập & rút tiền</p>
+              <h3>Tổng kết thu nhập</h3>
+            </div>
+            <div id="shipperEarnings" class="card-list"></div>
+            <form class="stacked-form compact-form" id="withdrawForm">
+              <label>Số tiền <input id="withdrawAmount" type="number" min="1000"></label>
+              <label>Ngân hàng <input id="withdrawBank"></label>
+              <label>Số tài khoản <input id="withdrawAccount"></label>
+              <button class="primary-button" type="submit">Yêu cầu rút</button>
+            </form>
+          </section>
+        </div>
+
+        <section class="panel">
+          <div class="panel-title">
+            <p>Chuyến giao đang quản lý</p>
+            <h3>Cập nhật lấy hàng, đang giao và giao thành công</h3>
+          </div>
+          <div id="shipperDeliveries" class="order-list"></div>
+        </section>
+      </section>
+
+      <section class="screen" id="restaurantScreen" data-screen-panel="restaurant">
+        <div class="workspace-head">
+          <div>
+            <p class="eyebrow">Nhà hàng</p>
+            <h2>Nhận đơn, chuẩn bị món và quản lý thực đơn</h2>
+          </div>
+          <button class="secondary-button" type="button" id="refreshRestaurantButton">Tải lại nhà hàng</button>
+        </div>
+
+        <div class="restaurant-layout">
+          <section class="panel">
+            <div class="panel-title">
+              <p>Cửa hàng</p>
+              <h3>Chọn chi nhánh đang vận hành</h3>
+            </div>
+            <select id="ownerRestaurantSelect"></select>
+            <div class="button-row">
+              <button class="secondary-button" type="button" id="loadRestaurantQueueButton">Tải đơn</button>
+              <button class="secondary-button" type="button" id="loadOwnerMenuButton">Tải menu</button>
+            </div>
+            <div id="ownerRestaurantSummary" class="muted-block"></div>
+          </section>
+
+          <section class="panel order-board-panel">
+            <div class="panel-title">
+              <p>Đơn hàng</p>
+              <h3>Hàng đợi bếp</h3>
+            </div>
+            <div class="order-board" id="restaurantOrderBoard"></div>
+          </section>
+
+          <section class="panel menu-management-panel">
+            <div class="panel-title inline-title">
+              <div>
+                <p>Thực đơn</p>
+                <h3>Món đang bán</h3>
+              </div>
+              <button class="text-button" type="button" id="toggleCreateItemButton">Thêm món</button>
+            </div>
+            <form class="stacked-form compact-form" id="createItemForm" hidden>
+              <label>Tên món <input id="newItemName" placeholder="Nhập tên món"></label>
+              <label>Giá cơ bản <input id="newItemPrice" type="number" min="1000" value="45000"></label>
+              <label>Thời gian chuẩn bị <input id="newItemPrep" type="number" min="1" value="15"></label>
+              <button class="primary-button" type="submit">Lưu món</button>
+            </form>
+            <div class="table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Món</th>
+                    <th>Giá</th>
+                    <th>Chuẩn bị</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody id="ownerMenuRows"></tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </section>
 
-      <section class="view-layer app-layer" id="appLayer" hidden>
-      <main class="workspace" id="workspace">
-        <section class="screen-panel profile-panel" data-screen-panel="account" aria-labelledby="profile-title" hidden>
-          <div class="section-title inline-title">
-            <div>
-              <p class="eyebrow">Profile</p>
-              <h2 id="profile-title">Customer account</h2>
-            </div>
-            <div class="profile-actions">
-              <button class="secondary-button" type="button" id="backToWorkspaceButton">Back</button>
-              <button class="secondary-button" type="button" id="verifyEmailButton">Verify email</button>
-              <button class="secondary-button" type="button" id="accountLogoutButton">Sign out</button>
-            </div>
+      <section class="screen" id="adminScreen" data-screen-panel="admin">
+        <div class="workspace-head">
+          <div>
+            <p class="eyebrow">Quản trị</p>
+            <h2>Quản lý đối tác, tài khoản và vận hành</h2>
           </div>
+          <button class="secondary-button" type="button" id="loadAdminButton">Tải dashboard</button>
+        </div>
 
-          <div class="profile-strip">
-            <img src="./assets/food-delivery-mark.svg" alt="" width="56" height="56">
-            <div>
-              <strong id="profileName">Duong Nguyen</strong>
-              <span id="profileEmail">duong@example.com</span>
+        <div class="admin-grid">
+          <section class="panel">
+            <div class="panel-title">
+              <p>Đối tác nhà hàng</p>
+              <h3>Hồ sơ nhà hàng</h3>
             </div>
-          </div>
-
-          <form id="profileForm" class="profile-grid"></form>
-          <div class="toolbar">
-            <button class="secondary-button" type="button" id="discardProfileButton">Discard</button>
-            <button class="primary-button" type="button" id="saveProfileButton">Save profile</button>
-          </div>
-          <p class="form-status" id="profileStatus" role="status"></p>
-        </section>
-
-        <section class="screen-panel work-panel" data-screen-panel="home" aria-labelledby="work-title">
-          <div class="section-title inline-title">
-            <div>
-              <p class="eyebrow">Queue</p>
-              <h2 id="work-title">Today</h2>
+            <div id="adminRestaurants" class="card-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-title">
+              <p>Lịch sử hoạt động</p>
+              <h3>Thao tác gần đây</h3>
             </div>
-            <span class="swatch-row" aria-label="Theme swatches">
-              <span class="swatch primary"></span>
-              <span class="swatch warm"></span>
-              <span class="swatch cool"></span>
-            </span>
-          </div>
-
-          <div class="permission-list" id="permissionList" aria-label="Permissions"></div>
-
-          <div class="table-shell">
-            <table>
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>State</th>
-                  <th>Owner</th>
-                </tr>
-              </thead>
-              <tbody id="queueRows"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="screen-panel ordering-panel" data-screen-panel="orders" id="orderingPanel" aria-labelledby="ordering-title" hidden>
-          <div class="section-title inline-title">
-            <div>
-              <p class="eyebrow">Ordering</p>
-              <h2 id="ordering-title">Discover and checkout</h2>
+            <div id="auditLogs" class="card-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-title">
+              <p>Helpdesk & vận hành</p>
+              <h3>Hỗ trợ, thanh toán và đối soát</h3>
             </div>
-            <span class="status-pill" id="orderingStatus">Ready</span>
-          </div>
-          <div class="order-toolbar">
-            <label class="search-field">
-              Search restaurants or dishes
-              <input id="catalogSearch" type="search" placeholder="Try: pho, pizza, lunch">
-            </label>
-            <button class="secondary-button" type="button" id="searchCatalogButton">Search</button>
-            <button class="secondary-button" type="button" id="loadOrdersButton">Orders</button>
-          </div>
-          <div class="order-grid">
-            <div>
-              <h3>Restaurants</h3>
-              <div class="catalog-list" id="restaurantResults"></div>
-              <h3 class="catalog-subtitle">Menu items</h3>
-              <div class="catalog-list" id="menuResults"></div>
+            <div id="adminOps" class="card-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-title">
+              <p>Tài khoản hệ thống</p>
+              <h3>Danh sách và trạng thái tài khoản</h3>
             </div>
-            <aside class="cart-drawer" aria-labelledby="cart-title">
-              <div class="cart-heading">
-                <h3 id="cart-title">Cart</h3>
-                <span id="cartSubtotal">0 VND</span>
-              </div>
-              <div id="cartItems" class="cart-items"><p class="empty-state">Choose a dish to start an order.</p></div>
-              <form id="checkoutForm" class="checkout-form">
-                <label>Delivery address ID<input id="checkoutAddressId" type="number" min="1" placeholder="e.g. 31" required></label>
-                <label>Payment
-                  <select id="checkoutPayment"><option value="COD">Cash on delivery</option><option value="CARD">Card</option><option value="MOMO">MoMo</option></select>
-                </label>
-                <label>Promotion code<input id="checkoutPromotion" maxlength="50" placeholder="Optional"></label>
-                <button class="primary-button" type="submit">Place order <span aria-hidden="true">&gt;</span></button>
-              </form>
-              <p class="form-status" id="orderingMessage" role="status"></p>
-            </aside>
-          </div>
-          <div class="restaurant-queue" id="restaurantQueue" hidden>
-            <div class="cart-heading"><h3>Kitchen queue</h3><button class="secondary-button" type="button" id="refreshQueueButton">Refresh</button></div>
-            <div class="table-shell"><table><thead><tr><th>Order</th><th>Status</th><th>Action</th></tr></thead><tbody id="restaurantQueueRows"></tbody></table></div>
-          </div>
-          <div class="customer-orders" id="customerOrders" hidden><h3>Recent orders</h3><div class="catalog-list" id="customerOrderRows"></div></div>
-        </section>
-
-        <section class="screen-panel image-panel" data-screen-panel="account" id="imagePanel" aria-labelledby="image-title" hidden>
-          <div class="section-title inline-title">
-            <div><p class="eyebrow">Media</p><h2 id="image-title">Restaurant image editor</h2></div>
-            <span class="status-pill">1:1 preview</span>
-          </div>
-          <div class="image-editor">
-            <div class="image-canvas-wrap"><canvas id="imageCanvas" width="420" height="420" aria-label="Image preview"></canvas></div>
-            <div class="image-tools">
-              <label>Restaurant ID<input id="imageRestaurantId" type="number" min="1" placeholder="e.g. 11" required></label>
-              <label>Choose image<input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp"></label>
-              <label>Image type<select id="imageType"><option value="COVER">Cover</option><option value="LOGO">Logo</option><option value="GALLERY">Gallery</option></select></label>
-              <label>Zoom<input id="imageZoom" type="range" min="1" max="3" step="0.05" value="1"></label>
-              <div class="toolbar"><button class="secondary-button" type="button" id="rotateImageButton" aria-label="Rotate image">Rotate</button><button class="secondary-button" type="button" id="resetImageButton">Reset</button></div>
-              <button class="primary-button" type="button" id="uploadImageButton">Upload image</button>
-              <p class="form-status" id="imageStatus" role="status"></p>
-            </div>
-          </div>
-        </section>
-      </main>
+            <div id="userManagement" class="card-list"></div>
+          </section>
+        </div>
       </section>
-    </div>
+
+      <section class="screen" id="accountScreen" data-screen-panel="account">
+        <div class="workspace-head">
+          <div>
+            <p class="eyebrow">Tài khoản</p>
+            <h2>Hồ sơ, ví và quyền truy cập</h2>
+          </div>
+          <button class="secondary-button" type="button" id="refreshAccountButton">Làm mới</button>
+        </div>
+        <div class="admin-grid">
+          <section class="panel">
+            <div class="panel-title">
+              <p>Hồ sơ đăng nhập</p>
+              <h3>Thông tin tài khoản</h3>
+            </div>
+            <div id="sessionDetail" class="muted-block">Chưa đăng nhập.</div>
+          </section>
+          <section class="panel">
+            <div class="panel-title">
+              <p>Ví cá nhân</p>
+              <h3>Số dư và giao dịch</h3>
+            </div>
+            <div id="walletPanel" class="card-list"></div>
+            <form class="stacked-form compact-form" id="walletDepositForm">
+              <label>Số tiền nạp <input id="walletDepositAmount" type="number" min="1000"></label>
+              <button class="primary-button" type="submit">Nạp ví</button>
+            </form>
+          </section>
+          <section class="panel">
+            <div class="panel-title">
+              <p>Quản lý người dùng</p>
+              <h3>Danh sách và trạng thái tài khoản</h3>
+            </div>
+            <div id="accountUserManagement" class="card-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="screen" id="apiScreen" data-screen-panel="api">
+        <div class="workspace-head">
+          <div>
+            <p class="eyebrow">Hoạt động</p>
+            <h2>Nhật ký thao tác trong phiên</h2>
+          </div>
+          <button class="secondary-button" type="button" id="clearLogButton">Xóa lịch sử</button>
+        </div>
+        <section class="panel">
+          <pre id="apiLog" class="api-log">Chưa có hoạt động.</pre>
+        </section>
+      </section>
+    </main>
+
+    <template id="emptyTemplate">
+      <div class="empty-state">Chưa có dữ liệu. Hãy đăng nhập đúng vai trò hoặc tự thêm dữ liệu nghiệp vụ.</div>
+    </template>
   </body>
 </html>

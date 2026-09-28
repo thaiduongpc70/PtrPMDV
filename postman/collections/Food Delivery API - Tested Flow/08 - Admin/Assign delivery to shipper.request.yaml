@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/deliveries/assign"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "orderId": {{orderId}},
+      "shipperId": {{shipperId}},
+      "distanceKm": 3.5,
+      "deliveryFee": 18000
+    }
+order: 5000

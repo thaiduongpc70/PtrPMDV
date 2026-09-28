@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{restaurantId}}/menu-items?pageSize=50"
+method: GET
+queryParams:
+  pageSize: "50"
+order: 3000

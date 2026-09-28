@@ -1,0 +1,28 @@
+$kind: collection
+description: "Collection tổng hợp các API chính để test hệ thống Food Delivery: auth, customer, restaurant, shipper, admin, payment, chat/support và settlement. Import vào Postman, tạo environment hoặc dùng collection variables có sẵn."
+variables:
+  baseUrl: http://localhost:3000
+  accessToken: ""
+  refreshToken: ""
+  userId: ""
+  restaurantId: "1"
+  menuItemId: "1"
+  variantId: ""
+  toppingId: ""
+  addressId: "1"
+  orderId: "1"
+  orderCode: ""
+  shipperId: "1"
+  assignmentId: "1"
+  deliveryId: "1"
+  paymentId: "1"
+  codId: "1"
+  chatSessionId: "1"
+  ticketId: "1"
+  currentRole: ""
+auth:
+  - id: bb527b84-7295-4bc2-a7b6-536de57e710f
+    type: bearer
+    name: bearer auth
+    credentials:
+      token: "{{accessToken}}"
