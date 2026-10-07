@@ -59,6 +59,17 @@ export const env = Object.freeze({
   nodeEnv,
   port: readInteger('PORT', 3000, 1, 65535),
   shutdownTimeoutMs: readInteger('SHUTDOWN_TIMEOUT_MS', 10000, 1000, 60000),
+  corsOrigins: readString('CORS_ORIGINS', 'http://localhost:3000,http://localhost:4173')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean),
+  rateLimit: {
+    windowMs: readInteger('RATE_LIMIT_WINDOW_MS', 60000, 1000, 3600000),
+    max: readInteger('RATE_LIMIT_MAX', 240, 10, 10000)
+  },
+  redis: {
+    url: readString('REDIS_URL')
+  },
   auth: {
     jwtSecret,
     accessTokenTtlSeconds: readInteger(

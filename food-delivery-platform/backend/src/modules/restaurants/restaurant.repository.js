@@ -53,9 +53,30 @@ export const restaurantRepository = {
   async listPublicCategories() {
     const rows = await query(
       `
-        ${categorySelect}
-        WHERE status = 'ACTIVE'
-        ORDER BY name ASC, id ASC
+        SELECT
+          rc.id,
+          rc.name,
+          rc.description,
+          rc.image_url,
+          rc.status,
+          rc.created_at,
+          rc.updated_at,
+          COUNT(DISTINCT r.id) AS restaurant_count,
+          COUNT(DISTINCT mi.id) AS menu_item_count
+        FROM restaurant_categories rc
+        INNER JOIN restaurants r
+          ON r.category_id = rc.id
+          AND r.status = 'ACTIVE'
+          AND r.deleted_at IS NULL
+        INNER JOIN menu_items mi
+          ON mi.restaurant_id = r.id
+          AND mi.is_available = TRUE
+          AND mi.deleted_at IS NULL
+        WHERE rc.status = 'ACTIVE'
+        GROUP BY rc.id, rc.name, rc.description, rc.image_url, rc.status, rc.created_at, rc.updated_at
+        HAVING restaurant_count > 0
+           AND menu_item_count > 0
+        ORDER BY rc.name ASC, rc.id ASC
       `
     );
     return rows.map(mapCategory);
@@ -767,6 +788,8 @@ function mapCategory(row) {
     description: row.description ?? null,
     imageUrl: row.image_url ?? null,
     status: row.status,
+    restaurantCount: row.restaurant_count === undefined ? undefined : Number(row.restaurant_count),
+    menuItemCount: row.menu_item_count === undefined ? undefined : Number(row.menu_item_count),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };

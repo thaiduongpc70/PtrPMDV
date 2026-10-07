@@ -2677,6 +2677,13 @@ ON restaurant_settlements(restaurant_id, period_start, period_end);
 -- =========================================================
 -- SEED ROLES
 -- =========================================================
+-- Dữ liệu nền bên dưới là dữ liệu chuẩn bắt buộc của hệ thống.
+-- Bộ dữ liệu vận hành thực tế được tạo bởi scripts/seed-realistic.mjs
+-- và được nạp bằng:
+--   cd food-delivery-platform/backend
+--   npm.cmd run seed:real
+-- Lý do: mật khẩu tài khoản cần hash theo thuật toán của backend,
+-- nên không hard-code user/password hash trực tiếp trong file schema.
 
 INSERT INTO roles (
     id,

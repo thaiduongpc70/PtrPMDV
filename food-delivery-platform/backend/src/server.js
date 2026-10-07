@@ -2,16 +2,21 @@ import { createApp } from './app.js';
 import { env } from './shared/config/env.js';
 import { closePool } from './shared/database/mysql.js';
 import { createGracefulShutdown } from './shared/lifecycle/graceful-shutdown.js';
+import { startJobWorker } from './modules/jobs/job.worker.js';
 
 const app = createApp();
 
 const server = app.listen(env.port, () => {
   console.log(`Food Delivery API is running on port ${env.port}`);
 });
+const stopJobWorker = startJobWorker();
 
 const shutdown = createGracefulShutdown({
   server,
-  closeResources: closePool,
+  closeResources: async () => {
+    stopJobWorker();
+    await closePool();
+  },
   timeoutMs: env.shutdownTimeoutMs
 });
 

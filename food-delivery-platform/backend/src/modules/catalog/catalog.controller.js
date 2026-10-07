@@ -34,6 +34,12 @@ export const getRestaurantMenu = asyncHandler(async (req, res) => {
   res.json(menu);
 });
 
+export const listRestaurantReviews = asyncHandler(async (req, res) => {
+  const restaurantId = readId(req.params.restaurantId);
+  const result = await catalogService.listRestaurantReviews(restaurantId, req.query);
+  res.json(result);
+});
+
 function readId(value) {
   const id = Number(value);
 

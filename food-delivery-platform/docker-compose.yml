@@ -1,0 +1,56 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: food-delivery-platform/backend/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: food_delivery_db
+      DB_USER: food_delivery_app
+      DB_PASSWORD: food_delivery_password
+      JWT_SECRET: change-this-secret-in-compose
+      CORS_ORIGINS: http://localhost:3000
+      REDIS_URL: redis://redis:6379
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - api_storage:/storage
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: food_delivery_db
+      MYSQL_USER: food_delivery_app
+      MYSQL_PASSWORD: food_delivery_password
+      MYSQL_ROOT_PASSWORD: root_food_delivery_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../food_delivery_db.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ufood_delivery_app", "-pfood_delivery_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+volumes:
+  mysql_data:
+  api_storage:

@@ -11,8 +11,14 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "check": "node scripts/check-syntax.mjs",
-    "seed:demo": "node scripts/seed-demo.mjs",
-    "test": "node --import ./scripts/setup-test-env.mjs --test"
+    "seed:real": "node scripts/seed-realistic.mjs",
+    "seed:demo": "node scripts/seed-realistic.mjs",
+    "test": "node --import ./scripts/setup-test-env.mjs --test",
+    "test:coverage": "node --experimental-test-coverage --import ./scripts/setup-test-env.mjs --test",
+    "smoke": "node scripts/smoke.mjs",
+    "db:backup": "powershell.exe -ExecutionPolicy Bypass -File ./scripts/backup-db.ps1",
+    "db:restore:test": "powershell.exe -ExecutionPolicy Bypass -File ./scripts/restore-test.ps1",
+    "package:release": "node scripts/package-release.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

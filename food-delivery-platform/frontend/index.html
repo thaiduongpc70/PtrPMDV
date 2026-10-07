@@ -7,11 +7,14 @@
     <link rel="stylesheet" href="./src/styles.css">
     <script src="./src/app.js" defer></script>
   </head>
-  <body data-screen="customer">
+  <body data-screen="customer" data-auth="guest">
     <header class="app-header">
       <a class="brand" href="#" aria-label="Food Delivery Platform">
         <img src="./assets/food-delivery-mark.svg" alt="" width="42" height="42">
-        <span>Food Delivery</span>
+        <span>
+          <strong>Food Delivery</strong>
+          <small>Marketplace vận hành đồ ăn</small>
+        </span>
       </a>
       <nav class="main-tabs" aria-label="Phân hệ">
         <button class="is-active" type="button" data-screen-target="customer" data-role-tab="CUSTOMER">Khách hàng</button>
@@ -21,7 +24,10 @@
         <button type="button" data-screen-target="account" hidden>Tài khoản</button>
         <button type="button" data-screen-target="api" hidden>Hoạt động</button>
       </nav>
-      <div class="session-pill" id="sessionPill">Chưa đăng nhập</div>
+      <div class="session-actions">
+        <div class="session-pill" id="sessionPill">Chưa đăng nhập</div>
+        <button class="secondary-button compact-button" type="button" id="headerLogoutButton" hidden>Đăng xuất</button>
+      </div>
     </header>
 
     <main class="app-shell">
@@ -70,9 +76,17 @@
           </div>
           <button class="secondary-button" type="button" id="refreshCustomerButton">Tải lại dữ liệu</button>
         </div>
+        <nav class="sub-tabs" aria-label="Màn khách hàng">
+          <button class="is-active" type="button" data-subview-target="customer:catalog">Khám phá</button>
+          <button type="button" data-subview-target="customer:detail">Chi tiết món</button>
+          <button type="button" data-subview-target="customer:cart">Giỏ hàng / đặt hàng</button>
+          <button type="button" data-subview-target="customer:orders">Đơn hàng</button>
+          <button type="button" data-subview-target="customer:favorites">Yêu thích</button>
+          <button type="button" data-subview-target="customer:support">Hỗ trợ</button>
+        </nav>
 
         <section class="customer-home">
-          <div class="discovery-panel">
+          <div class="discovery-panel is-subview-active" data-view-panel="customer:catalog">
             <div class="location-bar">
               <div>
                 <span>Giao đến</span>
@@ -116,7 +130,7 @@
           </div>
 
           <aside class="checkout-rail">
-            <section class="panel restaurant-detail-panel">
+            <section class="panel restaurant-detail-panel" data-view-panel="customer:detail">
               <div class="panel-title">
                 <p>Chi tiết nhà hàng</p>
                 <h3 id="selectedRestaurantTitle">Chọn một nhà hàng</h3>
@@ -124,7 +138,7 @@
               <div id="restaurantDetail" class="muted-block">Chọn một nhà hàng để xem món, giờ mở cửa và đánh giá.</div>
             </section>
 
-            <section class="panel">
+            <section class="panel" data-view-panel="customer:cart">
               <div class="panel-title inline-title">
                 <div>
                   <p>Giỏ hàng</p>
@@ -133,6 +147,18 @@
                 <button class="text-button" type="button" id="loadCartButton">Tải giỏ</button>
               </div>
               <div id="cartItems" class="cart-list"></div>
+              <details class="address-editor">
+                <summary>Thêm địa chỉ giao hàng mới</summary>
+                <form class="stacked-form compact-address-form" id="addressForm">
+                  <label>Tên người nhận <input id="addressReceiverName" placeholder="Ví dụ: Lê Nguyễn Thái Dương"></label>
+                  <label>Số điện thoại <input id="addressReceiverPhone" placeholder="0852076750"></label>
+                  <label>Địa chỉ <input id="addressLine" placeholder="Số nhà, tên đường"></label>
+                  <label>Phường/Xã <input id="addressWard" placeholder="Không bắt buộc"></label>
+                  <label>Quận/Huyện <input id="addressDistrict" placeholder="Quận/Huyện"></label>
+                  <label>Thành phố <input id="addressCity" value="TP.HCM"></label>
+                  <button class="secondary-button" type="submit">Lưu địa chỉ</button>
+                </form>
+              </details>
               <form class="stacked-form checkout-form" id="checkoutForm">
                 <label>
                   Địa chỉ giao hàng
@@ -154,6 +180,7 @@
                   Mã khuyến mãi
                   <input id="promotionCode" placeholder="Không bắt buộc">
                 </label>
+                <button class="secondary-button" type="button" id="validatePromotionButton">Kiểm tra mã</button>
                 <label>
                   Ghi chú
                   <input id="customerNote" placeholder="Ít cay, gọi trước khi giao...">
@@ -162,7 +189,7 @@
               </form>
             </section>
 
-            <section class="panel">
+            <section class="panel" data-view-panel="customer:orders">
               <div class="panel-title inline-title">
                 <div>
                   <p>Đơn gần đây</p>
@@ -171,6 +198,44 @@
                 <button class="text-button" type="button" id="loadCustomerOrdersButton">Tải</button>
               </div>
               <div class="order-list" id="customerOrders"></div>
+            </section>
+
+            <section class="panel" data-view-panel="customer:favorites">
+              <div class="panel-title inline-title">
+                <div>
+                  <p>Yêu thích</p>
+                  <h3>Nhà hàng và món đã lưu</h3>
+                </div>
+                <button class="text-button" type="button" id="loadFavoritesButton">Tải</button>
+              </div>
+              <div id="favoritePanel" class="card-list"></div>
+            </section>
+
+            <section class="panel" data-view-panel="customer:support">
+              <div class="panel-title inline-title">
+                <div>
+                  <p>Hỗ trợ sau đơn</p>
+                  <h3>Khiếu nại, thanh toán, giao hàng</h3>
+                </div>
+                <button class="text-button" type="button" id="loadSupportButton">Tải ticket</button>
+              </div>
+              <form class="stacked-form compact-form" id="supportTicketForm">
+                <label>Mã đơn liên quan <input id="supportOrderId" type="number" min="1" placeholder="Không bắt buộc"></label>
+                <label>Chủ đề <input id="supportSubject" placeholder="VD: Đơn giao thiếu món"></label>
+                <label>Nhóm vấn đề
+                  <select id="supportCategory">
+                    <option value="ORDER">Đơn hàng</option>
+                    <option value="PAYMENT">Thanh toán</option>
+                    <option value="DELIVERY">Giao hàng</option>
+                    <option value="RESTAURANT">Nhà hàng</option>
+                    <option value="ACCOUNT">Tài khoản</option>
+                    <option value="OTHER">Khác</option>
+                  </select>
+                </label>
+                <label>Nội dung <textarea id="supportDescription" rows="3" placeholder="Mô tả rõ vấn đề để admin xử lý"></textarea></label>
+                <button class="primary-button" type="submit">Gửi ticket</button>
+              </form>
+              <div id="supportTickets" class="card-list"></div>
             </section>
           </aside>
         </section>
@@ -184,9 +249,15 @@
           </div>
           <button class="secondary-button" type="button" id="refreshShipperButton">Làm mới</button>
         </div>
+        <nav class="sub-tabs" aria-label="Màn tài xế">
+          <button class="is-active" type="button" data-subview-target="shipper:profile">Hồ sơ</button>
+          <button type="button" data-subview-target="shipper:assignments">Đề nghị giao</button>
+          <button type="button" data-subview-target="shipper:deliveries">Chuyến giao</button>
+          <button type="button" data-subview-target="shipper:earnings">Thu nhập</button>
+        </nav>
 
         <div class="admin-grid">
-          <section class="panel">
+          <section class="panel is-subview-active" data-view-panel="shipper:profile">
             <div class="panel-title">
               <p>Hồ sơ & trạng thái</p>
               <h3>Thông tin tài xế</h3>
@@ -197,9 +268,15 @@
               <button class="secondary-button" type="button" data-availability="AVAILABLE">Sẵn sàng</button>
               <button class="secondary-button" type="button" data-availability="BUSY">Đang bận</button>
             </div>
+            <form class="stacked-form compact-form" id="shipperLocationForm">
+              <label>Latitude <input id="shipperLatitude" type="number" step="0.000001" placeholder="10.776889"></label>
+              <label>Longitude <input id="shipperLongitude" type="number" step="0.000001" placeholder="106.700806"></label>
+              <button class="secondary-button" type="button" id="useBrowserLocationButton">Lấy GPS trình duyệt</button>
+              <button class="primary-button" type="submit">Cập nhật vị trí</button>
+            </form>
           </section>
 
-          <section class="panel">
+          <section class="panel" data-view-panel="shipper:assignments">
             <div class="panel-title">
               <p>Đề nghị giao hàng</p>
               <h3>Đơn đang chờ phản hồi</h3>
@@ -207,7 +284,7 @@
             <div id="shipperAssignments" class="card-list"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel" data-view-panel="shipper:earnings">
             <div class="panel-title">
               <p>Thu nhập & rút tiền</p>
               <h3>Tổng kết thu nhập</h3>
@@ -222,7 +299,7 @@
           </section>
         </div>
 
-        <section class="panel">
+        <section class="panel" data-view-panel="shipper:deliveries">
           <div class="panel-title">
             <p>Chuyến giao đang quản lý</p>
             <h3>Cập nhật lấy hàng, đang giao và giao thành công</h3>
@@ -239,9 +316,16 @@
           </div>
           <button class="secondary-button" type="button" id="refreshRestaurantButton">Tải lại nhà hàng</button>
         </div>
+        <nav class="sub-tabs" aria-label="Màn nhà hàng">
+          <button class="is-active" type="button" data-subview-target="restaurant:branches">Cửa hàng</button>
+          <button type="button" data-subview-target="restaurant:orders">Đơn bếp</button>
+          <button type="button" data-subview-target="restaurant:menu">Thực đơn</button>
+          <button type="button" data-subview-target="restaurant:promotions">Khuyến mãi</button>
+          <button type="button" data-subview-target="restaurant:settlement">Đối soát</button>
+        </nav>
 
         <div class="restaurant-layout">
-          <section class="panel">
+          <section class="panel is-subview-active" data-view-panel="restaurant:branches">
             <div class="panel-title">
               <p>Cửa hàng</p>
               <h3>Chọn chi nhánh đang vận hành</h3>
@@ -252,9 +336,17 @@
               <button class="secondary-button" type="button" id="loadOwnerMenuButton">Tải menu</button>
             </div>
             <div id="ownerRestaurantSummary" class="muted-block"></div>
+            <form class="stacked-form compact-form" id="restaurantProfileForm">
+              <label>Tên cửa hàng <input id="restaurantProfileName" placeholder="Tên nhà hàng"></label>
+              <label>Số điện thoại <input id="restaurantProfilePhone" placeholder="Hotline"></label>
+              <label>Đơn tối thiểu <input id="restaurantProfileMinimum" type="number" min="0"></label>
+              <label>Thời gian chuẩn bị <input id="restaurantProfilePrep" type="number" min="1"></label>
+              <label>Mô tả <textarea id="restaurantProfileDescription" rows="3" placeholder="Mô tả điểm mạnh của quán"></textarea></label>
+              <button class="primary-button" type="submit">Cập nhật hồ sơ</button>
+            </form>
           </section>
 
-          <section class="panel order-board-panel">
+          <section class="panel order-board-panel" data-view-panel="restaurant:orders">
             <div class="panel-title">
               <p>Đơn hàng</p>
               <h3>Hàng đợi bếp</h3>
@@ -262,7 +354,7 @@
             <div class="order-board" id="restaurantOrderBoard"></div>
           </section>
 
-          <section class="panel menu-management-panel">
+          <section class="panel menu-management-panel" data-view-panel="restaurant:menu">
             <div class="panel-title inline-title">
               <div>
                 <p>Thực đơn</p>
@@ -272,10 +364,80 @@
             </div>
             <form class="stacked-form compact-form" id="createItemForm" hidden>
               <label>Tên món <input id="newItemName" placeholder="Nhập tên món"></label>
+              <label>Nhóm món <select id="newItemCategory"></select></label>
+              <label>Ảnh món <input id="newItemImage" placeholder="/uploads/menu-items/mon-moi.jpg"></label>
+              <label>Giá giảm <input id="newItemDiscount" type="number" min="0" placeholder="Không bắt buộc"></label>
               <label>Giá cơ bản <input id="newItemPrice" type="number" min="1000" value="45000"></label>
               <label>Thời gian chuẩn bị <input id="newItemPrep" type="number" min="1" value="15"></label>
+              <label class="wide-field">Mô tả <textarea id="newItemDescription" rows="2" placeholder="Mô tả nguyên liệu, khẩu phần, cách đóng gói"></textarea></label>
+              <div class="image-editor wide-field" data-image-editor="create">
+                <label>Thêm ảnh từ file <input id="newItemImageFile" type="file" accept="image/*"></label>
+                <div class="image-editor-grid">
+                  <label>Rộng <input id="newItemImageWidth" type="number" min="320" max="1600" value="900"></label>
+                  <label>Cao <input id="newItemImageHeight" type="number" min="240" max="1200" value="680"></label>
+                  <label>Màu nền <input id="newItemImageColor" type="color" value="#ffffff"></label>
+                  <label>Zoom <input id="newItemImageZoom" type="range" min="1" max="3" step="0.05" value="1"></label>
+                  <label>Dịch ngang <input id="newItemImageX" type="range" min="-100" max="100" step="1" value="0"></label>
+                  <label>Dịch dọc <input id="newItemImageY" type="range" min="-100" max="100" step="1" value="0"></label>
+                </div>
+                <canvas id="newItemImageCanvas" class="image-crop-canvas" width="450" height="340"></canvas>
+                <small>Chọn file để crop/resize đồng bộ. Nếu không chọn file, hệ thống dùng URL ảnh phía trên.</small>
+              </div>
+              <label class="checkbox-field"><input id="newItemFeatured" type="checkbox"> Ghim món nổi bật</label>
               <button class="primary-button" type="submit">Lưu món</button>
             </form>
+            <form class="stacked-form compact-form edit-menu-form" id="editItemForm" hidden>
+              <input id="editItemId" type="hidden">
+              <label>Tên món <input id="editItemName" placeholder="Tên món"></label>
+              <label>Nhóm món <select id="editItemCategory"></select></label>
+              <label>Ảnh món <input id="editItemImage" placeholder="URL hoặc /uploads/..."></label>
+              <label>Giá cơ bản <input id="editItemPrice" type="number" min="1000"></label>
+              <label>Giá giảm <input id="editItemDiscount" type="number" min="0" placeholder="Để trống nếu không giảm"></label>
+              <label>Chuẩn bị <input id="editItemPrep" type="number" min="1"></label>
+              <label class="wide-field">Mô tả <textarea id="editItemDescription" rows="3"></textarea></label>
+              <div class="image-editor wide-field" data-image-editor="edit">
+                <label>Thêm ảnh từ file <input id="editItemImageFile" type="file" accept="image/*"></label>
+                <div class="image-editor-grid">
+                  <label>Rộng <input id="editItemImageWidth" type="number" min="320" max="1600" value="900"></label>
+                  <label>Cao <input id="editItemImageHeight" type="number" min="240" max="1200" value="680"></label>
+                  <label>Màu nền <input id="editItemImageColor" type="color" value="#ffffff"></label>
+                  <label>Zoom <input id="editItemImageZoom" type="range" min="1" max="3" step="0.05" value="1"></label>
+                  <label>Dịch ngang <input id="editItemImageX" type="range" min="-100" max="100" step="1" value="0"></label>
+                  <label>Dịch dọc <input id="editItemImageY" type="range" min="-100" max="100" step="1" value="0"></label>
+                </div>
+                <canvas id="editItemImageCanvas" class="image-crop-canvas" width="450" height="340"></canvas>
+                <small>Ảnh file sẽ được crop và lưu chuẩn kích thước; để trống nếu chỉ đổi URL.</small>
+              </div>
+              <label class="checkbox-field"><input id="editItemAvailable" type="checkbox"> Đang bán</label>
+              <label class="checkbox-field"><input id="editItemFeatured" type="checkbox"> Ghim nổi bật</label>
+              <div class="button-row">
+                <button class="primary-button" type="submit">Lưu thay đổi</button>
+                <button class="secondary-button" type="button" id="cancelEditItemButton">Hủy</button>
+              </div>
+            </form>
+            <div class="management-grid">
+              <form class="stacked-form compact-form" id="createMenuCategoryForm">
+                <label>Tạo nhóm món <input id="newMenuCategoryName" placeholder="VD: Cơm phần bán chạy"></label>
+                <button class="secondary-button" type="submit">Thêm nhóm món</button>
+              </form>
+              <form class="stacked-form compact-form" id="createToppingGroupForm">
+                <label>Tạo nhóm topping <input id="newToppingGroupName" placeholder="VD: Topping thêm"></label>
+                <button class="secondary-button" type="submit">Thêm nhóm topping</button>
+              </form>
+              <form class="stacked-form compact-form" id="createToppingForm">
+                <label>Nhóm topping <select id="toppingGroupSelect"></select></label>
+                <label>Tên topping <input id="newToppingName" placeholder="VD: Thêm trứng"></label>
+                <label>Giá topping <input id="newToppingPrice" type="number" min="0" value="7000"></label>
+                <button class="secondary-button" type="submit">Thêm topping</button>
+              </form>
+              <form class="stacked-form compact-form" id="createVariantForm">
+                <label>Món <select id="variantItemSelect"></select></label>
+                <label>Tên variant <input id="newVariantName" placeholder="VD: Size lớn"></label>
+                <label>Phụ thu <input id="newVariantPrice" type="number" value="10000"></label>
+                <button class="secondary-button" type="submit">Thêm variant</button>
+              </form>
+            </div>
+            <div class="category-manager" id="ownerCategoryRows"></div>
             <div class="table-shell">
               <table>
                 <thead>
@@ -290,6 +452,40 @@
               </table>
             </div>
           </section>
+
+          <section class="panel" data-view-panel="restaurant:settlement">
+            <div class="panel-title">
+              <p>Đối soát & hoa hồng</p>
+              <h3>Doanh thu nhà hàng</h3>
+            </div>
+            <div id="restaurantSettlements" class="card-list"></div>
+            <div id="restaurantCommissions" class="card-list"></div>
+          </section>
+
+          <section class="panel" data-view-panel="restaurant:promotions">
+            <div class="panel-title inline-title">
+              <div>
+                <p>Khuyến mãi nhà hàng</p>
+                <h3>Voucher hiển thị cho khách</h3>
+              </div>
+              <button class="text-button" type="button" id="loadRestaurantPromotionsButton">Tải voucher</button>
+            </div>
+            <form class="stacked-form compact-form" id="promotionForm">
+              <label>Mã voucher <input id="promotionCodeInput" placeholder="VD: DOUONG20"></label>
+              <label>Tên chương trình <input id="promotionNameInput" placeholder="Giảm 20% món nước"></label>
+              <label>Loại giảm
+                <select id="promotionTypeInput">
+                  <option value="PERCENT">Phần trăm</option>
+                  <option value="FIXED_AMOUNT">Số tiền</option>
+                  <option value="FREE_DELIVERY">Miễn phí giao</option>
+                </select>
+              </label>
+              <label>Giá trị giảm <input id="promotionValueInput" type="number" min="0" value="10"></label>
+              <label>Đơn tối thiểu <input id="promotionMinimumInput" type="number" min="0" value="50000"></label>
+              <button class="primary-button" type="submit">Tạo voucher</button>
+            </form>
+            <div id="restaurantPromotions" class="card-list"></div>
+          </section>
         </div>
       </section>
 
@@ -301,30 +497,43 @@
           </div>
           <button class="secondary-button" type="button" id="loadAdminButton">Tải dashboard</button>
         </div>
+        <nav class="sub-tabs" aria-label="Màn quản trị">
+          <button class="is-active" type="button" data-subview-target="admin:restaurants">Nhà hàng</button>
+          <button type="button" data-subview-target="admin:users">Tài khoản</button>
+          <button type="button" data-subview-target="admin:ops">Vận hành</button>
+          <button type="button" data-subview-target="admin:audit">Audit log</button>
+        </nav>
 
         <div class="admin-grid">
-          <section class="panel">
+          <section class="panel admin-summary-panel is-subview-active" data-view-panel="admin:restaurants">
+            <div class="panel-title">
+              <p>Tổng quan hệ thống</p>
+              <h3>Thống kê quản trị</h3>
+            </div>
+            <div class="stat-grid" id="adminStats"></div>
+          </section>
+          <section class="panel is-subview-active" data-view-panel="admin:restaurants">
             <div class="panel-title">
               <p>Đối tác nhà hàng</p>
               <h3>Hồ sơ nhà hàng</h3>
             </div>
             <div id="adminRestaurants" class="card-list"></div>
           </section>
-          <section class="panel">
+          <section class="panel" data-view-panel="admin:audit">
             <div class="panel-title">
               <p>Lịch sử hoạt động</p>
               <h3>Thao tác gần đây</h3>
             </div>
             <div id="auditLogs" class="card-list"></div>
           </section>
-          <section class="panel">
+          <section class="panel" data-view-panel="admin:ops">
             <div class="panel-title">
               <p>Helpdesk & vận hành</p>
               <h3>Hỗ trợ, thanh toán và đối soát</h3>
             </div>
             <div id="adminOps" class="card-list"></div>
           </section>
-          <section class="panel">
+          <section class="panel" data-view-panel="admin:users">
             <div class="panel-title">
               <p>Tài khoản hệ thống</p>
               <h3>Danh sách và trạng thái tài khoản</h3>
@@ -342,15 +551,20 @@
           </div>
           <button class="secondary-button" type="button" id="refreshAccountButton">Làm mới</button>
         </div>
+        <nav class="sub-tabs" aria-label="Màn tài khoản">
+          <button class="is-active" type="button" data-subview-target="account:profile">Hồ sơ</button>
+          <button type="button" data-subview-target="account:wallet">Ví</button>
+          <button type="button" data-subview-target="account:users">Người dùng</button>
+        </nav>
         <div class="admin-grid">
-          <section class="panel">
+          <section class="panel is-subview-active" data-view-panel="account:profile">
             <div class="panel-title">
               <p>Hồ sơ đăng nhập</p>
               <h3>Thông tin tài khoản</h3>
             </div>
             <div id="sessionDetail" class="muted-block">Chưa đăng nhập.</div>
           </section>
-          <section class="panel">
+          <section class="panel" data-view-panel="account:wallet">
             <div class="panel-title">
               <p>Ví cá nhân</p>
               <h3>Số dư và giao dịch</h3>
@@ -361,7 +575,7 @@
               <button class="primary-button" type="submit">Nạp ví</button>
             </form>
           </section>
-          <section class="panel">
+          <section class="panel" data-view-panel="account:users">
             <div class="panel-title">
               <p>Quản lý người dùng</p>
               <h3>Danh sách và trạng thái tài khoản</h3>
@@ -385,8 +599,60 @@
       </section>
     </main>
 
+    <footer class="app-footer">
+      <div>
+        <a class="brand footer-brand" href="#" aria-label="Food Delivery Platform">
+          <img src="./assets/food-delivery-mark.svg" alt="" width="38" height="38">
+          <span>
+            <strong>Food Delivery</strong>
+            <small>Nền tảng đặt món, quản lý nhà hàng và giao vận</small>
+          </span>
+        </a>
+        <p>Hệ thống demo nghiệp vụ thật: catalog, giỏ hàng, đơn bếp, shipper, hỗ trợ, báo cáo và đối soát.</p>
+      </div>
+      <div class="footer-links">
+        <a href="/api/docs" target="_blank" rel="noreferrer">Swagger API</a>
+        <a href="/api/openapi.json" target="_blank" rel="noreferrer">OpenAPI</a>
+        <a href="/docs/user-guide.md" target="_blank" rel="noreferrer">Hướng dẫn</a>
+      </div>
+      <div class="footer-meta">
+        <span>Admin: thaiduongpc7</span>
+        <span>Port: 3000</span>
+        <span>Data: 20 nhà hàng / 4.200 món</span>
+      </div>
+    </footer>
+
     <template id="emptyTemplate">
       <div class="empty-state">Chưa có dữ liệu. Hãy đăng nhập đúng vai trò hoặc tự thêm dữ liệu nghiệp vụ.</div>
     </template>
+
+    <div class="modal-backdrop" id="itemModal" hidden>
+      <section class="item-modal" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle">
+        <button class="modal-close" type="button" id="closeItemModal" aria-label="Đóng">×</button>
+        <div class="item-modal-media" id="itemModalMedia"></div>
+        <div class="item-modal-body">
+          <p class="eyebrow" id="itemModalRestaurant">Món ăn</p>
+          <h2 id="itemModalTitle">Chi tiết món</h2>
+          <p class="muted" id="itemModalDescription"></p>
+          <div class="price-line" id="itemModalPrice"></div>
+          <div class="fake-gallery" id="itemModalGallery"></div>
+          <form class="stacked-form" id="itemOptionForm">
+            <div id="itemVariantOptions"></div>
+            <div id="itemToppingOptions"></div>
+            <label>
+              Số lượng
+              <select id="itemQuantity">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">Thêm vào giỏ</button>
+          </form>
+        </div>
+      </section>
+    </div>
   </body>
 </html>

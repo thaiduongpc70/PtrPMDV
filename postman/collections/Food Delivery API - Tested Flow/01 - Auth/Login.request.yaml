@@ -7,8 +7,8 @@ body:
   type: text
   content: |-
     {
-      "emailOrUsername": "customer01",
-      "password": "FoodDemo!2026"
+      "emailOrUsername": "thaiduongpc7",
+      "password": "duong2k5"
     }
 auth:
   type: noauth

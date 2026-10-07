@@ -34,6 +34,16 @@ export const catalogService = {
     return catalogRepository.getRestaurantMenu(restaurantId);
   },
 
+  async listRestaurantReviews(restaurantId, query) {
+    const pagination = readPagination(query, 50);
+    const result = await catalogRepository.listRestaurantReviews({
+      restaurantId,
+      pageSize: pagination.pageSize,
+      offset: pagination.offset
+    });
+    return toPagedResponse(result.items, pagination.pageNumber, pagination.pageSize, result.totalItems);
+  },
+
   async searchMenuItems(query) {
     const pagination = readPagination(query, 100);
     const sort = trim(query.sort);

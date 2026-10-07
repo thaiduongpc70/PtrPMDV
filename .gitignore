@@ -13,8 +13,12 @@ coverage/
 .env
 .env.*
 !.env.example
+storage/
+release/
+food-delivery-platform/backend/backups/
 bin/
 obj/
 build/
 dist/
 tools/
+outputs/

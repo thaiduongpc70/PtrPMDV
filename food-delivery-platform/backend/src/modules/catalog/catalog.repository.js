@@ -295,7 +295,7 @@ export const catalogRepository = {
     ];
     const params = [];
     if (filters.restaurantId) { where.push('mi.restaurant_id = ?'); params.push(filters.restaurantId); }
-    if (filters.categoryId) { where.push('mi.category_id = ?'); params.push(filters.categoryId); }
+    if (filters.categoryId) { where.push('r.category_id = ?'); params.push(filters.categoryId); }
     if (filters.keyword) {
       where.push('(mi.name LIKE ? OR mi.description LIKE ? OR r.name LIKE ?)');
       const keyword = `%${filters.keyword}%`;
@@ -334,6 +334,45 @@ export const catalogRepository = {
         effectivePrice: Number(row.effective_price), preparationTime: Number(row.preparation_time),
         isAvailable: Boolean(row.is_available), isFeatured: Boolean(row.is_featured), soldCount: Number(row.sold_count)
       })),
+      totalItems: Number(totalRows[0]?.total ?? 0)
+    };
+  },
+
+  async listRestaurantReviews(filters) {
+    const totalRows = await query(
+      `SELECT COUNT(*) AS total
+       FROM restaurant_reviews rr
+       WHERE rr.restaurant_id = ?
+         AND rr.deleted_at IS NULL`,
+      [filters.restaurantId]
+    );
+
+    const rows = await query(
+      `SELECT
+          rr.id,
+          rr.order_id,
+          rr.customer_id,
+          rr.restaurant_id,
+          rr.rating,
+          rr.comment,
+          rr.restaurant_reply,
+          rr.replied_at,
+          rr.created_at,
+          COALESCE(cp.full_name, u.username, 'Khách hàng') AS customer_name
+       FROM restaurant_reviews rr
+       INNER JOIN customer_profiles cp
+         ON cp.id = rr.customer_id
+       INNER JOIN users u
+         ON u.id = cp.user_id
+       WHERE rr.restaurant_id = ?
+         AND rr.deleted_at IS NULL
+       ORDER BY rr.created_at DESC, rr.id DESC
+       LIMIT ? OFFSET ?`,
+      [filters.restaurantId, filters.pageSize, filters.offset]
+    );
+
+    return {
+      items: rows.map(mapRestaurantReview),
       totalItems: Number(totalRows[0]?.total ?? 0)
     };
   },
@@ -518,6 +557,21 @@ function mapTopping(row) {
     groupId: Number(row.group_id),
     name: row.name,
     price: Number(row.price)
+  };
+}
+
+function mapRestaurantReview(row) {
+  return {
+    id: Number(row.id),
+    orderId: Number(row.order_id),
+    customerId: Number(row.customer_id),
+    restaurantId: Number(row.restaurant_id),
+    rating: Number(row.rating),
+    comment: row.comment ?? null,
+    restaurantReply: row.restaurant_reply ?? null,
+    repliedAt: row.replied_at ?? null,
+    customerName: row.customer_name,
+    createdAt: row.created_at
   };
 }
 

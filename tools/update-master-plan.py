@@ -11,30 +11,52 @@ DONE = "Đã hoàn thành"
 completed_plan_ids = {
     "2.2", "2.3", "2.4", "2.5", "2.6", "2.7",
     "3.1", "3.2", "3.3", "3.4", "3.5",
-    "4.1", "4.2", "4.3", "4.4", "4.5", "4.6", "4.7", "4.8"
-}
-notes = {
-    "2.2": "Menu API: CRUD menu/category/item, validation giá và trạng thái, soft-delete; đã gắn owner RBAC.",
-    "2.3": "Variant/topping API, liên kết topping theo món và kiểm tra min/max lựa chọn.",
-    "2.4": "Catalog search/filter/sort/pagination cho restaurant/menu item và search_history cho customer.",
-    "2.5": "Promotion CRUD/validation/usage, banners public và favorites restaurant/menu item.",
-    "2.6": "Seed script tạo 20 nhà hàng và tối thiểu 2.100 menu item cùng dữ liệu 4 vai trò.",
-    "2.7": "Upload ảnh JPEG/PNG/WebP, lưu an toàn, editor crop khung vuông/rotate/zoom/reset và object-fit.",
-    "3.1": "Cart theo customer/restaurant, cập nhật quantity/topping/note và snapshot giá.",
-    "3.2": "Checkout transaction tạo order/order items/payment, tính lại phí/giá server và idempotency key.",
-    "3.3": "Restaurant state machine PENDING -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP và reject.",
-    "3.4": "Customer ordering UI, address/payment/promotion; in-app notification và email queue nhẹ.",
-    "3.5": "61 automated tests pass; workflow checkout -> confirm -> prepare -> ready, RBAC, audit metadata và lỗi nghiệp vụ.",
-    "4.1": "Shipper profile, trạng thái nhận đơn, assignment offer/accept/reject và phân quyền shipper.",
-    "4.2": "Delivery lifecycle, delivery status history, khu vực giao hàng và cập nhật trạng thái lấy hàng/đang giao/đã giao.",
-    "4.3": "API nhận GPS shipper, lưu vị trí và phục vụ màn hình theo dõi giao hàng.",
-    "4.4": "Payment/COD flow, giao dịch thanh toán, trạng thái thu hộ và xử lý hủy đơn liên quan thanh toán.",
-    "4.5": "Invoice/tra cứu chi tiết đơn dùng snapshot đơn hàng và dữ liệu thanh toán.",
-    "4.6": "Notification, chat theo đơn, support ticket và review nhà hàng/shipper.",
-    "4.7": "Order cancellation, refund, ví khách hàng và wallet transaction.",
-    "4.8": "Shipper earnings/withdrawals, restaurant settlement/commission và báo cáo đối soát."
+    "4.1", "4.2", "4.3", "4.4", "4.5", "4.6", "4.7", "4.8",
+    "5.1", "5.2", "5.3",
+    "6.1", "6.2", "6.3",
+    "7.1", "7.2", "7.3",
+    "8.1", "8.2", "8.3", "8.4", "8.5",
+    "9.1", "9.2", "9.3",
 }
 
+notes = {
+    "2.2": "Menu API CRUD, validation, soft-delete and owner RBAC.",
+    "2.3": "Variants, topping groups, topping links and min/max validation.",
+    "2.4": "Catalog search/filter/sort/pagination and customer search history.",
+    "2.5": "Promotion, banner and favorite flows.",
+    "2.6": "Realistic seed with four roles, restaurants, menu items and operational data.",
+    "2.7": "JPEG/PNG/WebP image upload and square crop/rotate/zoom/reset editor.",
+    "3.1": "Customer/restaurant cart with quantity, topping, note and price snapshot.",
+    "3.2": "Transactional checkout with server pricing and idempotency key.",
+    "3.3": "Restaurant order state machine with status history and rejection.",
+    "3.4": "Customer ordering UI, address/payment/promotion and notifications.",
+    "3.5": "Checkout-confirm-prepare-ready workflow, RBAC, audit and regression tests.",
+    "4.1": "Shipper profile, availability, assignment offer/accept/reject and permissions.",
+    "4.2": "Delivery lifecycle, status history and delivery zones.",
+    "4.3": "GPS point ingestion and delivery tracking API.",
+    "4.4": "Payment/COD flow, callback and failure handling.",
+    "4.5": "Invoice creation and order snapshot lookup.",
+    "4.6": "Notifications, order chat, support ticket and reviews.",
+    "4.7": "Cancellation, refund and customer wallet.",
+    "4.8": "Shipper earnings/withdrawals and restaurant settlement/commission.",
+    "5.1": "CSV import for RESTAURANTS/MENU_ITEMS with import_jobs and per-row results; smoke import passed.",
+    "5.2": "ORDERS/REVENUE/SHIPPER/SETTLEMENT export as CSV, Excel SpreadsheetML and PDF; export_jobs and /exports.",
+    "5.3": "background_jobs worker, 30-second polling, three-attempt retry and token cleanup; run endpoint passed.",
+    "6.1": "Helmet, allow-list CORS, body limits, rate limit, validation, upload whitelist, RBAC and audit.",
+    "6.2": "Catalog TTL response cache, hit/miss header and menu mutation invalidation; Redis is included in Compose.",
+    "6.3": "Structured JSON HTTP logs, readiness/liveness, audit middleware and system_settings admin API.",
+    "7.1": "63 unit/service tests cover auth, address, catalog, menu, order state and RBAC.",
+    "7.2": "API plus MySQL smoke covers login/me, cache, import/export, worker, transaction/idempotency and backup.",
+    "7.3": "Realistic seed contains 20 restaurants and 4,200 menu items; Node coverage is 37.04%.",
+    "8.1": "Docker Compose API, MySQL 8, Redis 7 and MailHog with environment, init SQL and healthcheck.",
+    "8.2": "GitHub Actions check/test workflow, production Dockerfile and package:release script.",
+    "8.3": "OpenAPI 3.0.3 at /api/openapi.json and tested Postman collection for all four roles.",
+    "8.4": "Deployment guide, user guide, handover checklist, backend README and OpenAPI contract.",
+    "8.5": "Smoke script, realistic seed, sample data, export/import artifacts and generated release package.",
+    "9.1": "Smoke after API restart, readiness/catalog/cache checks, GPS/payment route inventory and verified mysqldump.",
+    "9.2": "Fixed background enqueue, token cleanup column, Docker storage path and regressions; 63 tests pass.",
+    "9.3": "Release package includes backend/frontend/SQL/docs/Postman plus handover checklist and test evidence.",
+}
 
 workbook = load_workbook(WORKBOOK)
 plan = workbook["Plan"]
@@ -54,14 +76,24 @@ for row in range(1, coverage.max_row + 1):
         coverage.cell(row, 6).value = "; ".join(notes[item] for item in matching if item in notes)
 
 summary = workbook["Summary"]
-summary.cell(11, 2).value = "API foundation, auth/RBAC, restaurant/menu, catalog search, promotion/favorites, cart/checkout, restaurant order state machine; đã bổ sung shipper, delivery/GPS, payment/COD, invoice, chat/support/review, refund/wallet và settlement 4.1-4.8"
-summary.cell(12, 2).value = "Còn xác nhận: realtime WebSocket/Redis hoàn chỉnh, Docker/CI, OpenAPI/Postman đầy đủ, test E2E triển khai và dữ liệu thật do người dùng nhập sau"
-summary.cell(5, 9).value = "4.8/20"
-summary.cell(2, 1).value = "Kế hoạch triển khai bám theo food_delivery_db.sql và yêu cầu bài tập lớn | Cập nhật: 27/09/2026"
+summary.cell(11, 2).value = (
+    "Core 2.2-4.8 and operations 5.1-9.3 completed: import/export, background jobs, "
+    "security/cache/logging, tests, Docker/CI, OpenAPI/docs, smoke/backup/release."
+)
+summary.cell(12, 2).value = (
+    "Redis and MailHog are optional Docker services; local development keeps an in-memory "
+    "cache fallback so the single-port API runs without Redis."
+)
+summary.cell(5, 9).value = "9.3/20"
+summary.cell(2, 1).value = (
+    "Implementation plan based on food_delivery_db.sql and assignment requirements | Updated: 07/10/2026"
+)
 
 infrastructure = workbook["Ha tang"]
-infrastructure.cell(6, 4).value = "Đã có web động gọi API thật cho 4 vai trò: Customer, Restaurant, Shipper, Admin; UI đăng nhập phân quyền, catalog/checkout, order queue, shipper delivery/earnings, ví và quản lý tài khoản"
-infrastructure.cell(20, 4).value = "Đã hoàn thành trong 2.7: image picker/editor, crop khung vuông, rotate/zoom/reset, thumbnail object-fit và upload API"
+infrastructure.cell(6, 4).value = (
+    "Four-role web/API plus import/export/jobs, security/cache/logging, Docker/CI, "
+    "OpenAPI/Postman, smoke/backup/release are available; Redis/MailHog are in Compose."
+)
 
 workbook.calculation.fullCalcOnLoad = True
 workbook.calculation.forceFullCalc = True

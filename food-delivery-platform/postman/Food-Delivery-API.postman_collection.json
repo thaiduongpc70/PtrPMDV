@@ -1,8 +1,8 @@
-{
+﻿{
   "info": {
     "_postman_id": "9f80727a-0f0f-4a24-a132-food-delivery-api",
     "name": "Food Delivery API - Tested Flow",
-    "description": "Collection tổng hợp các API chính để test hệ thống Food Delivery: auth, customer, restaurant, shipper, admin, payment, chat/support và settlement. Import vào Postman, tạo environment hoặc dùng collection variables có sẵn.",
+    "description": "Collection tổng hợp các API chính để test hệ thống Food Delivery: auth, customer, restaurant, shipper, admin, payment, chat/support và settlement. Tài khoản seed thật: thaiduongpc7 / saigon.bites / minh.anh / bao.shipper, mật khẩu mặc định duong2k5.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -64,7 +64,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"customer01\",\n  \"email\": \"customer01@example.com\",\n  \"phone\": \"0900000001\",\n  \"password\": \"FoodDemo!2026\",\n  \"fullName\": \"Nguyen Van A\",\n  \"gender\": \"OTHER\"\n}"
+              "raw": "{\n  \"username\": \"linh.pham\",\n  \"email\": \"linh.pham@example.vn\",\n  \"phone\": \"0901001010\",\n  \"password\": \"duong2k5\",\n  \"fullName\": \"Phạm Ngọc Linh\",\n  \"gender\": \"FEMALE\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/register/customer"
           },
@@ -91,7 +91,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"emailOrUsername\": \"customer01\",\n  \"password\": \"FoodDemo!2026\"\n}"
+              "raw": "{\n  \"emailOrUsername\": \"thaiduongpc7\",\n  \"password\": \"duong2k5\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/login"
           },
