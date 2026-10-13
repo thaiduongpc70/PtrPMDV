@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/export/orders?from=2020-01-01&to=2020-01-02"
+method: GET
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+queryParams:
+  from: 2020-01-01
+  to: 2020-01-02
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Admin export orders with date range: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("no rows in an empty range", () => pm.expect(json.rows.length).to.eql(0));
+    language: text/javascript
+order: 12000

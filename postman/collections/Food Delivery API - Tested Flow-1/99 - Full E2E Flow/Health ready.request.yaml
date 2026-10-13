@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/health/ready"
+method: GET
+headers:
+  Content-Type: application/json
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Health ready: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("database up", () => pm.expect(json.checks.database.status).to.eql("up"));
+    language: text/javascript
+order: 2000

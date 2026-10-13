@@ -22,3 +22,6 @@ build/
 dist/
 tools/
 outputs/
+
+# Ảnh minh chứng quá trình làm bài (chụp màn hình, nặng)
+minh-chung/

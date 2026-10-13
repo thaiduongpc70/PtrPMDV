@@ -234,7 +234,12 @@
     if (!el.dataset.ready) {
       el.dataset.ready = '1';
       el.innerHTML = `
-        <div class="page-toolbar"><div><h3>Lịch sử đơn hàng</h3><p class="muted">Tra cứu mọi đơn đã nhận theo thời gian, trạng thái hoặc khách hàng.</p></div></div>
+        <div class="page-toolbar"><div><h3>Lịch sử đơn hàng</h3><p class="muted">Tra cứu mọi đơn đã nhận theo thời gian, trạng thái hoặc khách hàng.</p></div><div class="button-row">${window.FDExport.menu([
+          { label: 'Đơn hàng', url: `/api/restaurant/export/{rid}/orders` },
+          { label: 'Doanh thu theo ngày', url: `/api/restaurant/export/{rid}/revenue` },
+          { label: 'Thực đơn & số món đã bán', url: `/api/restaurant/export/{rid}/menu` },
+          { label: 'Đối soát', url: `/api/restaurant/export/{rid}/settlements` }
+        ])}</div></div>
         <form class="filter-bar" data-filters>
           <input type="search" name="q" placeholder="Mã đơn, tên/SĐT khách…">
           <select name="status"><option value="">Mọi trạng thái</option>${['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'SHIPPER_ASSIGNED', 'PICKED_UP', 'DELIVERING', 'DELIVERED', 'CANCELLED'].map(x => `<option value="${x}">${chip(x, 'order').replace(/<[^>]+>/g, '')}</option>`).join('')}</select>

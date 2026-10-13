@@ -1,0 +1,521 @@
+{
+  "id": "20261013-094613",
+  "startedAt": "2026-10-13T02:46:13.548Z",
+  "durationMs": 3779,
+  "scope": "14 - Data Export",
+  "baseUrl": "http://localhost:3000",
+  "requests": 27,
+  "assertions": 54,
+  "failedAssertions": 0,
+  "requestErrors": 0,
+  "result": "PASSED",
+  "failures": [],
+  "executions": [
+    {
+      "folder": "14 - Data Export",
+      "name": "01 Admin export orders",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders",
+      "status": 200,
+      "timeMs": 10,
+      "assertions": [
+        {
+          "name": "Admin export orders: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "01 Admin export orders",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders",
+      "status": 200,
+      "timeMs": 10,
+      "assertions": [
+        {
+          "name": "Admin export orders: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "02 Admin export restaurants",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/restaurants",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Admin export restaurants: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "03 Admin export shippers",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/shippers",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Admin export shippers: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "04 Admin export customers",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/customers",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Admin export customers: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "05 Admin export users",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/users",
+      "status": 200,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Admin export users: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "06 Admin export payments",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/payments",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Admin export payments: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "07 Admin export settlements",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/settlements",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Admin export settlements: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "08 Admin export revenue",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/revenue",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Admin export revenue: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "09 Admin export audit",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/audit",
+      "status": 200,
+      "timeMs": 48,
+      "assertions": [
+        {
+          "name": "Admin export audit: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "10 Admin export applications",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/applications",
+      "status": 200,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Admin export applications: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "11 Admin export orders as CSV",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders?format=csv",
+      "status": 200,
+      "timeMs": 9,
+      "assertions": [
+        {
+          "name": "Admin export orders as CSV: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "content-type is CSV",
+          "passed": true
+        },
+        {
+          "name": "is an attachment",
+          "passed": true
+        },
+        {
+          "name": "starts with UTF-8 BOM (Excel-safe)",
+          "passed": true
+        },
+        {
+          "name": "Vietnamese header row",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "12 Admin export orders with date range",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders?from=2020-01-01&to=2020-01-02",
+      "status": 200,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Admin export orders with date range: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "no rows in an empty range",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "13 Admin export unknown dataset",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/secrets",
+      "status": 404,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Admin export unknown dataset: HTTP 404",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "14 Customer cannot export",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders",
+      "status": 403,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Customer cannot export: HTTP 403",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "14 Customer cannot export",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders",
+      "status": 403,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Customer cannot export: HTTP 403",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "15 Anonymous cannot export",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders",
+      "status": 401,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Anonymous cannot export: HTTP 401",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "16 Find own restaurant",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/restaurants",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Find own restaurant: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "16 Find own restaurant",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/restaurants",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Find own restaurant: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "17 Restaurant export orders",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/orders",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Restaurant export orders: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "18 Restaurant export revenue",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/revenue",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Restaurant export revenue: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "19 Restaurant export menu",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/menu",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Restaurant export menu: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "20 Restaurant export settlements",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/settlements",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Restaurant export settlements: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "21 Restaurant export menu as CSV",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/menu?format=csv",
+      "status": 200,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Restaurant export menu as CSV: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "content-type is CSV",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "22 Pick another restaurant",
+      "method": "GET",
+      "url": "http://localhost:3000/api/catalog/restaurants?pageSize=20",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Pick another restaurant: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "23 Restaurant cannot export another restaurant",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/35/orders",
+      "status": 403,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Restaurant cannot export another restaurant: HTTP 403",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "24 Customer cannot export restaurant data",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/orders",
+      "status": 403,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Customer cannot export restaurant data: HTTP 403",
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

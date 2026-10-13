@@ -782,3 +782,47 @@ body[data-role="admin"] .promo-strip, body[data-role="restaurant"] .promo-strip 
 [data-availability] { border-radius: 999px; }
 [data-availability].is-active { border-color: transparent; background: var(--gradient); color: #fff; }
 #shipperProfile + .button-row { margin: 16px 0; }
+
+/* ---------- address book ---------- */
+.address-list { display: grid; gap: 12px; }
+.address-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; }
+.address-card.is-default { border-color: var(--brand); background: var(--brand-soft); }
+.address-main { display: grid; gap: 2px; min-width: 0; flex: 1 1 260px; }
+.address-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.address-map { display: grid; gap: 8px; }
+.label-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.label-line .text-button { min-height: 24px; padding: 0 6px; font-size: .78rem; }
+
+/* ---------- partner onboarding & CTA ---------- */
+.partner-cta { width: min(1240px, calc(100% - 40px)); margin: 28px auto 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.partner-cta-card { display: flex; align-items: center; gap: 16px; padding: 22px 24px; border-radius: 18px; color: #fff; background: linear-gradient(120deg, var(--brand), var(--brand-2)); box-shadow: 0 10px 30px rgba(238, 77, 45, .22); }
+.partner-cta-card.is-alt { background: linear-gradient(120deg, #1f2433, #3b4254); box-shadow: 0 10px 30px rgba(31, 36, 51, .22); }
+.partner-cta-card h3 { font-size: 1.1rem; margin-bottom: 4px; }
+.partner-cta-card p { font-size: .88rem; opacity: .92; }
+.partner-cta-card > div { flex: 1; min-width: 0; }
+.partner-cta-icon { flex: 0 0 56px; height: 56px; display: grid; place-items: center; font-size: 1.8rem; border-radius: 16px; background: rgba(255, 255, 255, .18); }
+.partner-cta-card .primary-button { background: #fff; color: var(--brand-dark); box-shadow: none; }
+.partner-cta-card .secondary-button { background: transparent; color: #fff; border-color: rgba(255, 255, 255, .6); }
+body[data-role="restaurant"] .partner-cta, body[data-role="admin"] .partner-cta, body[data-role="shipper"] .partner-cta { display: none; }
+.partner-links { font-size: .86rem; color: var(--muted); text-align: center; }
+.partner-links a { color: var(--brand); font-weight: 600; }
+.partner-intro { margin: 0; }
+.form-section { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--brand); padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.partner-done { text-align: center; display: grid; gap: 10px; padding: 10px 0; }
+.partner-done-icon { font-size: 3rem; }
+.partner-done .m-actions { justify-content: center; }
+.app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.app-card { display: grid; gap: 12px; align-content: start; }
+.app-card .kv { margin: 0; }
+.app-card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+@media (max-width: 760px) { .partner-cta { grid-template-columns: 1fr; } .partner-cta-card { flex-wrap: wrap; } }
+
+/* ---------- export menu ---------- */
+.export-menu { position: relative; }
+.export-menu > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; user-select: none; }
+.export-menu > summary::-webkit-details-marker { display: none; }
+.export-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 270px; display: grid; gap: 4px; padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgba(31, 36, 51, .16); }
+.export-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; }
+.export-row span { flex: 1; font-size: .88rem; font-weight: 600; }
+@media print { .partner-cta, .contact-widget, .export-menu { display: none !important; } }
+.app-card .cell-main { display: grid; gap: 2px; }

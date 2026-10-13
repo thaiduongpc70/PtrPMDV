@@ -1,0 +1,33 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/addresses"
+method: POST
+headers:
+  Content-Type: "application/json"
+  Authorization: "Bearer {{customerToken}}"
+body:
+  type: text
+  content: |-
+    {
+      "label": "Văn phòng",
+      "receiverName": "Nguyễn Minh Anh",
+      "receiverPhone": "0901001002",
+      "addressLine": "1 Postman Street",
+      "ward": "Phường Bến Nghé",
+      "district": "Quận 1",
+      "city": "TP.HCM",
+      "latitude": 10.7769,
+      "longitude": 106.7009,
+      "isDefault": false
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Create address (not default): HTTP 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));
+      pm.test("address id returned", () => pm.expect(json.id > 0).to.be.true);
+      pm.test("not default", () => pm.expect(json.isDefault).to.eql(false));
+      { const v = (json.id); if (v !== undefined && v !== null) pm.collectionVariables.set('tmpAddressId', v); }
+    language: text/javascript
+order: 2000

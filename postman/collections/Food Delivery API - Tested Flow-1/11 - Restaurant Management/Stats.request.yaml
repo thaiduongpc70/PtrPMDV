@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/manage/{{restaurantId}}/stats?days=14"
+method: GET
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+queryParams:
+  days: "14"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Stats: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("stats sections present", () => pm.expect(json.today && Array.isArray(json.daily) && Array.isArray(json.topItems)).to.be.true);
+    language: text/javascript
+order: 2000

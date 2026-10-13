@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/partners/applications/{{shipAppId}}/approve"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: json
+  content: "{}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Approve shipper: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("approved", () => pm.expect(json.status).to.eql("APPROVED"));
+    language: text/javascript
+order: 13000

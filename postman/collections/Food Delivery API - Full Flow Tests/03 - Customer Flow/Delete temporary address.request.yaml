@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/addresses/{{tmpAddressId}}"
+method: DELETE
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{customerToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Delete temporary address: HTTP 200/204', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));
+    language: text/javascript
+order: 6000

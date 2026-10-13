@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/api/shippers/assignments/{{assignmentId}}/accept"
+method: POST
+order: 4000

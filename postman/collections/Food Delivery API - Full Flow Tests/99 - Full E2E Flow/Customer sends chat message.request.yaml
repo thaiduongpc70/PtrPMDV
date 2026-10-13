@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/communications/chat/sessions/{{chatSessionId}}/messages"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{customerToken}}
+body:
+  type: json
+  content: |-
+    {
+      "message": "Xin chào, mình đang chờ đơn nhé!"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Customer sends chat message: HTTP 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));
+    language: text/javascript
+order: 42000

@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/manage/orders/{{orderId}}"
+method: GET
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Admin order detail: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("full lifecycle recorded", () => pm.expect(json.status === "DELIVERED" && json.history.length >= 5 && json.payments.length === 1 && json.delivery.status === "DELIVERED").to.be.true);
+    language: text/javascript
+order: 57000

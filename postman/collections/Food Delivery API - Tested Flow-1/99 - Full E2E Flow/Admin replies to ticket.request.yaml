@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/communications/support/tickets/{{ticketId}}/messages"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: json
+  content: |-
+    {
+      "message": "Chúng tôi đã tiếp nhận yêu cầu của bạn."
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Admin replies to ticket: HTTP 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));
+    language: text/javascript
+order: 64000

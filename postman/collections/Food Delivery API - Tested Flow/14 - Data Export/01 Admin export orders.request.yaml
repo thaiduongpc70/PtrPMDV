@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/export/orders"
+method: GET
+headers:
+  Content-Type: "application/json"
+  Authorization: "Bearer {{adminToken}}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Admin export orders: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("has columns + rows", () => pm.expect(Array.isArray(json.columns) && json.columns.length > 0 && Array.isArray(json.rows)).to.be.true);
+      pm.test("row keys cover columns", () => pm.expect(json.rows.length === 0 || Object.keys(json.rows[0]).length >= json.columns.length - 1).to.be.true);
+    language: text/javascript
+order: 1000

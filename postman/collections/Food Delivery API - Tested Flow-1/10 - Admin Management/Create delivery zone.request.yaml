@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/manage/zones"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: json
+  content: |-
+    {
+      "name": "Postman zone",
+      "city": "TP.HCM",
+      "district": "Quận 7",
+      "baseFee": 15000,
+      "pricePerKm": 5000,
+      "minimumFee": 15000,
+      "maximumDistance": 12
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Create delivery zone: HTTP 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));
+      { const v = (json.id); if (v !== undefined && v !== null) pm.collectionVariables.set('zoneId', v); }
+    language: text/javascript
+order: 17000

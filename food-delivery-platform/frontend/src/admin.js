@@ -14,6 +14,7 @@
     { id: 'reports', ico: '📈', label: 'Báo cáo & phân tích' },
     { group: 'Vận hành' },
     { id: 'orders', ico: '🧾', label: 'Đơn hàng' },
+    { id: 'applications', ico: '📝', label: 'Duyệt đối tác' },
     { id: 'restaurants', ico: '🏪', label: 'Nhà hàng' },
     { id: 'shippers', ico: '🛵', label: 'Tài xế' },
     { id: 'customers', ico: '🙋', label: 'Khách hàng' },
@@ -33,7 +34,7 @@
     { id: 'audit', ico: '🛡️', label: 'Nhật ký bảo mật' }
   ];
 
-  const state = { orders: { page: 1, q: '', status: '', paymentStatus: '' }, audit: { page: 1, action: '' }, payments: { page: 1, status: '', method: '' }, reviews: { page: 1, maxRating: 5 }, restaurants: { q: '', status: '' }, users: { role: '', q: '' }, customers: { page: 1, q: '' }, reportDays: 30, support: { status: '' } };
+  const state = { orders: { page: 1, q: '', status: '', paymentStatus: '' }, audit: { page: 1, action: '' }, payments: { page: 1, status: '', method: '' }, reviews: { page: 1, maxRating: 5 }, restaurants: { q: '', status: '' }, users: { role: '', q: '' }, customers: { page: 1, q: '' }, reportDays: 30, support: { status: '' }, applications: { status: 'PENDING', type: '' } };
   let mapController = null;
   let built = false;
 
@@ -84,18 +85,36 @@
     };
   }
 
+  const X = (label, name) => ({ label, url: `/api/admin/export/${name}` });
+  const EXPORTS = {
+    'Báo cáo & phân tích': [X('Doanh thu theo ngày', 'revenue'), X('Đơn hàng', 'orders')],
+    'Quản lý đơn hàng': [X('Danh sách đơn hàng', 'orders')],
+    'Quản lý nhà hàng': [X('Danh sách nhà hàng', 'restaurants')],
+    'Quản lý tài xế': [X('Danh sách tài xế', 'shippers')],
+    'Khách hàng': [X('Danh sách khách hàng', 'customers')],
+    'Thanh toán, COD & hoàn tiền': [X('Lịch sử thanh toán', 'payments')],
+    'Đối soát nhà hàng': [X('Bảng đối soát', 'settlements')],
+    'Tài khoản & phân quyền': [X('Danh sách tài khoản', 'users')],
+    'Nhật ký bảo mật & kiểm toán': [X('Nhật ký bảo mật', 'audit')],
+    'Duyệt đối tác': [X('Hồ sơ đối tác', 'applications')],
+    'Nhập / xuất dữ liệu': [X('Đơn hàng', 'orders'), X('Doanh thu theo ngày', 'revenue'), X('Nhà hàng', 'restaurants'), X('Tài xế', 'shippers'),
+      X('Khách hàng', 'customers'), X('Thanh toán', 'payments'), X('Đối soát', 'settlements'), X('Tài khoản', 'users'), X('Hồ sơ đối tác', 'applications')]
+  };
+
   function head(title, subtitle, actions = '') {
-    return `<div class="page-toolbar"><div><h3>${title}</h3>${subtitle ? `<p class="muted">${subtitle}</p>` : ''}</div><div class="button-row">${actions}</div></div>`;
+    const exports = EXPORTS[title] && window.FDExport ? window.FDExport.menu(EXPORTS[title]) : '';
+    return `<div class="page-toolbar"><div><h3>${title}</h3>${subtitle ? `<p class="muted">${subtitle}</p>` : ''}</div><div class="button-row">${actions}${exports}</div></div>`;
   }
 
   /* ============ OVERVIEW ============ */
   async function overview(el) {
     el.innerHTML = loading;
-    const [dash, rep, refunds, tickets] = await Promise.allSettled([
+    const [dash, rep, refunds, tickets, apps] = await Promise.allSettled([
       api('/api/admin/dashboard'),
       api('/api/admin/manage/reports?days=14'),
       api('/api/admin/manage/refunds'),
-      api('/api/communications/support/tickets')
+      api('/api/communications/support/tickets'),
+      api('/api/admin/partners/applications?status=PENDING')
     ]);
     if (dash.status !== 'fulfilled') { el.innerHTML = `<div class="error-box">${esc(dash.reason.message)}</div>`; return; }
     const d = dash.value;
@@ -109,6 +128,7 @@
     const openTickets = tickets.status === 'fulfilled' ? tickets.value.items.filter(t => !['RESOLVED', 'CLOSED'].includes(t.status)) : [];
     const pendingRefunds = refunds.status === 'fulfilled' ? refunds.value.items.filter(x => x.status === 'PENDING') : [];
     const todos = [
+      { n: apps.status === 'fulfilled' ? apps.value.items.length : 0, text: 'hồ sơ đối tác chờ duyệt', go: 'applications', ico: '📝' },
       { n: o.pendingRestaurants, text: 'nhà hàng chờ duyệt', go: 'restaurants', ico: '🏪' },
       { n: pendingRefunds.length, text: 'yêu cầu hoàn tiền', go: 'payments', ico: '💸' },
       { n: openTickets.length, text: 'ticket hỗ trợ đang mở', go: 'support', ico: '🎧' }
@@ -803,6 +823,60 @@
     } catch (error) { el.innerHTML = `<div class="error-box">${esc(error.message)}</div>`; }
   }
 
+
+  /* ============ PARTNER APPLICATIONS ============ */
+  async function applications(el) {
+    const s = state.applications;
+    const title = 'Duyệt đối tác';
+    const subtitle = 'Hồ sơ đăng ký làm tài xế hoặc mở nhà hàng gửi từ trang chủ. Duyệt xong tài khoản mới đăng nhập được.';
+    el.innerHTML = head(title, subtitle) + loading;
+    try {
+      const qs = new URLSearchParams(Object.entries(s).filter(([, v]) => v)).toString();
+      const res = await api(`/api/admin/partners/applications${qs ? `?${qs}` : ''}`);
+      const c = res.counts || {};
+      el.innerHTML = `${head(title, subtitle)}
+        <div class="stat-grid">
+          ${statCard({ label: 'Chờ duyệt', value: num(c.PENDING || 0), icon: '⏳', tone: 'is-amber' })}
+          ${statCard({ label: 'Đã duyệt', value: num(c.APPROVED || 0), icon: '✅', tone: 'is-green' })}
+          ${statCard({ label: 'Từ chối', value: num(c.REJECTED || 0), icon: '⛔', tone: 'is-blue' })}
+        </div>
+        <div class="filter-bar">
+          <div class="pill-tabs">${[['', 'Tất cả'], ['PENDING', 'Chờ duyệt'], ['APPROVED', 'Đã duyệt'], ['REJECTED', 'Từ chối']].map(([v, l]) => `<button type="button" data-act="status" data-v="${v}" class="${s.status === v ? 'is-active' : ''}">${l}</button>`).join('')}</div>
+          <div class="pill-tabs">${[['', 'Mọi loại'], ['SHIPPER', '🛵 Tài xế'], ['RESTAURANT', '🏪 Nhà hàng']].map(([v, l]) => `<button type="button" data-act="type" data-v="${v}" class="${s.type === v ? 'is-active' : ''}">${l}</button>`).join('')}</div>
+        </div>
+        ${res.items.length ? `<div class="app-grid">${res.items.map(a => {
+    const p = a.payload;
+    const rows = a.type === 'SHIPPER'
+      ? [['Họ tên', esc(p.fullName)], ['CCCD', esc(p.identityNumber)], ['Phương tiện', esc([p.vehicleType, p.vehiclePlate].filter(Boolean).join(' · '))], ['GPLX', esc(p.drivingLicense || '—')], ['Khu vực', esc(p.city || '—')]]
+      : [['Chủ quán', esc(p.ownerName)], ['Địa chỉ', esc([p.address, p.ward, p.district, p.city].filter(Boolean).join(', '))], ['GPKD', esc(p.businessLicense || '—')], ['Đơn tối thiểu', vnd(p.minimumOrder || 0)]];
+    return `<article class="card app-card">
+            <header>${cell(esc(a.applicantName), `${a.type === 'SHIPPER' ? '🛵 Tài xế' : '🏪 Nhà hàng'} · #${a.id}`)}${chip(a.status)}</header>
+            ${kv([...rows, ['Liên hệ', `${esc(a.email)} · ${esc(a.phone)}`], ['Tài khoản', esc(a.username)], ['Gửi lúc', dt(a.createdAt)], ...(a.reviewNote ? [['Ghi chú duyệt', esc(a.reviewNote)]] : [])])}
+            ${a.status === 'PENDING' ? `<div class="button-row"><button class="primary-button compact-button" data-act="approve" data-id="${a.id}" data-type="${a.type}">✔ Duyệt</button><button class="secondary-button compact-button" data-act="reject" data-id="${a.id}">✖ Từ chối</button></div>` : ''}
+          </article>`;
+  }).join('')}</div>` : '<div class="empty-state">Chưa có hồ sơ nào phù hợp.</div>'}`;
+      bindClicks(el, {
+        status: d => { s.status = d.v; applications(el); },
+        type: d => { s.type = d.v; applications(el); },
+        approve: async d => {
+          let commission = 15;
+          if (d.type === 'RESTAURANT') {
+            const value = window.prompt('Tỷ lệ hoa hồng cho nhà hàng này (%)', '15');
+            if (value === null) return;
+            commission = Number(value);
+            if (!Number.isFinite(commission) || commission < 0 || commission > 100) { fd().toast('Hoa hồng phải từ 0 đến 100.', true); return; }
+          }
+          if (await act(() => api(`/api/admin/partners/applications/${d.id}/approve`, { method: 'POST', ...json({ commissionRate: commission }) }), 'Đã duyệt hồ sơ. Tài khoản đã kích hoạt.')) applications(el);
+        },
+        reject: async d => {
+          const note = window.prompt('Lý do từ chối (bắt buộc)');
+          if (!note || !note.trim()) return;
+          if (await act(() => api(`/api/admin/partners/applications/${d.id}/reject`, { method: 'POST', ...json({ note: note.trim() }) }), 'Đã từ chối hồ sơ.')) applications(el);
+        }
+      });
+    } catch (error) { el.innerHTML = `<div class="error-box">${esc(error.message)}</div>`; }
+  }
+
   /* ============ AUDIT ============ */
   async function audit(el) {
     const s = state.audit;
@@ -831,7 +905,7 @@
     } catch (error) { list.innerHTML = `<div class="error-box">${esc(error.message)}</div>`; }
   }
 
-  const RENDER = { overview, live, reports, orders, restaurants, shippers, customers, payments, settlements, promotions, banners, reviews, support, users, catalog, settings, data, audit };
+  const RENDER = { overview, live, reports, orders, applications, restaurants, shippers, customers, payments, settlements, promotions, banners, reviews, support, users, catalog, settings, data, audit };
 
   build();
   setInterval(() => { const clock = $('#adminClock'); if (clock) clock.textContent = new Date().toLocaleString('vi-VN'); }, 1000);

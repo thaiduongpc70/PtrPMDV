@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{restaurantId}}/menu-items?pageSize=100"
+method: GET
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+queryParams:
+  pageSize: "100"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('List owner menu items: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("new item is listed", () => pm.expect((json.items || json).some(i => i.id === Number(pm.collectionVariables.get('tmpItemId')))).to.be.true);
+    language: text/javascript
+order: 3000

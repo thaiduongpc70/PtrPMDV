@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/catalog/menu-items?sort=featured&page=1&pageSize=20"
+method: GET
+queryParams:
+  sort: featured
+  page: "1"
+  pageSize: "20"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+      const first = json.items?.[0];
+      if (first?.id) pm.collectionVariables.set('menuItemId', first.id);
+      if (first?.restaurantId) pm.collectionVariables.set('restaurantId', first.restaurantId);
+    language: text/javascript
+order: 4000

@@ -2299,7 +2299,11 @@
     });
     $('#loginForm').addEventListener('submit', event => {
       event.preventDefault();
-      login($('#loginIdentifier').value.trim(), $('#loginPassword').value).catch(error => setStatus(error.message, true));
+      login($('#loginIdentifier').value.trim(), $('#loginPassword').value).catch(error => setStatus({
+        'Account is PENDING': 'Hồ sơ đối tác của bạn đang chờ quản trị viên duyệt. Vui lòng quay lại sau.',
+        'Account is INACTIVE': 'Hồ sơ chưa được chấp thuận hoặc tài khoản đang tạm ngưng. Liên hệ hotro@foodgo.vn để biết thêm.',
+        'Account is LOCKED': 'Tài khoản đã bị khóa. Liên hệ hotro@foodgo.vn để được hỗ trợ.'
+      }[error.message] || error.message, true));
     });
     $('#registerForm').addEventListener('submit', async event => {
       event.preventDefault();
@@ -2374,7 +2378,6 @@
       showSubView('customer', 'catalog');
     });
     $('#refreshCustomerButton').addEventListener('click', () => Promise.allSettled([loadPublicData(), loadAddresses(), loadCart(), loadCustomerOrders()]));
-    $('#loadAddressesButton').addEventListener('click', () => loadAddresses());
     $('#addressForm').addEventListener('submit', createAddress);
     $('#loadCartButton').addEventListener('click', () => {
       showSubView('customer', 'cart');
@@ -2460,7 +2463,7 @@
     });
   }
 
-  window.FD = { loadOwnerRestaurants, api, state, escapeHtml, formatMoney, statusLabel, setStatus, toast, openAuth, roleOf, roleLabel, showScreen, showSubView, photo, foodEmoji, activityLabel, paymentLabel, loadOwnerMenu,  viewCustomerOrder, viewRestaurantOrder, loadShipperDashboard };
+  window.FD = { loadAddresses, loadOwnerRestaurants, api, state, escapeHtml, formatMoney, statusLabel, setStatus, toast, openAuth, roleOf, roleLabel, showScreen, showSubView, photo, foodEmoji, activityLabel, paymentLabel, loadOwnerMenu,  viewCustomerOrder, viewRestaurantOrder, loadShipperDashboard };
   bind();
   window.FDLive?.mountLocationPicker();
   renderSession();

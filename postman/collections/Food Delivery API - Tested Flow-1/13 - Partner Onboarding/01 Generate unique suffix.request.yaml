@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/health"
+method: GET
+headers:
+  Content-Type: application/json
+auth:
+  type: noauth
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set('pSuffix', String(Date.now()).slice(-9));
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Generate unique suffix: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+    language: text/javascript
+order: 1000

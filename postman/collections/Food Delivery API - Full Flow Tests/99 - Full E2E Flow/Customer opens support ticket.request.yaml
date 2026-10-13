@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/api/communications/support/tickets"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{customerToken}}
+body:
+  type: json
+  content: |-
+    {
+      "orderId": {{orderId}},
+      "subject": "Postman E2E ticket",
+      "category": "ORDER",
+      "description": "Kiểm tra luồng hỗ trợ từ Postman."
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Customer opens support ticket: HTTP 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));
+      { const v = (json.id); if (v !== undefined && v !== null) pm.collectionVariables.set('ticketId', v); }
+    language: text/javascript
+order: 62000

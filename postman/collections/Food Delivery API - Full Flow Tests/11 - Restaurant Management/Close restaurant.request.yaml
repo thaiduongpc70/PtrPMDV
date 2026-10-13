@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/manage/{{restaurantId}}/availability"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: json
+  content: |-
+    {
+      "open": false
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Close restaurant: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("status INACTIVE", () => pm.expect(json.status).to.eql("INACTIVE"));
+    language: text/javascript
+order: 8000

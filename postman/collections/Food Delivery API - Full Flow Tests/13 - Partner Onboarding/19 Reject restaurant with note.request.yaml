@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/partners/applications/{{restRejectAppId}}/reject"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: json
+  content: |-
+    {
+      "note": "Thiếu giấy phép kinh doanh"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Reject restaurant with note: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+    language: text/javascript
+order: 19000

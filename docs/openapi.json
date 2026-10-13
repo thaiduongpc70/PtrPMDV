@@ -5,39 +5,2333 @@
     "version": "0.9.0",
     "description": "API for customer ordering, restaurant operations, shipper delivery, payments and administration."
   },
-  "servers": [{ "url": "http://localhost:3000" }],
+  "servers": [
+    {
+      "url": "http://localhost:3000"
+    }
+  ],
   "tags": [
-    { "name": "Health" },
-    { "name": "Auth" },
-    { "name": "Catalog" },
-    { "name": "Jobs" },
-    { "name": "Delivery" },
-    { "name": "Payments" },
-    { "name": "Communication" }
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Catalog"
+    },
+    {
+      "name": "Jobs"
+    },
+    {
+      "name": "Delivery"
+    },
+    {
+      "name": "Payments"
+    },
+    {
+      "name": "Communication"
+    },
+    {
+      "name": "Partners",
+      "description": "Đăng ký tài xế/nhà hàng và duyệt hồ sơ"
+    },
+    {
+      "name": "Export",
+      "description": "Xuất CSV/JSON (web dựng PDF từ JSON)"
+    },
+    {
+      "name": "Admin Management",
+      "description": "Quản trị toàn hệ thống"
+    },
+    {
+      "name": "Restaurant Management",
+      "description": "Quản lý của chủ nhà hàng"
+    },
+    {
+      "name": "Live Delivery",
+      "description": "Giao hàng thời gian thực, GPS mô phỏng"
+    }
   ],
   "paths": {
-    "/health/live": { "get": { "tags": ["Health"], "responses": { "200": { "description": "Service is alive" } } } },
-    "/health/ready": { "get": { "tags": ["Health"], "responses": { "200": { "description": "Database is ready" }, "503": { "description": "Database is unavailable" } } } },
-    "/api/auth/login": { "post": { "tags": ["Auth"], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } } }, "responses": { "200": { "description": "JWT session" }, "401": { "description": "Invalid credentials" } } } },
-    "/api/auth/me": { "get": { "tags": ["Auth"], "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Current user" } } } },
-    "/api/docs": { "get": { "tags": ["Health"], "responses": { "200": { "description": "Swagger UI" } } } },
-    "/api/openapi.json": { "get": { "tags": ["Health"], "responses": { "200": { "description": "OpenAPI contract" } } } },
-    "/api/catalog/restaurants": { "get": { "tags": ["Catalog"], "parameters": [{ "name": "keyword", "in": "query", "schema": { "type": "string" } }, { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } }], "responses": { "200": { "description": "Restaurant page" } } } },
-    "/api/catalog/menu-items": { "get": { "tags": ["Catalog"], "responses": { "200": { "description": "Menu item page" } } } },
-    "/api/jobs/imports": { "post": { "tags": ["Jobs"], "security": [{ "bearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportRequest" } } } }, "responses": { "201": { "description": "Import result" } } }, "get": { "tags": ["Jobs"], "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Import jobs" } } } },
-    "/api/jobs/exports": { "post": { "tags": ["Jobs"], "security": [{ "bearerAuth": [] }], "responses": { "201": { "description": "Export job" } } }, "get": { "tags": ["Jobs"], "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Export jobs" } } } },
-    "/api/shippers/assignments": { "get": { "tags": ["Delivery"], "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Assignments" } } } },
-    "/api/shippers/locations": { "post": { "tags": ["Delivery"], "security": [{ "bearerAuth": [] }], "responses": { "201": { "description": "GPS point" } } } },
-    "/api/payments/orders/{orderId}": { "get": { "tags": ["Payments"], "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Payments" } } } },
-    "/api/communications/chat/sessions": { "get": { "tags": ["Communication"], "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Chat sessions" } } }, "post": { "tags": ["Communication"], "security": [{ "bearerAuth": [] }], "responses": { "201": { "description": "Chat session" } } } }
+    "/health/live": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Service is alive"
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Database is ready"
+          },
+          "503": {
+            "description": "Database is unavailable"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JWT session"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user"
+          }
+        }
+      }
+    },
+    "/api/docs": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Swagger UI"
+          }
+        }
+      }
+    },
+    "/api/openapi.json": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "OpenAPI contract"
+          }
+        }
+      }
+    },
+    "/api/catalog/restaurants": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restaurant page"
+          }
+        }
+      }
+    },
+    "/api/catalog/menu-items": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "responses": {
+          "200": {
+            "description": "Menu item page"
+          }
+        }
+      }
+    },
+    "/api/jobs/imports": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Import result"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Import jobs"
+          }
+        }
+      }
+    },
+    "/api/jobs/exports": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Export job"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Export jobs"
+          }
+        }
+      }
+    },
+    "/api/shippers/assignments": {
+      "get": {
+        "tags": [
+          "Delivery"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assignments"
+          }
+        }
+      }
+    },
+    "/api/shippers/locations": {
+      "post": {
+        "tags": [
+          "Live Delivery"
+        ],
+        "summary": "Shipper gửi vị trí GPS (mô phỏng)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Đã lưu điểm GPS"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "deliveryId",
+                  "latitude",
+                  "longitude"
+                ],
+                "properties": {
+                  "deliveryId": {
+                    "type": "integer"
+                  },
+                  "latitude": {
+                    "type": "number",
+                    "example": 10.7769
+                  },
+                  "longitude": {
+                    "type": "number",
+                    "example": 106.7009
+                  },
+                  "speed": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payments/orders/{orderId}": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payments"
+          }
+        }
+      }
+    },
+    "/api/communications/chat/sessions": {
+      "get": {
+        "tags": [
+          "Communication"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat sessions"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Communication"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Chat session"
+          }
+        }
+      }
+    },
+    "/api/partners/register/shipper": {
+      "post": {
+        "tags": [
+          "Partners"
+        ],
+        "summary": "Đăng ký làm tài xế (tài khoản ở trạng thái PENDING)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipperRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Đã gửi hồ sơ, chờ admin duyệt"
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ"
+          },
+          "409": {
+            "description": "Username, email, SĐT hoặc CCCD đã tồn tại"
+          }
+        }
+      }
+    },
+    "/api/partners/register/restaurant": {
+      "post": {
+        "tags": [
+          "Partners"
+        ],
+        "summary": "Đăng ký nhà hàng đối tác (nhà hàng ở trạng thái PENDING)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestaurantRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Đã gửi hồ sơ, chờ admin duyệt"
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ"
+          },
+          "409": {
+            "description": "Username, email, SĐT hoặc CCCD đã tồn tại"
+          }
+        }
+      }
+    },
+    "/api/admin/partners/applications": {
+      "get": {
+        "tags": [
+          "Partners"
+        ],
+        "summary": "Danh sách hồ sơ đối tác (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "PENDING | APPROVED | REJECTED",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "SHIPPER | RESTAURANT",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/partners/applications/{applicationId}/approve": {
+      "post": {
+        "tags": [
+          "Partners"
+        ],
+        "summary": "Duyệt hồ sơ: kích hoạt tài khoản, xác minh giấy tờ, tạo ví",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Đã duyệt"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          },
+          "404": {
+            "description": "Không tìm thấy hồ sơ"
+          },
+          "409": {
+            "description": "Hồ sơ đã được xử lý"
+          }
+        },
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "commissionRate": {
+                    "type": "number",
+                    "example": 15,
+                    "description": "Hoa hồng % (chỉ nhà hàng)"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/partners/applications/{applicationId}/reject": {
+      "post": {
+        "tags": [
+          "Partners"
+        ],
+        "summary": "Từ chối hồ sơ (bắt buộc lý do)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Đã từ chối"
+          },
+          "400": {
+            "description": "Thiếu lý do"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          },
+          "404": {
+            "description": "Không tìm thấy hồ sơ"
+          },
+          "409": {
+            "description": "Hồ sơ đã được xử lý"
+          }
+        },
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "note"
+                ],
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "example": "Thiếu giấy phép kinh doanh"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/export/{dataset}": {
+      "get": {
+        "tags": [
+          "Export"
+        ],
+        "summary": "Xuất dữ liệu quản trị (tối đa 5.000 dòng)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON {title, columns, rows} hoặc file CSV",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportDataset"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          },
+          "404": {
+            "description": "Dataset không tồn tại"
+          }
+        },
+        "parameters": [
+          {
+            "name": "dataset",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "orders",
+                "restaurants",
+                "shippers",
+                "customers",
+                "users",
+                "payments",
+                "settlements",
+                "revenue",
+                "audit",
+                "applications"
+              ]
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "description": "csv để tải file CSV (UTF-8 BOM); bỏ trống để nhận JSON",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Từ ngày YYYY-MM-DD",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "Đến ngày YYYY-MM-DD",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ]
+      }
+    },
+    "/api/restaurant/export/{restaurantId}/{dataset}": {
+      "get": {
+        "tags": [
+          "Export"
+        ],
+        "summary": "Xuất dữ liệu của một nhà hàng (chủ quán hoặc admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON {title, columns, rows} hoặc file CSV",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportDataset"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          },
+          "404": {
+            "description": "Dataset không tồn tại"
+          }
+        },
+        "parameters": [
+          {
+            "name": "restaurantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "dataset",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "orders",
+                "menu",
+                "revenue",
+                "settlements"
+              ]
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "description": "csv để tải file CSV (UTF-8 BOM); bỏ trống để nhận JSON",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Từ ngày YYYY-MM-DD",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "Đến ngày YYYY-MM-DD",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/orders": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Danh sách đơn hàng toàn hệ thống",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Trang",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Số dòng/trang (tối đa 100)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Trạng thái đơn",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "paymentStatus",
+            "in": "query",
+            "required": false,
+            "description": "Trạng thái thanh toán",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "restaurantId",
+            "in": "query",
+            "required": false,
+            "description": "Nhà hàng",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Mã đơn / tên / SĐT",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/orders/{orderId}": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Chi tiết đơn: món, lịch sử trạng thái, thanh toán, giao hàng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/settlements": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Danh sách đối soát nhà hàng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        }
+      }
+    },
+    "/api/admin/manage/settlements/{settlementId}": {
+      "patch": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Cập nhật trạng thái đối soát (PROCESSING | SETTLED | FAILED)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "settlementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/customers": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Danh sách khách hàng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Trang",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Số dòng/trang (tối đa 100)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Từ khóa",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/shippers": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Danh sách tài xế",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Trạng thái sẵn sàng",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/shippers/{shipperId}/status": {
+      "patch": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Đổi trạng thái tài xế",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "shipperId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/shippers/{shipperId}/documents": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Giấy tờ của tài xế",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "shipperId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/shipper-documents/{documentId}/verify": {
+      "post": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Xác minh giấy tờ tài xế",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/payments": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Thanh toán và thống kê theo phương thức",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Trang",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Số dòng/trang (tối đa 100)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Trạng thái",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "method",
+            "in": "query",
+            "required": false,
+            "description": "Phương thức",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/refunds": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Yêu cầu hoàn tiền",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        }
+      }
+    },
+    "/api/admin/manage/refunds/{refundId}": {
+      "patch": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Duyệt / từ chối hoàn tiền",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "refundId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/promotions": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Danh sách khuyến mãi",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Tạo mã khuyến mãi toàn hệ thống",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Đã tạo"
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        }
+      }
+    },
+    "/api/admin/manage/promotions/{promotionId}": {
+      "patch": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Sửa / bật tắt khuyến mãi",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "promotionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Xóa khuyến mãi",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "promotionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/banners": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Danh sách banner",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        }
+      }
+    },
+    "/api/admin/manage/reviews": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Kiểm duyệt đánh giá",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Trang",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Số dòng/trang (tối đa 100)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "maxRating",
+            "in": "query",
+            "required": false,
+            "description": "Chỉ lấy đánh giá ≤ số sao",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/reviews/{reviewId}": {
+      "delete": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Gỡ đánh giá vi phạm",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/reports": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Báo cáo doanh thu, top nhà hàng/món, KPI giao hàng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "description": "Số ngày (1-180)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/manage/zones": {
+      "get": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Khu vực giao hàng và phí",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Tạo khu vực giao hàng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Đã tạo"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        }
+      }
+    },
+    "/api/admin/manage/zones/{zoneId}": {
+      "patch": {
+        "tags": [
+          "Admin Management"
+        ],
+        "summary": "Sửa khu vực giao hàng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "zoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/restaurant/manage/{restaurantId}/stats": {
+      "get": {
+        "tags": [
+          "Restaurant Management"
+        ],
+        "summary": "Thống kê doanh thu, đơn, món bán chạy",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "restaurantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "description": "Số ngày",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/restaurant/manage/{restaurantId}/orders": {
+      "get": {
+        "tags": [
+          "Restaurant Management"
+        ],
+        "summary": "Lịch sử đơn của nhà hàng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "restaurantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Trang",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Số dòng/trang (tối đa 100)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Trạng thái",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Mã đơn / khách",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Từ ngày",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "Đến ngày",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/restaurant/manage/{restaurantId}/reviews": {
+      "get": {
+        "tags": [
+          "Restaurant Management"
+        ],
+        "summary": "Đánh giá của khách",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "restaurantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/restaurant/manage/{restaurantId}/reviews/{reviewId}/reply": {
+      "post": {
+        "tags": [
+          "Restaurant Management"
+        ],
+        "summary": "Phản hồi đánh giá",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "restaurantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/restaurant/manage/{restaurantId}/hours": {
+      "get": {
+        "tags": [
+          "Restaurant Management"
+        ],
+        "summary": "Giờ mở cửa theo tuần",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "restaurantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Restaurant Management"
+        ],
+        "summary": "Cập nhật giờ mở cửa (đủ 7 ngày)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "restaurantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/restaurant/manage/{restaurantId}/availability": {
+      "patch": {
+        "tags": [
+          "Restaurant Management"
+        ],
+        "summary": "Mở / đóng quán nhanh",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "restaurantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/deliveries/available-shippers": {
+      "get": {
+        "tags": [
+          "Live Delivery"
+        ],
+        "summary": "Tài xế đang sẵn sàng để gán đơn",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        }
+      }
+    },
+    "/api/deliveries/active": {
+      "get": {
+        "tags": [
+          "Live Delivery"
+        ],
+        "summary": "Các chuyến đang giao kèm vị trí GPS mới nhất (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        }
+      }
+    },
+    "/api/deliveries/{deliveryId}/locations": {
+      "get": {
+        "tags": [
+          "Live Delivery"
+        ],
+        "summary": "Các điểm GPS của một chuyến giao",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deliveryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/payments/orders/{orderId}/mock-pay": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Cổng thanh toán giả lập",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn"
+          },
+          "403": {
+            "description": "Không đủ quyền"
+          }
+        },
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "PAID",
+                      "FAILED"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   },
   "components": {
-    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" } },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
     "schemas": {
-      "Error": { "type": "object", "required": ["message"], "properties": { "message": { "type": "string" } } },
-      "Job": { "type": "object", "properties": { "id": { "type": "integer" }, "status": { "type": "string" }, "createdAt": { "type": "string", "format": "date-time" } } },
-      "LoginRequest": { "type": "object", "required": ["emailOrUsername", "password"], "properties": { "emailOrUsername": { "type": "string" }, "password": { "type": "string", "format": "password" } } },
-      "ImportRequest": { "type": "object", "required": ["jobType", "content"], "properties": { "jobType": { "type": "string", "enum": ["MENU_ITEMS", "RESTAURANTS"] }, "format": { "type": "string", "enum": ["CSV", "EXCEL"], "description": "EXCEL accepts SpreadsheetML .xls/.xml text in this offline build." }, "fileName": { "type": "string" }, "content": { "type": "string" } } }
+      "Error": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "emailOrUsername",
+          "password"
+        ],
+        "properties": {
+          "emailOrUsername": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "format": "password"
+          }
+        }
+      },
+      "ImportRequest": {
+        "type": "object",
+        "required": [
+          "jobType",
+          "content"
+        ],
+        "properties": {
+          "jobType": {
+            "type": "string",
+            "enum": [
+              "MENU_ITEMS",
+              "RESTAURANTS"
+            ]
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "CSV",
+              "EXCEL"
+            ],
+            "description": "EXCEL accepts SpreadsheetML .xls/.xml text in this offline build."
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "ShipperRegistration": {
+        "type": "object",
+        "required": [
+          "fullName",
+          "username",
+          "email",
+          "phone",
+          "password",
+          "identityNumber"
+        ],
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "example": "taixe.minh"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "phone": {
+            "type": "string",
+            "example": "0901234567"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          },
+          "identityNumber": {
+            "type": "string",
+            "example": "079123456789"
+          },
+          "vehicleType": {
+            "type": "string",
+            "enum": [
+              "MOTORBIKE",
+              "BICYCLE",
+              "CAR"
+            ]
+          },
+          "vehiclePlate": {
+            "type": "string",
+            "example": "59A1-123.45"
+          },
+          "drivingLicense": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "RestaurantRegistration": {
+        "type": "object",
+        "required": [
+          "ownerName",
+          "username",
+          "email",
+          "phone",
+          "password",
+          "restaurantName",
+          "address",
+          "city"
+        ],
+        "properties": {
+          "ownerName": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "example": "taixe.minh"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "phone": {
+            "type": "string",
+            "example": "0901234567"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          },
+          "restaurantName": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "integer"
+          },
+          "restaurantPhone": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "ward": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string",
+            "example": "TP.HCM"
+          },
+          "openingTime": {
+            "type": "string",
+            "example": "08:00"
+          },
+          "closingTime": {
+            "type": "string",
+            "example": "22:00"
+          },
+          "minimumOrder": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "businessLicense": {
+            "type": "string"
+          }
+        }
+      },
+      "ExportDataset": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "number",
+                    "money",
+                    "date",
+                    "datetime"
+                  ]
+                }
+              }
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
     }
   }
 }

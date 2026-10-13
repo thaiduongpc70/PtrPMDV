@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "emailOrUsername": "{{regUser}}",
+      "password": "duong2k5"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Restored user can login: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+    language: text/javascript
+order: 5000

@@ -2,11 +2,20 @@ $kind: http-request
 url: "{{baseUrl}}/api/shippers/availability"
 method: PATCH
 headers:
-  Content-Type: application/json
+  Content-Type: "application/json"
+  Authorization: "Bearer {{shipperToken}}"
 body:
   type: text
   content: |-
     {
       "availabilityStatus": "AVAILABLE"
     }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Update availability: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+    language: text/javascript
 order: 2000

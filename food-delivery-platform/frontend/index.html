@@ -13,9 +13,12 @@
     <script src="./src/live.js" defer></script>
     <script src="./src/app.js" defer></script>
     <script src="./src/ui.js" defer></script>
+    <script src="./src/address.js" defer></script>
     <script src="./src/admin.js" defer></script>
     <script src="./src/restaurant.js" defer></script>
     <script src="./src/widgets.js" defer></script>
+    <script src="./src/export.js" defer></script>
+    <script src="./src/partner.js" defer></script>
   </head>
   <body data-screen="customer" data-auth="guest" data-role="guest">
     <div class="promo-strip" data-storefront>
@@ -152,7 +155,7 @@
               </details>
               <form class="stacked-form checkout-form" id="checkoutForm">
                 <label>
-                  Địa chỉ giao hàng
+                  <span class="label-line">Địa chỉ giao hàng <button type="button" class="text-button" data-change-address>Thay đổi / thêm địa chỉ</button></span>
                   <select id="checkoutAddress"></select>
                 </label>
                 <label>
@@ -538,6 +541,19 @@
       </section>
     </main>
 
+    <section class="partner-cta" aria-label="Hợp tác cùng FoodGo">
+      <div class="partner-cta-card">
+        <span class="partner-cta-icon">🏪</span>
+        <div><h3>Bạn có quán ăn?</h3><p>Đưa món ngon của bạn đến hàng nghìn khách hàng quanh đây. Đăng ký miễn phí, lên sàn trong 24 giờ.</p></div>
+        <button class="primary-button" type="button" data-partner="restaurant">Đăng ký nhà hàng</button>
+      </div>
+      <div class="partner-cta-card is-alt">
+        <span class="partner-cta-icon">🛵</span>
+        <div><h3>Trở thành tài xế FoodGo</h3><p>Chủ động thời gian, nhận thu nhập theo từng chuyến giao. Chỉ cần xe máy và CCCD.</p></div>
+        <button class="secondary-button" type="button" data-partner="shipper">Đăng ký tài xế</button>
+      </div>
+    </section>
+
     <footer class="app-footer">
       <div class="footer-grid">
         <div class="footer-about">
@@ -561,7 +577,7 @@
         </div>
         <div>
           <h4>Hợp tác</h4>
-          <a href="#" data-stub>Đăng ký nhà hàng</a><a href="#" data-stub>Trở thành tài xế</a><a href="/api/docs" target="_blank" rel="noreferrer">API / Swagger</a><a href="/docs/user-guide.md" target="_blank" rel="noreferrer">Hướng dẫn</a>
+          <a href="#" data-partner="restaurant">Đăng ký nhà hàng</a><a href="#" data-partner="shipper">Trở thành tài xế</a><a href="/api/docs" target="_blank" rel="noreferrer">API / Swagger</a><a href="/docs/user-guide.md" target="_blank" rel="noreferrer">Hướng dẫn</a>
         </div>
         <div class="footer-contact">
           <h4>Liên hệ</h4>
@@ -651,6 +667,7 @@
             <label>Email <input id="regEmail" type="email" required placeholder="ban@email.com"></label>
             <label>Mật khẩu <input id="regPassword" type="password" required minlength="8" placeholder="Tối thiểu 8 ký tự"></label>
             <button class="primary-button" type="submit">Đăng ký</button>
+            <p class="partner-links">Bạn là chủ quán hoặc muốn kiếm thêm thu nhập? <a href="#" data-partner="restaurant">Đăng ký nhà hàng</a> · <a href="#" data-partner="shipper">Trở thành tài xế</a></p>
           </form>
           <p class="status-line" id="authStatus" role="status"></p>
           <button class="secondary-button" type="button" id="loadMeButton" hidden></button>

@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/me"
+method: GET
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{customerToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Current user: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("me is minh.anh", () => pm.expect(json.username).to.eql("minh.anh"));
+    language: text/javascript
+order: 10000

@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{restaurantId}}/promotions"
+method: GET
+headers:
+  Content-Type: "application/json"
+  Authorization: "Bearer {{restaurantToken}}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Promotions: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+    language: text/javascript
+order: 12000

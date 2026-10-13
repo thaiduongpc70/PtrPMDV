@@ -14,6 +14,8 @@
     "seed:real": "node scripts/seed-realistic.mjs",
     "seed:demo": "node scripts/seed-realistic.mjs",
     "seed:history": "node scripts/seed-history.mjs",
+    "test:postman": "node scripts/run-postman.mjs",
+    "test:e2e": "node scripts/run-postman.mjs --folder \"99 - Full E2E Flow\"",
     "test": "node --import ./scripts/setup-test-env.mjs --test",
     "test:coverage": "node --experimental-test-coverage --import ./scripts/setup-test-env.mjs --test",
     "smoke": "node scripts/smoke.mjs",
@@ -28,5 +30,9 @@
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
     "mysql2": "^3.9.7"
+  },
+  "devDependencies": {
+    "newman": "^6.2.3",
+    "yaml": "^2.9.1"
   }
 }

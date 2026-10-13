@@ -686,7 +686,19 @@
     return { refresh, stop: () => clearInterval(timer) };
   }
 
+  function createPicker(container, initial, onPick) {
+    const map = new MockMap(container, {
+      onPick: point => {
+        map.setMarker('customer', { point, kind: 'customer', title: 'Vị trí đã chọn' });
+        onPick(point);
+      }
+    });
+    if (initial) map.setMarker('customer', { point: initial, kind: 'customer', title: 'Vị trí đã chọn' });
+    return map;
+  }
+
   window.FDLive = {
+    createPicker,
     onCustomerOrder,
     onRestaurantOrder,
     onShipperDeliveries,

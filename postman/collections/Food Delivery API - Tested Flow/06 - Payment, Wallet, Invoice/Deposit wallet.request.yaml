@@ -2,11 +2,20 @@ $kind: http-request
 url: "{{baseUrl}}/api/payments/wallet/deposit"
 method: POST
 headers:
-  Content-Type: application/json
+  Content-Type: "application/json"
+  Authorization: "Bearer {{customerToken}}"
 body:
   type: text
   content: |-
     {
       "amount": 100000
     }
-order: 5000
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Deposit wallet: HTTP 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));
+    language: text/javascript
+order: 7000

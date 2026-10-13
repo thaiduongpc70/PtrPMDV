@@ -1,0 +1,1165 @@
+{
+  "id": "20261013-110710",
+  "startedAt": "2026-10-13T04:07:10.961Z",
+  "durationMs": 10180,
+  "scope": "99 - Full E2E Flow",
+  "baseUrl": "http://localhost:3000",
+  "requests": 71,
+  "assertions": 110,
+  "failedAssertions": 0,
+  "requestErrors": 0,
+  "result": "PASSED",
+  "failures": [],
+  "executions": [
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Health live",
+      "method": "GET",
+      "url": "http://localhost:3000/health/live",
+      "status": 200,
+      "timeMs": 16,
+      "assertions": [
+        {
+          "name": "Health live: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "liveness ok",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Health ready",
+      "method": "GET",
+      "url": "http://localhost:3000/health/ready",
+      "status": 200,
+      "timeMs": 6,
+      "assertions": [
+        {
+          "name": "Health ready: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "database up",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Login customer",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/login",
+      "status": 200,
+      "timeMs": 59,
+      "assertions": [
+        {
+          "name": "Login customer: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "role is CUSTOMER",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Login restaurant",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/login",
+      "status": 200,
+      "timeMs": 61,
+      "assertions": [
+        {
+          "name": "Login restaurant: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "role is RESTAURANT",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Login shipper",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/login",
+      "status": 200,
+      "timeMs": 46,
+      "assertions": [
+        {
+          "name": "Login shipper: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "role is SHIPPER",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Login admin",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/login",
+      "status": 200,
+      "timeMs": 50,
+      "assertions": [
+        {
+          "name": "Login admin: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "role is ADMIN",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Wrong password rejected",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/login",
+      "status": 401,
+      "timeMs": 48,
+      "assertions": [
+        {
+          "name": "Wrong password rejected: HTTP 401",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Protected API requires token",
+      "method": "GET",
+      "url": "http://localhost:3000/api/customer/addresses",
+      "status": 401,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Protected API requires token: HTTP 401",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Refresh token",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/refresh",
+      "status": 200,
+      "timeMs": 16,
+      "assertions": [
+        {
+          "name": "Refresh token: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "new access token",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Register new customer",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/register/customer",
+      "status": 201,
+      "timeMs": 71,
+      "assertions": [
+        {
+          "name": "Register new customer: HTTP 201",
+          "passed": true
+        },
+        {
+          "name": "registered as CUSTOMER",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Duplicate registration rejected",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/register/customer",
+      "status": 409,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Duplicate registration rejected: HTTP 409",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "New customer adds first address",
+      "method": "POST",
+      "url": "http://localhost:3000/api/customer/addresses",
+      "status": 201,
+      "timeMs": 10,
+      "assertions": [
+        {
+          "name": "New customer adds first address: HTTP 201",
+          "passed": true
+        },
+        {
+          "name": "first address becomes default",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "New customer lists addresses",
+      "method": "GET",
+      "url": "http://localhost:3000/api/customer/addresses",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "New customer lists addresses: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "exactly one address",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Public categories",
+      "method": "GET",
+      "url": "http://localhost:3000/api/catalog/restaurant-categories",
+      "status": 200,
+      "timeMs": 17,
+      "assertions": [
+        {
+          "name": "Public categories: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "categories exist",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Public restaurants",
+      "method": "GET",
+      "url": "http://localhost:3000/api/catalog/restaurants?limit=5",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Public restaurants: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "restaurants exist",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Public banners",
+      "method": "GET",
+      "url": "http://localhost:3000/api/catalog/banners",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Public banners: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Owner restaurant",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/restaurants",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Owner restaurant: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Public menu",
+      "method": "GET",
+      "url": "http://localhost:3000/api/catalog/restaurants/22/menu",
+      "status": 200,
+      "timeMs": 10,
+      "assertions": [
+        {
+          "name": "Public menu: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Owner menu items",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/restaurants/22/menu-items?pageSize=5",
+      "status": 200,
+      "timeMs": 6,
+      "assertions": [
+        {
+          "name": "Owner menu items: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Customer default address",
+      "method": "GET",
+      "url": "http://localhost:3000/api/customer/addresses",
+      "status": 200,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Customer default address: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Add item to cart",
+      "method": "POST",
+      "url": "http://localhost:3000/api/customer/cart/items",
+      "status": 201,
+      "timeMs": 13,
+      "assertions": [
+        {
+          "name": "Add item to cart: HTTP 200/201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Get cart",
+      "method": "GET",
+      "url": "http://localhost:3000/api/customer/cart?restaurantId=22",
+      "status": 200,
+      "timeMs": 6,
+      "assertions": [
+        {
+          "name": "Get cart: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "cart has items",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Checkout (online payment)",
+      "method": "POST",
+      "url": "http://localhost:3000/api/customer/orders/checkout",
+      "status": 201,
+      "timeMs": 19,
+      "assertions": [
+        {
+          "name": "Checkout (online payment): HTTP 200/201",
+          "passed": true
+        },
+        {
+          "name": "order starts PENDING",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Order detail (customer)",
+      "method": "GET",
+      "url": "http://localhost:3000/api/customer/orders/575",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Order detail (customer): HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "items and total present",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Payments before paying",
+      "method": "GET",
+      "url": "http://localhost:3000/api/payments/orders/575",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Payments before paying: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "payment pending",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Mock gateway pay",
+      "method": "POST",
+      "url": "http://localhost:3000/api/payments/orders/575/mock-pay",
+      "status": 200,
+      "timeMs": 9,
+      "assertions": [
+        {
+          "name": "Mock gateway pay: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "payment PAID",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Order is paid",
+      "method": "GET",
+      "url": "http://localhost:3000/api/customer/orders/575",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Order is paid: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "order paymentStatus PAID",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Kitchen sees the order",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/orders",
+      "status": 200,
+      "timeMs": 8,
+      "assertions": [
+        {
+          "name": "Kitchen sees the order: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "order is in the kitchen queue",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Restaurant confirms",
+      "method": "POST",
+      "url": "http://localhost:3000/api/restaurant/orders/575/confirm",
+      "status": 200,
+      "timeMs": 21,
+      "assertions": [
+        {
+          "name": "Restaurant confirms: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Restaurant starts preparing",
+      "method": "POST",
+      "url": "http://localhost:3000/api/restaurant/orders/575/prepare",
+      "status": 200,
+      "timeMs": 11,
+      "assertions": [
+        {
+          "name": "Restaurant starts preparing: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Restaurant marks ready",
+      "method": "POST",
+      "url": "http://localhost:3000/api/restaurant/orders/575/ready",
+      "status": 200,
+      "timeMs": 16,
+      "assertions": [
+        {
+          "name": "Restaurant marks ready: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Shipper goes available",
+      "method": "PATCH",
+      "url": "http://localhost:3000/api/shippers/availability",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Shipper goes available: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Restaurant lists available shippers",
+      "method": "GET",
+      "url": "http://localhost:3000/api/deliveries/available-shippers",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Restaurant lists available shippers: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "a shipper is available",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Restaurant assigns shipper",
+      "method": "POST",
+      "url": "http://localhost:3000/api/deliveries/assign",
+      "status": 201,
+      "timeMs": 12,
+      "assertions": [
+        {
+          "name": "Restaurant assigns shipper: HTTP 201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Shipper sees assignment",
+      "method": "GET",
+      "url": "http://localhost:3000/api/shippers/assignments",
+      "status": 200,
+      "timeMs": 6,
+      "assertions": [
+        {
+          "name": "Shipper sees assignment: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "assignment offered",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Shipper accepts assignment",
+      "method": "POST",
+      "url": "http://localhost:3000/api/shippers/assignments/20/accept",
+      "status": 200,
+      "timeMs": 13,
+      "assertions": [
+        {
+          "name": "Shipper accepts assignment: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Customer sees delivery",
+      "method": "GET",
+      "url": "http://localhost:3000/api/deliveries/order/575",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Customer sees delivery: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "delivery ACCEPTED",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Shipper sends GPS",
+      "method": "POST",
+      "url": "http://localhost:3000/api/shippers/locations",
+      "status": 201,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Shipper sends GPS: HTTP 201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Customer reads tracking points",
+      "method": "GET",
+      "url": "http://localhost:3000/api/deliveries/492/locations",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Customer reads tracking points: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "at least one GPS point",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Admin sees live delivery",
+      "method": "GET",
+      "url": "http://localhost:3000/api/deliveries/active",
+      "status": 200,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Admin sees live delivery: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "delivery visible on admin map",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Open chat session",
+      "method": "POST",
+      "url": "http://localhost:3000/api/communications/chat/sessions",
+      "status": 201,
+      "timeMs": 11,
+      "assertions": [
+        {
+          "name": "Open chat session: HTTP 200/201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Customer sends chat message",
+      "method": "POST",
+      "url": "http://localhost:3000/api/communications/chat/sessions/21/messages",
+      "status": 201,
+      "timeMs": 6,
+      "assertions": [
+        {
+          "name": "Customer sends chat message: HTTP 201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Restaurant reads chat",
+      "method": "GET",
+      "url": "http://localhost:3000/api/communications/chat/sessions/21/messages",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Restaurant reads chat: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "message visible to restaurant",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Shipper picked up",
+      "method": "POST",
+      "url": "http://localhost:3000/api/shippers/deliveries/492/status",
+      "status": 200,
+      "timeMs": 12,
+      "assertions": [
+        {
+          "name": "Shipper picked up: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Shipper delivering",
+      "method": "POST",
+      "url": "http://localhost:3000/api/shippers/deliveries/492/status",
+      "status": 200,
+      "timeMs": 12,
+      "assertions": [
+        {
+          "name": "Shipper delivering: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Shipper delivered",
+      "method": "POST",
+      "url": "http://localhost:3000/api/shippers/deliveries/492/status",
+      "status": 200,
+      "timeMs": 13,
+      "assertions": [
+        {
+          "name": "Shipper delivered: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Order is delivered",
+      "method": "GET",
+      "url": "http://localhost:3000/api/customer/orders/575",
+      "status": 200,
+      "timeMs": 9,
+      "assertions": [
+        {
+          "name": "Order is delivered: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "order DELIVERED",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Create invoice",
+      "method": "POST",
+      "url": "http://localhost:3000/api/payments/orders/575/invoice",
+      "status": 201,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Create invoice: HTTP 200/201",
+          "passed": true
+        },
+        {
+          "name": "invoice number issued",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Read invoice",
+      "method": "GET",
+      "url": "http://localhost:3000/api/payments/invoices/FD-MV65TICZ-ZQ5ZY",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Read invoice: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "invoice has total",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Review restaurant",
+      "method": "POST",
+      "url": "http://localhost:3000/api/communications/orders/575/restaurant-review",
+      "status": 201,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Review restaurant: HTTP 200/201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Review shipper",
+      "method": "POST",
+      "url": "http://localhost:3000/api/communications/orders/575/shipper-review",
+      "status": 201,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Review shipper: HTTP 200/201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Restaurant stats include the order",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/manage/22/stats?days=7",
+      "status": 200,
+      "timeMs": 6,
+      "assertions": [
+        {
+          "name": "Restaurant stats include the order: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "today has orders",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Restaurant history finds the order",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/manage/22/orders?q=FD-MV65TICZ-ZQ5ZY",
+      "status": 200,
+      "timeMs": 10,
+      "assertions": [
+        {
+          "name": "Restaurant history finds the order: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "delivered order found by code",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Restaurant lists reviews",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/manage/22/reviews",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Restaurant lists reviews: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Restaurant replies to review",
+      "method": "POST",
+      "url": "http://localhost:3000/api/restaurant/manage/22/reviews/289/reply",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Restaurant replies to review: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Admin dashboard counts the order",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/dashboard",
+      "status": 200,
+      "timeMs": 10,
+      "assertions": [
+        {
+          "name": "Admin dashboard counts the order: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "dashboard totals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Admin order detail",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/manage/orders/575",
+      "status": 200,
+      "timeMs": 6,
+      "assertions": [
+        {
+          "name": "Admin order detail: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "full lifecycle recorded",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Admin finds new customer",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/manage/customers?q=e2emv65tgyq",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Admin finds new customer: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "registered customer listed",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Admin payments include order",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/manage/payments?status=PAID&pageSize=50",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Admin payments include order: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "paid payments exist",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Admin reports",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/manage/reports?days=7",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Admin reports: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "delivery KPIs present",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Admin audit trail",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/audit-logs?pageSize=10",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Admin audit trail: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "audit entries exist",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Customer opens support ticket",
+      "method": "POST",
+      "url": "http://localhost:3000/api/communications/support/tickets",
+      "status": 201,
+      "timeMs": 8,
+      "assertions": [
+        {
+          "name": "Customer opens support ticket: HTTP 201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Admin sees ticket",
+      "method": "GET",
+      "url": "http://localhost:3000/api/communications/support/tickets",
+      "status": 200,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Admin sees ticket: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "ticket listed",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Admin replies to ticket",
+      "method": "POST",
+      "url": "http://localhost:3000/api/communications/support/tickets/25/messages",
+      "status": 201,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Admin replies to ticket: HTTP 201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Admin resolves ticket",
+      "method": "PATCH",
+      "url": "http://localhost:3000/api/communications/support/tickets/25",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Admin resolves ticket: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Second order add to cart",
+      "method": "POST",
+      "url": "http://localhost:3000/api/customer/cart/items",
+      "status": 201,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Second order: add to cart: HTTP 200/201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Second order checkout COD",
+      "method": "POST",
+      "url": "http://localhost:3000/api/customer/orders/checkout",
+      "status": 201,
+      "timeMs": 19,
+      "assertions": [
+        {
+          "name": "Second order: checkout COD: HTTP 200/201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Customer cancels second order",
+      "method": "POST",
+      "url": "http://localhost:3000/api/payments/orders/576/cancel",
+      "status": 200,
+      "timeMs": 9,
+      "assertions": [
+        {
+          "name": "Customer cancels second order: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Second order is cancelled",
+      "method": "GET",
+      "url": "http://localhost:3000/api/customer/orders/576",
+      "status": 200,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Second order is cancelled: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "order CANCELLED",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Shipper earnings",
+      "method": "GET",
+      "url": "http://localhost:3000/api/shippers/earnings",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Shipper earnings: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "earnings recorded",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "99 - Full E2E Flow",
+      "name": "Customer logout",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/logout",
+      "status": 204,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Customer logout: HTTP 200/204",
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

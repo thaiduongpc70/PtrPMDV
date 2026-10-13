@@ -2,7 +2,8 @@ $kind: http-request
 url: "{{baseUrl}}/api/customer/cart/items"
 method: POST
 headers:
-  Content-Type: application/json
+  Content-Type: "application/json"
+  Authorization: "Bearer {{customerToken}}"
 body:
   type: text
   content: |-
@@ -11,7 +12,14 @@ body:
       "menuItemId": {{menuItemId}},
       "variantId": null,
       "quantity": 2,
-      "toppingIds": [],
-      "note": "Ít cay"
+      "toppingIds": []
     }
-order: 3000
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Add item to cart: HTTP 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));
+    language: text/javascript
+order: 8000

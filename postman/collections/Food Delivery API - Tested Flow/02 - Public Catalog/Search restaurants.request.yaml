@@ -1,17 +1,15 @@
 $kind: http-request
 url: "{{baseUrl}}/api/catalog/restaurants?keyword=com&page=1&pageSize=20"
 method: GET
-queryParams:
-  keyword: com
-  page: "1"
-  pageSize: "20"
+headers:
+  Content-Type: "application/json"
 auth:
   type: noauth
 scripts:
   - type: afterResponse
     code: |-
-      const json = pm.response.json();
-      const first = json.items?.[0];
-      if (first?.id) pm.collectionVariables.set('restaurantId', first.id);
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Search restaurants: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("paged result", () => pm.expect(Array.isArray(json.items)).to.be.true);
     language: text/javascript
 order: 3000

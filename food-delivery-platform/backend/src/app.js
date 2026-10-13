@@ -23,6 +23,8 @@ import {
 } from './modules/operations/operations.routes.js';
 import { restaurantMenuRoutes } from './modules/menus/menu.routes.js';
 import { adminManageRoutes, restaurantManageRoutes } from './modules/management/management.routes.js';
+import { partnerAdminRoutes, partnerPublicRoutes } from './modules/partners/partner.routes.js';
+import { adminExportRoutes, restaurantExportRoutes } from './modules/exports/export.routes.js';
 import { jobRoutes } from './modules/jobs/job.routes.js';
 import { settingsRoutes } from './modules/settings/settings.routes.js';
 import { customerProfileRoutes } from './modules/customers/customer.routes.js';
@@ -81,8 +83,13 @@ export function createApp() {
   app.use('/api/accounts', accountRoutes);
   app.use('/api/jobs', jobRoutes);
   app.use('/api/admin/system-settings', settingsRoutes);
-  app.get('/api/docs', (_req, res) => res.sendFile(resolve(process.cwd(), '..', '..', 'docs', 'swagger.html')));
-  app.get('/docs/swagger', (_req, res) => res.sendFile(resolve(process.cwd(), '..', '..', 'docs', 'swagger.html')));
+  const sendSwagger = (_req, res) => {
+    // Swagger UI is loaded from unpkg and initialised inline, so this page needs a looser CSP than the API default.
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self'");
+    res.sendFile(resolve(process.cwd(), '..', '..', 'docs', 'swagger.html'));
+  };
+  app.get('/api/docs', sendSwagger);
+  app.get('/docs/swagger', sendSwagger);
   app.get('/api/openapi.json', (_req, res) => res.sendFile(resolve(process.cwd(), '..', '..', 'docs', 'openapi.json')));
   app.use('/api/customer/profile', customerProfileRoutes);
   app.use('/api/customer/addresses', addressRoutes);
@@ -98,6 +105,10 @@ export function createApp() {
   app.use('/api/communications', communicationRoutes);
   app.use('/api/settlements', settlementRoutes);
   app.use('/api/catalog', restaurantPublicRoutes);
+  app.use('/api/partners', partnerPublicRoutes);
+  app.use('/api/admin/partners', partnerAdminRoutes);
+  app.use('/api/admin/export', adminExportRoutes);
+  app.use('/api/restaurant/export', restaurantExportRoutes);
   app.use('/api/admin/manage', adminManageRoutes);
   app.use('/api/restaurant/manage', restaurantManageRoutes);
   app.use('/api/restaurant/restaurants', invalidateMenuCache, restaurantOwnerRoutes);

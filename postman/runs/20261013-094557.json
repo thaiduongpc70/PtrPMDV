@@ -1,0 +1,861 @@
+{
+  "id": "20261013-094557",
+  "startedAt": "2026-10-13T02:45:57.645Z",
+  "durationMs": 6837,
+  "scope": "13 - Partner Onboarding + 14 - Data Export",
+  "baseUrl": "http://localhost:3000",
+  "requests": 47,
+  "assertions": 85,
+  "failedAssertions": 3,
+  "requestErrors": 0,
+  "result": "FAILED",
+  "failures": [
+    {
+      "source": "11 Admin export orders as CSV",
+      "message": "expected false to be true"
+    },
+    {
+      "source": "22 Restaurant cannot export another restaurant",
+      "message": "expected 404 to be one of [ 403, 200 ]"
+    },
+    {
+      "source": "22 Restaurant cannot export another restaurant",
+      "message": "expected false to be true"
+    }
+  ],
+  "executions": [
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "01 Generate unique suffix",
+      "method": "GET",
+      "url": "http://localhost:3000/health",
+      "status": 200,
+      "timeMs": 18,
+      "assertions": [
+        {
+          "name": "Generate unique suffix: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "02 Register shipper",
+      "method": "POST",
+      "url": "http://localhost:3000/api/partners/register/shipper",
+      "status": 201,
+      "timeMs": 59,
+      "assertions": [
+        {
+          "name": "Register shipper: HTTP 201",
+          "passed": true
+        },
+        {
+          "name": "application is PENDING",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "03 Register shipper - duplicate rejected",
+      "method": "POST",
+      "url": "http://localhost:3000/api/partners/register/shipper",
+      "status": 409,
+      "timeMs": 10,
+      "assertions": [
+        {
+          "name": "Register shipper - duplicate rejected: HTTP 409",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "04 Register shipper - weak password",
+      "method": "POST",
+      "url": "http://localhost:3000/api/partners/register/shipper",
+      "status": 400,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Register shipper - weak password: HTTP 400",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "05 Register shipper - bad identity number",
+      "method": "POST",
+      "url": "http://localhost:3000/api/partners/register/shipper",
+      "status": 400,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Register shipper - bad identity number: HTTP 400",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "06 Pending shipper cannot login",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/login",
+      "status": 403,
+      "timeMs": 48,
+      "assertions": [
+        {
+          "name": "Pending shipper cannot login: HTTP 403",
+          "passed": true
+        },
+        {
+          "name": "login says PENDING",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "07 Register restaurant (to approve)",
+      "method": "POST",
+      "url": "http://localhost:3000/api/partners/register/restaurant",
+      "status": 201,
+      "timeMs": 64,
+      "assertions": [
+        {
+          "name": "Register restaurant (to approve): HTTP 201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "08 Register restaurant (to reject)",
+      "method": "POST",
+      "url": "http://localhost:3000/api/partners/register/restaurant",
+      "status": 201,
+      "timeMs": 76,
+      "assertions": [
+        {
+          "name": "Register restaurant (to reject): HTTP 201",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "09 Register restaurant - missing address",
+      "method": "POST",
+      "url": "http://localhost:3000/api/partners/register/restaurant",
+      "status": 400,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Register restaurant - missing address: HTTP 400",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "10 Customer cannot list applications",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/partners/applications",
+      "status": 403,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Customer cannot list applications: HTTP 403",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "10 Customer cannot list applications",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/partners/applications",
+      "status": 403,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Customer cannot list applications: HTTP 403",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "11 Admin lists pending applications",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/partners/applications?status=PENDING",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Admin lists pending applications: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "new shipper application is listed",
+          "passed": true
+        },
+        {
+          "name": "pending counter",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "11 Admin lists pending applications",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/partners/applications?status=PENDING",
+      "status": 200,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Admin lists pending applications: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "new shipper application is listed",
+          "passed": true
+        },
+        {
+          "name": "pending counter",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "12 Admin filters by type",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/partners/applications?type=RESTAURANT",
+      "status": 200,
+      "timeMs": 8,
+      "assertions": [
+        {
+          "name": "Admin filters by type: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "only restaurant applications",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "13 Approve shipper",
+      "method": "POST",
+      "url": "http://localhost:3000/api/admin/partners/applications/3/approve",
+      "status": 200,
+      "timeMs": 9,
+      "assertions": [
+        {
+          "name": "Approve shipper: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "approved",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "14 Approve shipper again - conflict",
+      "method": "POST",
+      "url": "http://localhost:3000/api/admin/partners/applications/3/approve",
+      "status": 409,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Approve shipper again - conflict: HTTP 409",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "15 Approved shipper can login",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/login",
+      "status": 200,
+      "timeMs": 71,
+      "assertions": [
+        {
+          "name": "Approved shipper can login: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "role is SHIPPER",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "16 Approve restaurant with 12% commission",
+      "method": "POST",
+      "url": "http://localhost:3000/api/admin/partners/applications/4/approve",
+      "status": 200,
+      "timeMs": 8,
+      "assertions": [
+        {
+          "name": "Approve restaurant with 12% commission: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "17 Approved restaurant owner can login",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/login",
+      "status": 200,
+      "timeMs": 72,
+      "assertions": [
+        {
+          "name": "Approved restaurant owner can login: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "role is RESTAURANT",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "18 Reject without note - validation",
+      "method": "POST",
+      "url": "http://localhost:3000/api/admin/partners/applications/5/reject",
+      "status": 400,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Reject without note - validation: HTTP 400",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "19 Reject restaurant with note",
+      "method": "POST",
+      "url": "http://localhost:3000/api/admin/partners/applications/5/reject",
+      "status": 200,
+      "timeMs": 6,
+      "assertions": [
+        {
+          "name": "Reject restaurant with note: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "20 Rejected applicant cannot login",
+      "method": "POST",
+      "url": "http://localhost:3000/api/auth/login",
+      "status": 403,
+      "timeMs": 63,
+      "assertions": [
+        {
+          "name": "Rejected applicant cannot login: HTTP 403",
+          "passed": true
+        },
+        {
+          "name": "login says INACTIVE",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "13 - Partner Onboarding",
+      "name": "21 Approved applications history",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/partners/applications?status=APPROVED",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Approved applications history: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "approved history has review time",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "01 Admin export orders",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders",
+      "status": 200,
+      "timeMs": 10,
+      "assertions": [
+        {
+          "name": "Admin export orders: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "02 Admin export restaurants",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/restaurants",
+      "status": 200,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Admin export restaurants: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "03 Admin export shippers",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/shippers",
+      "status": 200,
+      "timeMs": 2,
+      "assertions": [
+        {
+          "name": "Admin export shippers: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "04 Admin export customers",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/customers",
+      "status": 200,
+      "timeMs": 8,
+      "assertions": [
+        {
+          "name": "Admin export customers: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "05 Admin export users",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/users",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Admin export users: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "06 Admin export payments",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/payments",
+      "status": 200,
+      "timeMs": 12,
+      "assertions": [
+        {
+          "name": "Admin export payments: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "07 Admin export settlements",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/settlements",
+      "status": 200,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Admin export settlements: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "08 Admin export revenue",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/revenue",
+      "status": 200,
+      "timeMs": 7,
+      "assertions": [
+        {
+          "name": "Admin export revenue: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "09 Admin export audit",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/audit",
+      "status": 200,
+      "timeMs": 32,
+      "assertions": [
+        {
+          "name": "Admin export audit: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "10 Admin export applications",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/applications",
+      "status": 200,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Admin export applications: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        },
+        {
+          "name": "row keys cover columns",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "11 Admin export orders as CSV",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders?format=csv",
+      "status": 200,
+      "timeMs": 12,
+      "assertions": [
+        {
+          "name": "Admin export orders as CSV: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "content-type is CSV",
+          "passed": true
+        },
+        {
+          "name": "is an attachment",
+          "passed": true
+        },
+        {
+          "name": "starts with UTF-8 BOM (Excel-safe)",
+          "passed": false,
+          "error": "expected false to be true"
+        },
+        {
+          "name": "Vietnamese header row",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "12 Admin export orders with date range",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders?from=2020-01-01&to=2020-01-02",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Admin export orders with date range: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "no rows in an empty range",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "13 Admin export unknown dataset",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/secrets",
+      "status": 404,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Admin export unknown dataset: HTTP 404",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "14 Customer cannot export",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders",
+      "status": 403,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Customer cannot export: HTTP 403",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "15 Anonymous cannot export",
+      "method": "GET",
+      "url": "http://localhost:3000/api/admin/export/orders",
+      "status": 401,
+      "timeMs": 5,
+      "assertions": [
+        {
+          "name": "Anonymous cannot export: HTTP 401",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "16 Find own restaurant",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/restaurants",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Find own restaurant: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "16 Find own restaurant",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/restaurants",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Find own restaurant: HTTP 200",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "17 Restaurant export orders",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/orders",
+      "status": 200,
+      "timeMs": 9,
+      "assertions": [
+        {
+          "name": "Restaurant export orders: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "18 Restaurant export revenue",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/revenue",
+      "status": 200,
+      "timeMs": 8,
+      "assertions": [
+        {
+          "name": "Restaurant export revenue: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "19 Restaurant export menu",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/menu",
+      "status": 200,
+      "timeMs": 10,
+      "assertions": [
+        {
+          "name": "Restaurant export menu: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "20 Restaurant export settlements",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/settlements",
+      "status": 200,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Restaurant export settlements: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "has columns + rows",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "21 Restaurant export menu as CSV",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/menu?format=csv",
+      "status": 200,
+      "timeMs": 6,
+      "assertions": [
+        {
+          "name": "Restaurant export menu as CSV: HTTP 200",
+          "passed": true
+        },
+        {
+          "name": "content-type is CSV",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "22 Restaurant cannot export another restaurant",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/1/orders",
+      "status": 404,
+      "timeMs": 4,
+      "assertions": [
+        {
+          "name": "Restaurant cannot export another restaurant: HTTP 403/200",
+          "passed": false,
+          "error": "expected 404 to be one of [ 403, 200 ]"
+        },
+        {
+          "name": "foreign restaurant is forbidden",
+          "passed": false,
+          "error": "expected false to be true"
+        }
+      ]
+    },
+    {
+      "folder": "14 - Data Export",
+      "name": "23 Customer cannot export restaurant data",
+      "method": "GET",
+      "url": "http://localhost:3000/api/restaurant/export/22/orders",
+      "status": 403,
+      "timeMs": 3,
+      "assertions": [
+        {
+          "name": "Customer cannot export restaurant data: HTTP 403",
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/export/secrets"
+method: GET
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Admin export unknown dataset: HTTP 404', () => pm.expect(pm.response.code).to.be.oneOf([404]));
+    language: text/javascript
+order: 13000

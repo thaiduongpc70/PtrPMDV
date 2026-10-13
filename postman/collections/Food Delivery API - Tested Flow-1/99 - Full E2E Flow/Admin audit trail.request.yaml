@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/audit-logs?pageSize=10"
+method: GET
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+queryParams:
+  pageSize: "10"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Admin audit trail: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("audit entries exist", () => pm.expect(json.items.length > 0).to.be.true);
+    language: text/javascript
+order: 61000
