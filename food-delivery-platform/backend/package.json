@@ -13,6 +13,7 @@
     "check": "node scripts/check-syntax.mjs",
     "seed:real": "node scripts/seed-realistic.mjs",
     "seed:demo": "node scripts/seed-realistic.mjs",
+    "seed:history": "node scripts/seed-history.mjs",
     "test": "node --import ./scripts/setup-test-env.mjs --test",
     "test:coverage": "node --experimental-test-coverage --import ./scripts/setup-test-env.mjs --test",
     "smoke": "node scripts/smoke.mjs",

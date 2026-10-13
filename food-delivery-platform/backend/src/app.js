@@ -22,6 +22,7 @@ import {
   shipperRoutes
 } from './modules/operations/operations.routes.js';
 import { restaurantMenuRoutes } from './modules/menus/menu.routes.js';
+import { adminManageRoutes, restaurantManageRoutes } from './modules/management/management.routes.js';
 import { jobRoutes } from './modules/jobs/job.routes.js';
 import { settingsRoutes } from './modules/settings/settings.routes.js';
 import { customerProfileRoutes } from './modules/customers/customer.routes.js';
@@ -97,6 +98,8 @@ export function createApp() {
   app.use('/api/communications', communicationRoutes);
   app.use('/api/settlements', settlementRoutes);
   app.use('/api/catalog', restaurantPublicRoutes);
+  app.use('/api/admin/manage', adminManageRoutes);
+  app.use('/api/restaurant/manage', restaurantManageRoutes);
   app.use('/api/restaurant/restaurants', invalidateMenuCache, restaurantOwnerRoutes);
   app.use('/api/restaurant/restaurants', restaurantMenuRoutes);
   app.use('/api/restaurant/restaurants', engagementRestaurantRoutes);

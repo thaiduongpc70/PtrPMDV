@@ -29,9 +29,9 @@
     catalogCategoryName: 'Tất cả',
     subViews: {
       customer: 'catalog',
-      restaurant: 'branches',
+      restaurant: 'dashboard',
       shipper: 'profile',
-      admin: 'restaurants',
+      admin: 'overview',
       account: 'profile'
     },
     apiLog: []
@@ -57,20 +57,42 @@
       .replaceAll("'", '&#39;');
   }
 
-  function imageForFood(seed, imageUrl = '') {
-    if (imageUrl) {
-      return `style="background-image: linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.38)), url('${escapeHtml(imageUrl)}')"`;
-    }
-    const palette = [
-      ['#0f766e', '#14b8a6'],
-      ['#b45309', '#f59e0b'],
-      ['#be123c', '#fb7185'],
-      ['#4338ca', '#818cf8'],
-      ['#15803d', '#86efac']
-    ];
-    const pair = palette[Math.abs(String(seed || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)) % palette.length];
-    return `style="background: radial-gradient(circle at 25% 20%, rgba(255,255,255,.35), transparent 28%), linear-gradient(135deg, ${pair[0]}, ${pair[1]})"`;
+  const GRADIENTS = [
+    ['#ee4d2d', '#ff8a3d'], ['#d7263d', '#ff7a59'], ['#f59e0b', '#fcd34d'],
+    ['#16a34a', '#6ee7a0'], ['#7c3aed', '#c4b5fd'], ['#0ea5e9', '#7dd3fc']
+  ];
+
+  function gradientFor(seed) {
+    const sum = String(seed || '').split('').reduce((total, char) => total + char.charCodeAt(0), 0);
+    return GRADIENTS[sum % GRADIENTS.length];
   }
+
+  function imageForFood(seed) {
+    const [a, b] = gradientFor(seed);
+    return `style="--g1:${a};--g2:${b}"`;
+  }
+
+  const EMOJI_RULES = [
+    [/trà sữa|trân châu|milk tea/, '🧋'], [/cà phê|cafe|coffee|bạc xỉu/, '☕'], [/nước ép|sinh tố|nước cam|smoothie|cam ép|ép/, '🥤'],
+    [/pizza/, '🍕'], [/cơm/, '🍚'], [/đồ chay|chay/, '🥗'], [/món việt|việt/, '🍛'], [/đồ uống|nước/, '🥤'], [/đồ ăn nhanh/, '🍔'], [/ăn vặt|vặt/, '🍟'], [/tráng miệng|dessert/, '🍰'], [/drink/, '🥤'], [/burger|hamburger/, '🍔'], [/bánh mì/, '🥖'], [/lẩu/, '🍲'], [/gỏi cuốn|nem|chả giò/, '🥟'], [/gỏi|salad|rau/, '🥗'],
+    [/cháo|súp/, '🥣'], [/gà|chicken/, '🍗'], [/tokbokki|kimchi|hàn quốc/, '🌶️'], [/xiên|nướng|bbq|sườn|thịt/, '🍢'],
+    [/phở|bún|mì|miến|hủ tiếu|nui|ramen/, '🍜'], [/sushi|cá|hải sản|tôm/, '🍣'], [/bánh xèo|bánh cuốn|nem|chả giò|gỏi cuốn|há cảo|xíu mại/, '🥟'], [/chè|kem|bánh ngọt|bánh flan|tráng miệng/, '🍰'],
+    [/khoai|snack|ăn vặt|ăn nhanh/, '🍟']
+  ];
+
+  function foodEmoji(text) {
+    const value = String(text || '').toLowerCase();
+    const rule = EMOJI_RULES.find(([pattern]) => pattern.test(value));
+    return rule ? rule[1] : '🍽️';
+  }
+
+  function photo(name, imageUrl, cls = '', inner = '') {
+    return `<div class="food-photo ${cls}" ${imageForFood(name)}><span class="food-emoji">${foodEmoji(name)}</span>${imageUrl ? `<img class="photo-img" src="${escapeHtml(imageUrl)}" alt="" loading="lazy">` : ''}${inner}</div>`;
+  }
+
+  document.addEventListener('error', event => {
+    if (event.target?.classList?.contains('photo-img')) event.target.remove();
+  }, true);
 
   function roleOf(user) {
     const raw = typeof user?.role === 'string'
@@ -194,6 +216,10 @@
       }
     }
     logApi({ method, path, status: response.status, ms: Math.round(performance.now() - started), payload });
+    if (response.status === 401 && !state.token) {
+      openAuth('login', 'Vui lòng đăng nhập để tiếp tục.');
+      throw new Error('Vui lòng đăng nhập để tiếp tục.');
+    }
     if (!response.ok) {
       const message = payload?.message || payload?.error || `HTTP ${response.status}`;
       throw new Error(message);
@@ -222,9 +248,41 @@
   }
 
   function setStatus(message, isError = false) {
+    if (!message) return;
+    if (!$('#authModal').hidden) {
+      const node = $('#authStatus');
+      node.textContent = message;
+      node.classList.toggle('is-error', isError);
+      return;
+    }
+    toast(message, isError);
+  }
+
+  function toast(message, isError = false) {
+    const stack = $('#toastStack');
+    if (!stack) return;
+    const node = document.createElement('div');
+    node.className = `toast ${isError ? 'is-error' : 'is-success'}`;
+    node.innerHTML = `<span>${isError ? '⚠️' : '✅'}</span><p>${escapeHtml(message)}</p>`;
+    stack.appendChild(node);
+    setTimeout(() => node.classList.add('is-leaving'), 3600);
+    setTimeout(() => node.remove(), 4000);
+  }
+
+  function openAuth(tab = 'login', message = '') {
+    $('#authModal').hidden = false;
+    document.body.classList.add('modal-open');
+    document.querySelectorAll('[data-auth-tab]').forEach(button => button.classList.toggle('is-active', button.dataset.authTab === tab));
+    document.querySelectorAll('[data-auth-pane]').forEach(pane => { pane.hidden = pane.dataset.authPane !== tab; });
     const node = $('#authStatus');
-    node.textContent = message || '';
-    node.style.color = isError ? 'var(--danger)' : 'var(--success)';
+    node.textContent = message;
+    node.classList.remove('is-error');
+    setTimeout(() => (tab === 'login' ? $('#loginIdentifier') : $('#regFullName')).focus(), 30);
+  }
+
+  function closeAuth() {
+    $('#authModal').hidden = true;
+    document.body.classList.remove('modal-open');
   }
 
   function empty() {
@@ -256,9 +314,11 @@
   function renderSession() {
     const role = roleOf(state.user);
     document.body.dataset.auth = state.user ? 'authenticated' : 'guest';
-    $('#sessionPill').textContent = state.user
-      ? `${state.user.username || state.user.email} · ${roleLabel(role)}`
-      : 'Chưa đăng nhập';
+    document.body.dataset.role = state.user ? role.toLowerCase() : 'guest';
+    const display = state.user ? (state.user.fullName || state.user.username || state.user.email || '') : '';
+    $('#sessionPill').textContent = state.user ? `${display}` : 'Khách';
+    $('#userAvatar').textContent = (display || '?').trim().slice(0, 1).toUpperCase();
+    updateCartBadge();
     const headerLogoutButton = $('#headerLogoutButton');
     if (headerLogoutButton) headerLogoutButton.hidden = !state.user;
     renderRoleNavigation();
@@ -304,7 +364,8 @@
     saveSession(result);
     await loadSessionPermissions();
     renderSession();
-    setStatus(`Đã đăng nhập ${identifier}`);
+    closeAuth();
+    toast(`Xin chào ${state.user?.fullName || state.user?.username || identifier}!`);
     await bootstrapForRole();
   }
 
@@ -332,8 +393,9 @@
       await Promise.allSettled([loadRestaurantQueue(), loadNotifications()]);
       showScreen('restaurant');
     } else if (role === 'ADMIN') {
-      await Promise.allSettled([loadAdminDashboard(), loadAccountDashboard()]);
+      await Promise.allSettled([loadAccountDashboard()]);
       showScreen('admin');
+      window.FDAdmin?.load();
     } else if (role === 'SHIPPER') {
       await loadShipperDashboard();
       showScreen('shipper');
@@ -366,27 +428,24 @@
     try {
       const result = await api('/api/catalog/banners');
       const items = result?.items || [];
-      $('#bannerStrip').innerHTML = items.length ? items.map(item => `
-        <article class="banner-card banner-card-rich" ${imageForFood(item.title, item.imageUrl)}>
-          <div>
-            <span>Ưu đãi hôm nay</span>
-            <strong>${escapeHtml(item.title)}</strong>
-            <p>Chọn nhanh nhà hàng phù hợp, thêm món và checkout trong một luồng.</p>
+      const fallback = [{ title: 'Đặt món ngon, giao tận nơi chỉ trong 25 phút', targetUrl: '' }];
+      $('#bannerStrip').innerHTML = (items.length ? items : fallback).map((item, index) => {
+        const [c1, c2] = gradientFor(item.title);
+        return `
+        <article class="banner-slide" style="background: ${item.imageUrl ? `url('${escapeHtml(item.imageUrl)}') center/cover no-repeat, ` : ''}linear-gradient(120deg, ${c1}, ${c2})">
+          <div class="slide-copy">
+            <span class="slide-tag">${index === 0 ? '🔥 Ưu đãi hôm nay' : '🎁 Gợi ý cho bạn'}</span>
+            <h2>${escapeHtml(item.title)}</h2>
+            <p>Chọn món yêu thích, thanh toán tiện lợi và theo dõi shipper trên bản đồ.</p>
+            <button class="primary-button" type="button" data-banner-target="${escapeHtml(item.targetUrl || '')}">Đặt ngay</button>
           </div>
-          <button class="light-button secondary-button" type="button" data-banner-target="${escapeHtml(item.targetUrl || '')}">Khám phá</button>
-        </article>
-      `).join('') : `
-        <article class="banner-card banner-card-rich">
-          <div>
-            <span>Food Delivery</span>
-            <strong>Chọn món theo danh mục, đặt hàng và theo dõi đơn thật.</strong>
-            <p>Dữ liệu hiện có 20 nhà hàng và hàng nghìn món theo nhiều nhóm.</p>
-          </div>
-        </article>
-      `;
+          <div class="slide-art" aria-hidden="true">${['🍜', '🍔', '🧋', '🍕', '🍗'][index % 5]}</div>
+        </article>`;
+      }).join('');
       document.querySelectorAll('[data-banner-target]').forEach(button => {
         button.addEventListener('click', () => applyBannerTarget(button.dataset.bannerTarget));
       });
+      window.FDWidgets?.initHero();
     } catch (error) {
       $('#bannerStrip').innerHTML = errorBox(error);
     }
@@ -409,8 +468,8 @@
       const result = await api('/api/catalog/restaurant-categories');
       const items = result.items || [];
       $('#categoryStrip').innerHTML = items.length
-        ? `<button type="button" class="category-chip ${state.catalogCategoryId ? '' : 'is-active'}" data-category-filter="">Tất cả</button>`
-          + items.map(item => `<button type="button" class="category-chip ${Number(item.id) === Number(state.catalogCategoryId) ? 'is-active' : ''}" data-category-filter="${item.id}" data-category-name="${escapeHtml(item.name)}">${escapeHtml(item.name)}</button>`).join('')
+        ? `<button type="button" class="category-chip ${state.catalogCategoryId ? '' : 'is-active'}" data-category-filter=""><span class="cat-icon">🍽️</span><span>Tất cả</span></button>`
+          + items.map(item => `<button type="button" class="category-chip ${Number(item.id) === Number(state.catalogCategoryId) ? 'is-active' : ''}" data-category-filter="${item.id}" data-category-name="${escapeHtml(item.name)}"><span class="cat-icon">${foodEmoji(item.name)}</span><span>${escapeHtml(item.name)}</span></button>`).join('')
         : '<span class="category-chip">Chưa có danh mục</span>';
       document.querySelectorAll('[data-category-filter]').forEach(button => {
         button.addEventListener('click', () => {
@@ -448,38 +507,44 @@
   }
 
   function renderRestaurants(total) {
-    $('#restaurantCount').textContent = `${state.catalogCategoryName || 'Tất cả'} · ${total} kết quả`;
+    $('#restaurantCount').textContent = `${state.catalogCategoryName || 'Tất cả'} · ${total} nhà hàng`;
     $('#restaurantList').innerHTML = state.restaurants.length ? state.restaurants.map(item => `
-      <article class="restaurant-card restaurant-card-rich" data-view-restaurant="${item.id}">
-        <div class="food-photo restaurant-photo" ${imageForFood(item.name, item.logoUrl || item.coverUrl)}>${escapeHtml(item.name.slice(0, 2).toUpperCase())}</div>
-        <div>
+      <article class="restaurant-card" data-view-restaurant="${item.id}" tabindex="0">
+        ${photo(item.name, item.coverUrl || item.logoUrl, 'restaurant-cover', `<span class="photo-chip">⏱ ${item.averagePrepareTime || 20} phút</span>`)}
+        <div class="card-body">
           <strong>${escapeHtml(item.name)}</strong>
-          <span>${escapeHtml(item.district || item.city)} · ${Number(item.rating || 0).toFixed(1)} sao · ${item.averagePrepareTime || 0} phút</span>
-          <span>Đơn tối thiểu ${formatMoney(item.minimumOrder)}</span>
+          <span class="muted">${escapeHtml(item.categoryName || 'Nhà hàng')} · ${escapeHtml(item.district || item.city || '')}</span>
+          <div class="meta-row">
+            <span class="rating-pill">★ ${Number(item.rating || 0).toFixed(1)}</span>
+            <span class="muted">${item.totalReviews || 0} đánh giá</span>
+            <span class="muted">· Từ ${money.format(Number(item.minimumOrder) || 0)}đ</span>
+          </div>
         </div>
-        <button class="secondary-button" type="button">Xem</button>
       </article>
     `).join('') : empty();
-    document.querySelectorAll('[data-view-restaurant]').forEach(button => {
-      button.addEventListener('click', () => selectRestaurant(Number(button.dataset.viewRestaurant)));
+    document.querySelectorAll('[data-view-restaurant]').forEach(card => {
+      card.addEventListener('click', () => selectRestaurant(Number(card.dataset.viewRestaurant)));
+      card.addEventListener('keydown', event => { if (event.key === 'Enter') selectRestaurant(Number(card.dataset.viewRestaurant)); });
     });
   }
 
   function renderMenuList(items) {
     $('#menuCount').textContent = `${state.catalogCategoryName || 'Tất cả'} · ${items.length} món`;
     $('#menuList').innerHTML = items.length ? items.map(item => `
-      <article class="menu-card menu-card-rich" data-search-item-restaurant="${item.restaurantId}">
-        <div class="food-photo menu-photo" ${imageForFood(item.name, item.imageUrl)}>${escapeHtml(item.name.slice(0, 1).toUpperCase())}</div>
-        <div>
-          <strong>${escapeHtml(item.name)}</strong>
-          <span>${escapeHtml(item.restaurantName || '')} · ${item.preparationTime || 0} phút · bán ${item.soldCount || 0}</span>
-          <span>${formatMoney(item.effectivePrice)}</span>
+      <article class="food-card" data-search-item-restaurant="${item.restaurantId}" tabindex="0">
+        ${photo(item.name, item.imageUrl, 'food-card-photo', item.discountPrice ? '<span class="photo-chip chip-sale">Giảm giá</span>' : '')}
+        <div class="card-body">
+          <strong class="clamp-2">${escapeHtml(item.name)}</strong>
+          <span class="muted clamp-1">${escapeHtml(item.restaurantName || '')}</span>
+          <div class="price-row">
+            <span class="price">${money.format(Number(item.effectivePrice) || 0)}đ${item.discountPrice ? `<s>${money.format(Number(item.basePrice) || 0)}đ</s>` : ''}</span>
+            <button class="add-button" type="button" aria-label="Xem menu">+</button>
+          </div>
         </div>
-        <button class="secondary-button" type="button">Mở menu</button>
       </article>
     `).join('') : empty();
-    document.querySelectorAll('[data-search-item-restaurant]').forEach(button => {
-      button.addEventListener('click', () => selectRestaurant(Number(button.dataset.searchItemRestaurant)));
+    document.querySelectorAll('[data-search-item-restaurant]').forEach(card => {
+      card.addEventListener('click', () => selectRestaurant(Number(card.dataset.searchItemRestaurant)));
     });
   }
 
@@ -517,12 +582,13 @@
     const quickItems = popular.length ? popular : items.slice(0, 6);
     const menuSections = buildMenuSections(menuResponse);
     $('#restaurantDetail').innerHTML = `
-      <div class="restaurant-hero" ${imageForFood(detail.name, detail.images?.[0]?.imageUrl)}>
+      <div class="restaurant-hero" ${imageForFood(detail.name)}>
+        <span class="hero-emoji" aria-hidden="true">${foodEmoji(detail.name)}</span>
         <div>
           <span class="hero-kicker">${escapeHtml(detail.categoryName || 'Nhà hàng')}</span>
           <strong>${escapeHtml(detail.name)}</strong>
           <span>${escapeHtml(detail.address)}, ${escapeHtml(detail.district || '')}, ${escapeHtml(detail.city)}</span>
-          <span>Giờ mở cửa ${escapeHtml(detail.openingTime || '--')} - ${escapeHtml(detail.closingTime || '--')} · ${Number(detail.rating || 0).toFixed(1)} sao · ${detail.averagePrepareTime || 0} phút</span>
+          <span>Mở cửa ${escapeHtml(String(detail.openingTime || '--').slice(0, 5))} - ${escapeHtml(String(detail.closingTime || '--').slice(0, 5))} · ${Number(detail.rating || 0).toFixed(1)} sao · ${detail.averagePrepareTime || 0} phút</span>
         </div>
         <button class="secondary-button light-button" type="button" data-favorite-restaurant="${detail.id}">Lưu nhà hàng</button>
       </div>
@@ -635,10 +701,8 @@
   function renderDetailMenuItem(item, restaurantId) {
     return `
       <article class="food-tile" data-open-item="${item.id}">
-        <div class="food-photo food-tile-photo" ${imageForFood(item.name, item.imageUrl)}>
-          <span>${item.isFeatured ? 'Nổi bật' : escapeHtml(item.categoryName || 'Menu')}</span>
-        </div>
-        <div>
+        ${photo(item.name, item.imageUrl, 'food-tile-photo', item.isFeatured ? '<span class="photo-chip">Nổi bật</span>' : '')}
+        <div class="card-body">
           <strong>${escapeHtml(item.name)}</strong>
           <span>${item.preparationTime || 0} phút · đã bán ${item.soldCount || 0}</span>
           <b>${formatMoney(item.effectivePrice)}</b>
@@ -657,13 +721,8 @@
     $('#itemModalTitle').textContent = item.name;
     $('#itemModalDescription').textContent = item.description || `${item.categoryName || 'Menu'} · ${item.preparationTime || 0} phút chuẩn bị`;
     $('#itemModalPrice').innerHTML = `<strong>${formatMoney(item.effectivePrice)}</strong>${item.discountPrice ? `<span>Giá gốc ${formatMoney(item.basePrice)}</span>` : ''}`;
-    $('#itemModalMedia').innerHTML = `<div class="food-photo modal-photo" ${imageForFood(item.name, item.imageUrl)}><span>${escapeHtml(item.name)}</span></div>`;
-    $('#itemModalGallery').innerHTML = `
-      <button type="button" class="gallery-chip" data-favorite-item="${item.id}">Lưu món</button>
-      ${[item, ...state.selectedMenu.filter(value => value.id !== item.id).slice(0, 4)]
-        .map(value => `<button type="button" class="gallery-chip" data-open-item="${value.id}">${escapeHtml(value.name)}</button>`)
-        .join('')}
-    `;
+    $('#itemModalMedia').innerHTML = `${photo(item.name, item.imageUrl, 'modal-photo')}`;
+    $('#itemModalGallery').innerHTML = `<button type="button" class="gallery-chip" data-favorite-item="${item.id}">♡ Lưu món</button>`;
     $('#itemVariantOptions').innerHTML = renderVariantOptions(item);
     $('#itemToppingOptions').innerHTML = renderToppingOptions(item);
     $('#itemQuantity').value = '1';
@@ -787,8 +846,8 @@
   function renderAddresses() {
     const selected = state.addresses.find(item => item.isDefault) || state.addresses[0];
     $('#defaultAddressText').textContent = selected
-      ? `${selected.receiverName} · ${selected.addressLine}, ${selected.district || ''}, ${selected.city}`
-      : 'Chưa có địa chỉ';
+      ? `${selected.addressLine}${selected.district ? `, ${selected.district}` : ''}`
+      : (state.user ? 'Thêm địa chỉ giao hàng' : 'Chọn địa chỉ giao hàng');
     $('#checkoutAddress').innerHTML = state.addresses.length
       ? state.addresses.map(item => `<option value="${item.id}" ${item.isDefault ? 'selected' : ''}>${escapeHtml(item.label || 'Địa chỉ')} · ${escapeHtml(item.addressLine)}</option>`).join('')
       : '<option value="">Chưa có địa chỉ</option>';
@@ -835,7 +894,16 @@
     }
   }
 
+  function updateCartBadge() {
+    const badge = $('#cartBadge');
+    if (!badge) return;
+    const count = (state.cart?.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.hidden = !count;
+  }
+
   function renderCart() {
+    updateCartBadge();
     const cart = state.cart;
     if (!cart || !cart.items || cart.items.length === 0) {
       $('#cartTitle').textContent = 'Giỏ trống';
@@ -1039,12 +1107,9 @@
         <div class="fee-row"><span>Phí giao</span><b>${formatMoney(order.deliveryFee)}</b></div>
         <div class="fee-row"><span>Tổng thanh toán</span><b>${formatMoney(order.totalAmount)}</b></div>
         <div class="timeline">
-          ${(order.statusHistory || []).map(step => `<span>${escapeHtml(statusLabel(step.newStatus))} · ${escapeHtml(new Date(step.createdAt).toLocaleString('vi-VN'))}</span>`).join('')}
+          ${(order.statusHistory || []).filter((step, index, all) => index === 0 || step.newStatus !== all[index - 1].newStatus).map(step => `<span>${escapeHtml(statusLabel(step.newStatus))} · ${escapeHtml(new Date(step.createdAt).toLocaleString('vi-VN'))}</span>`).join('')}
         </div>
         <div class="button-row">
-          <button class="secondary-button" type="button" data-create-invoice="${order.id}">Tạo hóa đơn</button>
-          <button class="secondary-button" type="button" data-review-restaurant="${order.id}">Đánh giá nhà hàng</button>
-          <button class="secondary-button" type="button" data-review-shipper="${order.id}">Đánh giá tài xế</button>
           <button class="secondary-button" type="button" data-support-order="${order.id}">Báo vấn đề</button>
         </div>
         ${renderOrderReviewForms(order)}
@@ -1058,6 +1123,7 @@
     document.querySelectorAll('[data-review-form]').forEach(form => {
       form.addEventListener('submit', event => submitReviewForm(event, order.id, form.dataset.reviewForm));
     });
+    window.FDLive?.onCustomerOrder(order);
   }
 
   function renderOrderReviewForms(order) {
@@ -1184,17 +1250,15 @@
       node.innerHTML = `
         <article class="order-card"><strong>${restaurants.length} nhà hàng đã lưu</strong><span>${menuItems.length} món yêu thích</span></article>
         ${restaurants.map(item => `
-          <article class="restaurant-card restaurant-card-rich" data-view-restaurant="${item.id}">
-            <div class="food-photo restaurant-photo" ${imageForFood(item.name)}>${escapeHtml(item.name.slice(0, 2).toUpperCase())}</div>
-            <div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.district || item.city || '')} · ${Number(item.rating || 0).toFixed(1)} sao</span></div>
-            <button class="secondary-button" type="button">Xem lại</button>
+          <article class="restaurant-card is-row" data-view-restaurant="${item.id}">
+            ${photo(item.name, item.coverUrl || item.logoUrl, 'restaurant-cover')}
+            <div class="card-body"><strong>${escapeHtml(item.name)}</strong><span class="muted">${escapeHtml(item.district || item.city || '')}</span><span class="rating-pill">★ ${Number(item.rating || 0).toFixed(1)}</span></div>
           </article>
         `).join('')}
         ${menuItems.map(item => `
-          <article class="menu-card menu-card-rich" data-search-item-restaurant="${item.restaurantId}">
-            <div class="food-photo menu-photo" ${imageForFood(item.name, item.imageUrl)}>${escapeHtml(item.name.slice(0, 1).toUpperCase())}</div>
-            <div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.restaurantName || '')}</span><span>${formatMoney(item.effectivePrice)}</span></div>
-            <button class="secondary-button" type="button">Mở nhà hàng</button>
+          <article class="food-card is-row" data-search-item-restaurant="${item.restaurantId}">
+            ${photo(item.name, item.imageUrl, 'food-card-photo')}
+            <div class="card-body"><strong class="clamp-2">${escapeHtml(item.name)}</strong><span class="muted">${escapeHtml(item.restaurantName || '')}</span><span class="price">${formatMoney(item.effectivePrice)}</span></div>
           </article>
         `).join('')}
       `;
@@ -1283,12 +1347,19 @@
   async function loadShipperProfile() {
     try {
       const profile = await api('/api/shippers/profile');
+      const U = window.FDUI;
       $('#shipperProfile').innerHTML = `
-        <strong>${escapeHtml(profile.fullName)}</strong><br>
-        Trạng thái: ${escapeHtml(statusLabel(profile.availabilityStatus))}<br>
-        Xe: ${escapeHtml(profile.vehicleType)} ${escapeHtml(profile.vehiclePlate || '')}<br>
-        Đánh giá: ${Number(profile.rating || 0).toFixed(1)} · ${profile.totalDeliveries || 0} chuyến
-      `;
+        <div class="profile-card">
+          <span class="avatar big">${escapeHtml((profile.fullName || '?').trim().slice(0, 1).toUpperCase())}</span>
+          <div class="profile-info"><strong>${escapeHtml(profile.fullName)}</strong><span class="muted">🛵 ${escapeHtml(profile.vehicleType)} · ${escapeHtml(profile.vehiclePlate || 'Chưa có biển số')}</span></div>
+          ${U.chip(profile.availabilityStatus)}
+        </div>
+        <div class="stats-strip">
+          <article class="stat-card"><span>Đánh giá</span><strong>★ ${Number(profile.rating || 0).toFixed(1)}</strong><small>${profile.totalReviews || 0} lượt</small></article>
+          <article class="stat-card"><span>Chuyến đã giao</span><strong>${U.num(profile.totalDeliveries || 0)}</strong><small>Tổng cộng</small></article>
+          <article class="stat-card"><span>Thu nhập tích lũy</span><strong>${U.vnd(profile.totalEarnings || 0)}</strong><small>Sau phí nền tảng</small></article>
+        </div>`;
+      document.querySelectorAll('[data-availability]').forEach(button => button.classList.toggle('is-active', button.dataset.availability === profile.availabilityStatus));
     } catch (error) {
       $('#shipperProfile').innerHTML = errorBox(error);
     }
@@ -1369,6 +1440,7 @@
           updateDeliveryStatus(id, status);
         });
       });
+      window.FDLive?.onShipperDeliveries(items);
     } catch (error) {
       $('#shipperDeliveries').innerHTML = errorBox(error);
     }
@@ -1489,19 +1561,23 @@
 
   function renderRestaurantOrder(order) {
     const action = order.status === 'PENDING'
-      ? ['confirm', 'Xác nhận']
+      ? ['confirm', 'Xác nhận đơn']
       : order.status === 'CONFIRMED'
         ? ['prepare', 'Bắt đầu nấu']
         : order.status === 'PREPARING'
-          ? ['ready', 'Sẵn sàng']
+          ? ['ready', 'Món đã xong']
           : null;
+    const minutes = Math.max(0, Math.round((Date.now() - new Date(order.orderedAt || order.createdAt).getTime()) / 60000));
     return `
-      <article class="order-card">
-        <strong>${escapeHtml(order.orderCode)}</strong>
-        <span>${escapeHtml(paymentLabel(order.paymentMethod))} · ${formatMoney(order.totalAmount)}</span>
-        <span>${escapeHtml(order.customerNote || 'Không có ghi chú')}</span>
-        <button class="secondary-button" type="button" data-restaurant-order-detail="${order.id}">Chi tiết</button>
-        ${action ? `<button type="button" data-order-id="${order.id}" data-order-action="${action[0]}">${action[1]}</button>` : '<span class="status-chip">Chờ shipper</span>'}
+      <article class="order-card kitchen-card">
+        <div class="kitchen-head"><strong>${escapeHtml(order.orderCode.slice(-8))}</strong><span class="muted">${minutes} phút trước</span></div>
+        <span><b>${formatMoney(order.totalAmount)}</b> · ${escapeHtml(paymentLabel(order.paymentMethod))}</span>
+        ${order.customerNote ? `<span class="note-line">📝 ${escapeHtml(order.customerNote)}</span>` : ''}
+        <div class="button-row">
+          ${action ? `<button type="button" class="primary-button compact-button" data-order-id="${order.id}" data-order-action="${action[0]}">${action[1]}</button>` : '<span class="status-chip is-info">Chờ tài xế</span>'}
+          ${order.status === 'PENDING' ? `<button type="button" class="secondary-button compact-button" data-order-id="${order.id}" data-order-action="reject">Từ chối</button>` : ''}
+          <button class="secondary-button compact-button" type="button" data-restaurant-order-detail="${order.id}">Chi tiết</button>
+        </div>
       </article>
     `;
   }
@@ -1525,6 +1601,7 @@
         </article>
       `;
       $('#backRestaurantOrdersButton').addEventListener('click', loadRestaurantQueue);
+      window.FDLive?.onRestaurantOrder(order);
     } catch (error) {
       setStatus(error.message, true);
     }
@@ -1605,7 +1682,7 @@
       <tr>
         <td>
           <div class="owner-menu-cell">
-            <div class="food-photo owner-menu-thumb" ${imageForFood(item.name, item.imageUrl)}>${escapeHtml(item.name.slice(0, 1).toUpperCase())}</div>
+            ${photo(item.name, item.imageUrl, 'owner-menu-thumb')}
             <div>
               <strong>${escapeHtml(item.name)}</strong>
               <span class="muted">${escapeHtml(item.description || '')}</span>
@@ -2135,292 +2212,9 @@
     }
   }
 
-  async function loadAdminDashboard() {
-    if (!state.token || roleOf(state.user) !== 'ADMIN') return;
-    const [dashboard, restaurants, audit, users] = await Promise.allSettled([
-      api('/api/admin/dashboard'),
-      api('/api/admin/restaurants'),
-      api('/api/admin/audit-logs'),
-      api('/api/accounts/admin/users')
-    ]);
-    if (dashboard.status === 'fulfilled') {
-      renderAdminStats(dashboard.value);
-      renderAdminOperations(dashboard.value);
-    } else {
-      $('#adminStats').innerHTML = errorBox(dashboard.reason);
-    }
-    if (restaurants.status === 'fulfilled') {
-      const items = restaurants.value.items || [];
-      $('#adminRestaurants').innerHTML = items.length ? items.slice(0, 12).map(item => `
-        <article class="restaurant-card restaurant-card-rich">
-          <div class="food-photo restaurant-photo" ${imageForFood(item.name, item.logoUrl || item.coverImageUrl)}>${escapeHtml(item.name.slice(0, 2).toUpperCase())}</div>
-          <div>
-            <strong>${escapeHtml(item.name)}</strong>
-            <span>${escapeHtml(statusLabel(item.status))} · ${escapeHtml(item.city || '')}</span>
-            <span>Hoa hồng ${Number(item.commissionRate || 0).toFixed(1)}% · Đánh giá ${Number(item.rating || 0).toFixed(1)}</span>
-          </div>
-          <div class="button-row">
-            <button class="secondary-button" type="button" data-admin-restaurant-detail="${item.id}">Chi tiết</button>
-            <button class="secondary-button" type="button" data-restaurant-commission="${item.id}:${item.commissionRate || 0}">Hoa hồng</button>
-            <button class="secondary-button" type="button" data-restaurant-state="${item.id}:ACTIVE">Duyệt</button>
-            <button class="secondary-button" type="button" data-restaurant-state="${item.id}:INACTIVE">Tạm ngưng</button>
-          </div>
-        </article>
-      `).join('') : empty();
-      bindRestaurantStateActions();
-    } else {
-      $('#adminRestaurants').innerHTML = errorBox(restaurants.reason);
-    }
-    if (audit.status === 'fulfilled') {
-      const items = audit.value.items || [];
-      $('#auditLogs').innerHTML = items.length ? items.slice(0, 12).map(item => `
-        <article class="log-card">
-          <strong>${escapeHtml(activityLabel(item.action || item.auditAction))}</strong>
-          <span>${escapeHtml(item.username || 'Hệ thống')} · ${escapeHtml(new Date(item.createdAt).toLocaleString('vi-VN'))}</span>
-        </article>
-      `).join('') : empty();
-    } else {
-      $('#auditLogs').innerHTML = errorBox(audit.reason);
-    }
-    if (users.status === 'fulfilled') {
-      renderUsers(users.value.items || []);
-    } else {
-      $('#userManagement').innerHTML = errorBox(users.reason);
-    }
-    if (dashboard.status !== 'fulfilled') renderAdminOperations(null);
-  }
-
-  function renderAdminStats(dashboard) {
-    const overview = dashboard.overview || {};
-    $('#adminStats').innerHTML = `
-      <article class="stat-card"><span>GMV hôm nay</span><strong>${formatMoney(overview.todayGmv)}</strong><small>${overview.todayOrders || 0} đơn mới</small></article>
-      <article class="stat-card"><span>Doanh thu đã thanh toán</span><strong>${formatMoney(overview.paidRevenue)}</strong><small>${overview.totalOrders || 0} đơn toàn hệ thống</small></article>
-      <article class="stat-card"><span>Nhà hàng active</span><strong>${overview.activeRestaurants || 0}</strong><small>${overview.pendingRestaurants || 0} đang chờ duyệt</small></article>
-      <article class="stat-card"><span>Tài khoản active</span><strong>${overview.activeUsers || 0}</strong><small>${overview.totalUsers || 0} tài khoản tổng</small></article>
-    `;
-  }
-
-  function renderAdminOperations(dashboard) {
-    const recentOrders = dashboard?.recentOrders || [];
-    const support = dashboard?.supportStatus || [];
-    $('#adminOps').innerHTML = `
-      <article class="order-card"><strong>Đơn gần đây</strong><span>${recentOrders.length ? recentOrders.map(order => `${order.orderCode}: ${statusLabel(order.status)}`).join(' · ') : 'Chưa có đơn'}</span></article>
-      <article class="order-card"><strong>Helpdesk</strong><span>${support.length ? support.map(item => `${statusLabel(item.status)}: ${item.total}`).join(' · ') : 'Chưa có ticket'}</span></article>
-      <article class="order-card"><strong>Đối soát</strong><span>Tạo kỳ payout cho nhà hàng từ đơn đã giao.</span><button class="secondary-button" type="button" id="generateSettlementButton">Generate kỳ này</button></article>
-      <article class="order-card"><strong>Import / Export</strong><span>Tạo job xuất đơn/doanh thu/shipper/settlement.</span><div class="button-row"><button class="secondary-button" type="button" data-export-type="ORDERS">Xuất đơn</button><button class="secondary-button" type="button" data-export-type="REVENUE">Xuất doanh thu</button><button class="secondary-button" type="button" id="runBackgroundJobsButton">Chạy job nền</button><button class="secondary-button" type="button" data-screen-target-inline="api">Xem log phiên</button></div></article>
-      <div id="adminSupportTickets"></div>
-      <div id="adminJobPanel"></div>
-      <article class="order-card"><strong>Swagger API</strong><span>Mở tài liệu API để test endpoint vận hành.</span><a class="secondary-link" href="/api/docs" target="_blank" rel="noreferrer">Mở Swagger</a></article>
-    `;
-    document.querySelectorAll('[data-screen-target-inline]').forEach(button => {
-      button.addEventListener('click', () => showScreen(button.dataset.screenTargetInline));
-    });
-    document.querySelectorAll('[data-export-type]').forEach(button => {
-      button.addEventListener('click', () => createAdminExport(button.dataset.exportType));
-    });
-    $('#generateSettlementButton')?.addEventListener('click', generateAdminSettlement);
-    $('#runBackgroundJobsButton')?.addEventListener('click', runBackgroundJobs);
-    loadAdminSupportTickets();
-    loadAdminJobs();
-  }
-
-  async function loadAdminSupportTickets() {
-    const node = $('#adminSupportTickets');
-    if (!node || roleOf(state.user) !== 'ADMIN') return;
-    try {
-      const result = await api('/api/communications/support/tickets');
-      const items = result.items || [];
-      node.innerHTML = items.length ? `
-        <article class="order-card">
-          <strong>Ticket cần xử lý</strong>
-          <span>${items.filter(item => !['RESOLVED', 'CLOSED'].includes(item.status)).length} ticket đang mở</span>
-        </article>
-        ${items.slice(0, 8).map(item => `
-          <article class="order-card">
-            <strong>${escapeHtml(item.ticketCode)} · ${escapeHtml(statusLabel(item.status))}</strong>
-            <span>${escapeHtml(item.username || '')} · ${escapeHtml(item.subject)} · ${escapeHtml(item.category)}</span>
-            <div class="button-row">
-              <button class="secondary-button" type="button" data-ticket-status="${item.id}:IN_PROGRESS">Đang xử lý</button>
-              <button class="secondary-button" type="button" data-ticket-status="${item.id}:RESOLVED">Đã giải quyết</button>
-              <button class="secondary-button" type="button" data-ticket-status="${item.id}:CLOSED">Đóng</button>
-            </div>
-          </article>
-        `).join('')}
-      ` : '<div class="empty-state">Chưa có ticket hỗ trợ.</div>';
-      node.querySelectorAll('[data-ticket-status]').forEach(button => {
-        button.addEventListener('click', () => {
-          const [ticketId, status] = button.dataset.ticketStatus.split(':');
-          updateSupportTicket(ticketId, status);
-        });
-      });
-    } catch (error) {
-      node.innerHTML = errorBox(error);
-    }
-  }
-
-  async function updateSupportTicket(ticketId, status) {
-    try {
-      await api(`/api/communications/support/tickets/${ticketId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-      });
-      await loadAdminSupportTickets();
-      setStatus('Đã cập nhật ticket.');
-    } catch (error) {
-      setStatus(error.message, true);
-    }
-  }
-
-  async function createAdminExport(exportType) {
-    try {
-      const result = await api('/api/jobs/exports', {
-        method: 'POST',
-        body: JSON.stringify({ exportType, format: 'CSV', filters: {} })
-      });
-      setStatus(`Đã tạo file export ${exportType} #${result.id}.`);
-      await loadAdminJobs();
-    } catch (error) {
-      setStatus(error.message, true);
-    }
-  }
-
-  async function loadAdminJobs() {
-    const node = $('#adminJobPanel');
-    if (!node || roleOf(state.user) !== 'ADMIN') return;
-    try {
-      const [exports, imports, background] = await Promise.allSettled([
-        api('/api/jobs/exports'),
-        api('/api/jobs/imports'),
-        api('/api/jobs/background')
-      ]);
-      const exportItems = exports.status === 'fulfilled' ? exports.value.items || [] : [];
-      const importItems = imports.status === 'fulfilled' ? imports.value.items || [] : [];
-      const backgroundItems = background.status === 'fulfilled' ? background.value.items || [] : [];
-      node.innerHTML = `
-        <article class="order-card">
-          <strong>Job dữ liệu</strong>
-          <span>${exportItems.length} export · ${importItems.length} import · ${backgroundItems.length} job nền</span>
-        </article>
-        ${exportItems.slice(0, 5).map(item => `
-          <article class="order-card">
-            <strong>${escapeHtml(item.exportType)} · ${escapeHtml(statusLabel(item.status))}</strong>
-            <span>${escapeHtml(item.format)} · ${escapeHtml(new Date(item.createdAt).toLocaleString('vi-VN'))}</span>
-            ${item.fileUrl ? `<a class="secondary-link" href="${escapeHtml(item.fileUrl)}" target="_blank" rel="noreferrer">Tải file</a>` : ''}
-          </article>
-        `).join('')}
-      `;
-    } catch (error) {
-      node.innerHTML = errorBox(error);
-    }
-  }
-
-  async function runBackgroundJobs() {
-    try {
-      const result = await api('/api/jobs/background/run', { method: 'POST' });
-      await loadAdminJobs();
-      setStatus(`Đã chạy ${result.completedJobIds?.length || 0} job nền.`);
-    } catch (error) {
-      setStatus(error.message, true);
-    }
-  }
-
-  async function generateAdminSettlement() {
-    const now = new Date();
-    const end = now.toISOString().slice(0, 10);
-    const startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const periodStart = window.prompt('Ngày bắt đầu kỳ đối soát (YYYY-MM-DD)', startDate);
-    if (!periodStart) return;
-    const periodEnd = window.prompt('Ngày kết thúc kỳ đối soát (YYYY-MM-DD)', end);
-    if (!periodEnd) return;
-    try {
-      const result = await api('/api/settlements/admin/settlements/generate', {
-        method: 'POST',
-        body: JSON.stringify({ periodStart, periodEnd })
-      });
-      setStatus(`Đã tạo ${result.totalItems || 0} kỳ đối soát.`);
-      await loadAdminDashboard();
-    } catch (error) {
-      setStatus(error.message, true);
-    }
-  }
-
-  function bindRestaurantStateActions() {
-    document.querySelectorAll('[data-admin-restaurant-detail]').forEach(button => {
-      button.addEventListener('click', () => viewAdminRestaurant(Number(button.dataset.adminRestaurantDetail)));
-    });
-    document.querySelectorAll('[data-restaurant-commission]').forEach(button => {
-      button.addEventListener('click', () => {
-        const [id, currentRate] = button.dataset.restaurantCommission.split(':');
-        updateRestaurantCommission(id, currentRate);
-      });
-    });
-    document.querySelectorAll('[data-restaurant-state]').forEach(button => {
-      button.addEventListener('click', () => {
-        const [id, status] = button.dataset.restaurantState.split(':');
-        updateRestaurantState(id, status);
-      });
-    });
-  }
-
-  async function updateRestaurantState(id, status) {
-    try {
-      await api(`/api/admin/restaurants/${id}/state`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-      });
-      setStatus(`Đã cập nhật nhà hàng #${id} thành ${statusLabel(status)}.`);
-      await loadAdminDashboard();
-    } catch (error) {
-      setStatus(error.message, true);
-    }
-  }
-
-  async function updateRestaurantCommission(id, currentRate) {
-    const commissionRate = window.prompt('Nhập hoa hồng nhà hàng (%)', String(currentRate || 15));
-    if (commissionRate === null) return;
-    try {
-      await api(`/api/admin/restaurants/${id}/state`, {
-        method: 'PATCH',
-        body: JSON.stringify({ commissionRate: Number(commissionRate) })
-      });
-      setStatus(`Đã cập nhật hoa hồng nhà hàng #${id}.`);
-      await loadAdminDashboard();
-    } catch (error) {
-      setStatus(error.message, true);
-    }
-  }
-
-  async function viewAdminRestaurant(id) {
-    try {
-      const item = await api(`/api/admin/restaurants/${id}`);
-      $('#adminRestaurants').innerHTML = `
-        <article class="restaurant-card restaurant-card-rich admin-detail-card">
-          <div class="food-photo restaurant-photo" ${imageForFood(item.name, item.images?.[0]?.imageUrl)}>${escapeHtml(item.name.slice(0, 2).toUpperCase())}</div>
-          <div>
-            <button class="text-button" type="button" id="backToAdminRestaurants">← Quay lại danh sách</button>
-            <strong>${escapeHtml(item.name)} · ${escapeHtml(statusLabel(item.status))}</strong>
-            <span>Chủ quán: ${escapeHtml(item.ownerUsername || '')} · ${escapeHtml(item.ownerEmail || '')}</span>
-            <span>${escapeHtml(item.address || '')}, ${escapeHtml(item.district || '')}, ${escapeHtml(item.city || '')}</span>
-            <span>Đánh giá ${Number(item.rating || 0).toFixed(1)}/5 · ${item.totalReviews || 0} review · ${item.totalOrders || 0} đơn · GMV ${formatMoney(item.totalRevenue)}</span>
-            <span>Hoa hồng ${Number(item.commissionRate || 0).toFixed(1)}% · Mở cửa ${escapeHtml(item.openingTime || '--')} - ${escapeHtml(item.closingTime || '--')}</span>
-          </div>
-          <div class="button-row">
-            <button class="secondary-button" type="button" data-restaurant-commission="${item.id}:${item.commissionRate || 0}">Chỉnh hoa hồng</button>
-            <button class="secondary-button" type="button" data-restaurant-state="${item.id}:ACTIVE">Duyệt/khôi phục</button>
-            <button class="secondary-button" type="button" data-restaurant-state="${item.id}:SUSPENDED">Tạm khóa</button>
-          </div>
-        </article>
-      `;
-      $('#backToAdminRestaurants')?.addEventListener('click', loadAdminDashboard);
-      bindRestaurantStateActions();
-    } catch (error) {
-      setStatus(error.message, true);
-    }
-  }
-
   async function loadAccountDashboard() {
     if (!state.token) return;
-    await Promise.allSettled([loadSessionPermissions(), loadWallet(), roleOf(state.user) === 'ADMIN' ? loadUsers() : Promise.resolve()]);
+    await Promise.allSettled([loadSessionPermissions(), loadWallet()]);
     renderSession();
   }
 
@@ -2451,63 +2245,12 @@
     }
   }
 
-  async function loadUsers() {
-    if (!can('user.view')) {
-      $('#userManagement').innerHTML = '<div class="empty-state">Tài khoản hiện tại không có quyền xem danh sách người dùng.</div>';
-      return;
-    }
-    try {
-      const result = await api('/api/accounts/admin/users');
-      renderUsers(result.items || []);
-    } catch (error) {
-      $('#userManagement').innerHTML = errorBox(error);
-    }
-  }
-
-  function renderUsers(items) {
-    const html = items.length ? items.slice(0, 50).map(item => `
-      <article class="order-card">
-        <strong>${escapeHtml(item.username)}</strong>
-        <span>${escapeHtml(item.email)} · ${escapeHtml(roleLabel(item.role))} · ${escapeHtml(statusLabel(item.status))}</span>
-        ${can('user.manage') ? `
-          <div class="button-row">
-            <button class="secondary-button" type="button" data-user-status="${item.id}:ACTIVE">Mở</button>
-            <button class="secondary-button" type="button" data-user-status="${item.id}:LOCKED">Khóa</button>
-            <button class="secondary-button" type="button" data-user-status="${item.id}:INACTIVE">Tạm ngưng</button>
-          </div>
-        ` : ''}
-      </article>
-    `).join('') : empty();
-    ['#userManagement', '#accountUserManagement'].forEach(selector => {
-      const node = $(selector);
-      if (node) node.innerHTML = html;
-    });
-    document.querySelectorAll('[data-user-status]').forEach(button => {
-      button.addEventListener('click', () => {
-        const [id, status] = button.dataset.userStatus.split(':');
-        updateUserStatus(id, status);
-      });
-    });
-  }
-
-  async function updateUserStatus(id, status) {
-    try {
-      await api(`/api/accounts/admin/users/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-      });
-      await loadUsers();
-    } catch (error) {
-      setStatus(error.message, true);
-    }
-  }
-
   function defaultSubView(screen) {
     return {
       customer: 'catalog',
-      restaurant: 'branches',
+      restaurant: 'dashboard',
       shipper: 'profile',
-      admin: 'restaurants',
+      admin: 'overview',
       account: 'profile'
     }[screen] || '';
   }
@@ -2526,10 +2269,7 @@
     if (screen === 'restaurant' && view === 'promotions') loadRestaurantPromotions();
     if (screen === 'customer' && view === 'favorites') loadFavorites();
     if (screen === 'customer' && view === 'support') loadSupportTickets();
-    if (screen === 'admin' && view === 'ops') {
-      loadAdminSupportTickets();
-      loadAdminJobs();
-    }
+    document.dispatchEvent(new CustomEvent('fd:subview', { detail: { screen, view } }));
   }
 
   function showScreen(screen) {
@@ -2543,6 +2283,7 @@
       button.classList.toggle('is-active', button.dataset.screenTarget === target && !button.hidden);
     });
     showSubView(target, state.subViews[target] || defaultSubView(target));
+    document.dispatchEvent(new CustomEvent('fd:screen', { detail: { screen: target } }));
     if (target === 'account' && state.token) loadAccountDashboard();
   }
 
@@ -2558,14 +2299,69 @@
     });
     $('#loginForm').addEventListener('submit', event => {
       event.preventDefault();
-      login($('#loginIdentifier').value, $('#loginPassword').value).catch(error => setStatus(error.message, true));
+      login($('#loginIdentifier').value.trim(), $('#loginPassword').value).catch(error => setStatus(error.message, true));
+    });
+    $('#registerForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      try {
+        const result = await api('/api/auth/register/customer', {
+          method: 'POST',
+          body: JSON.stringify({
+            fullName: $('#regFullName').value.trim(),
+            username: $('#regUsername').value.trim(),
+            phone: $('#regPhone').value.trim() || undefined,
+            email: $('#regEmail').value.trim(),
+            password: $('#regPassword').value
+          })
+        });
+        saveSession(result);
+        await loadSessionPermissions();
+        renderSession();
+        closeAuth();
+        toast('Tạo tài khoản thành công. Chào mừng bạn đến với FoodGo!');
+        await bootstrapForRole();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    });
+    document.querySelectorAll('[data-auth-tab]').forEach(button => button.addEventListener('click', () => openAuth(button.dataset.authTab)));
+    document.querySelectorAll('[data-demo]').forEach(button => button.addEventListener('click', () => {
+      $('#loginIdentifier').value = button.dataset.demo;
+      $('#loginPassword').value = 'duong2k5';
+      login(button.dataset.demo, 'duong2k5').catch(error => setStatus(error.message, true));
+    }));
+    $('#openLoginButton').addEventListener('click', () => openAuth('login'));
+    $('#openRegisterButton').addEventListener('click', () => openAuth('register'));
+    $('#closeAuthModal').addEventListener('click', closeAuth);
+    $('#authModal').addEventListener('click', event => { if (event.target.id === 'authModal') closeAuth(); });
+    document.querySelectorAll('[data-home]').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault();
+      showScreen(defaultScreenForRole());
+      if (!state.user || roleOf(state.user) === 'CUSTOMER') showSubView('customer', 'catalog');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }));
+    document.querySelectorAll('[data-quick-search]').forEach(button => button.addEventListener('click', () => {
+      $('#catalogKeyword').value = button.dataset.quickSearch;
+      searchCatalog();
+      $('#restaurantList').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+    document.querySelectorAll('[data-stub]').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault();
+      toast('Tính năng này đang được phát triển (bản demo).');
+    }));
+    $('#userMenuButton').addEventListener('click', event => {
+      event.stopPropagation();
+      $('#userDropdown').hidden = !$('#userDropdown').hidden;
+    });
+    document.addEventListener('click', event => {
+      if (!event.target.closest('.user-menu')) $('#userDropdown').hidden = true;
     });
     const logout = async () => {
       if (state.refreshToken) {
         await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: state.refreshToken }) }).catch(() => null);
       }
       clearSession();
-      setStatus('Đã đăng xuất.');
+      toast('Đã đăng xuất.');
       showScreen('customer');
       showSubView('customer', 'catalog');
     };
@@ -2634,7 +2430,6 @@
     $('#createVariantForm')?.addEventListener('submit', createItemVariant);
     $('#loadRestaurantPromotionsButton')?.addEventListener('click', loadRestaurantPromotions);
     $('#promotionForm')?.addEventListener('submit', createRestaurantPromotion);
-    $('#loadAdminButton').addEventListener('click', () => loadAdminDashboard());
     $('#refreshShipperButton').addEventListener('click', () => loadShipperDashboard());
     document.querySelectorAll('[data-availability]').forEach(button => {
       button.addEventListener('click', () => updateAvailability(button.dataset.availability));
@@ -2665,7 +2460,9 @@
     });
   }
 
+  window.FD = { loadOwnerRestaurants, api, state, escapeHtml, formatMoney, statusLabel, setStatus, toast, openAuth, roleOf, roleLabel, showScreen, showSubView, photo, foodEmoji, activityLabel, paymentLabel, loadOwnerMenu,  viewCustomerOrder, viewRestaurantOrder, loadShipperDashboard };
   bind();
+  window.FDLive?.mountLocationPicker();
   renderSession();
   loadPublicData();
   if (state.token) loadMe();

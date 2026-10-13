@@ -240,6 +240,49 @@ deliveryRoutes.get('/order/:orderId', requirePermission('delivery.view'), asyncH
   res.json(rows[0] ? mapDelivery(rows[0]) : null);
 }));
 
+deliveryRoutes.get('/available-shippers', requirePermission('delivery.assign'), asyncHandler(async (_req, res) => {
+  const rows = await query(
+    `SELECT id, full_name, vehicle_type, vehicle_plate, rating, total_deliveries, current_latitude, current_longitude
+     FROM shipper_profiles
+     WHERE availability_status = 'AVAILABLE' AND deleted_at IS NULL
+     ORDER BY rating DESC, total_deliveries DESC
+     LIMIT 50`
+  );
+  res.json({
+    items: rows.map(row => ({
+      id: Number(row.id),
+      fullName: row.full_name,
+      vehicleType: row.vehicle_type,
+      vehiclePlate: row.vehicle_plate,
+      rating: Number(row.rating),
+      totalDeliveries: Number(row.total_deliveries),
+      latitude: row.current_latitude == null ? null : Number(row.current_latitude),
+      longitude: row.current_longitude == null ? null : Number(row.current_longitude)
+    }))
+  });
+}));
+
+deliveryRoutes.get('/active', requireRole('ADMIN'), asyncHandler(async (_req, res) => {
+  const rows = await query(
+    `SELECT d.*, o.order_code, o.order_status, o.payment_method, o.total_amount, r.name AS restaurant_name,
+            sp.full_name AS shipper_name, sp.current_latitude, sp.current_longitude
+     FROM deliveries d
+     INNER JOIN orders o ON o.id = d.order_id
+     INNER JOIN restaurants r ON r.id = o.restaurant_id
+     LEFT JOIN shipper_profiles sp ON sp.id = d.shipper_id
+     WHERE d.delivery_status IN ('ASSIGNED','ACCEPTED','PICKED_UP','DELIVERING')
+     ORDER BY d.updated_at DESC
+     LIMIT 100`
+  );
+  res.json({
+    items: rows.map(row => ({
+      ...mapDelivery(row),
+      shipperLatitude: row.current_latitude == null ? null : Number(row.current_latitude),
+      shipperLongitude: row.current_longitude == null ? null : Number(row.current_longitude)
+    }))
+  });
+}));
+
 deliveryRoutes.post('/assign', requirePermission('delivery.assign'), asyncHandler(async (req, res) => {
   const orderId = readId(req.body?.orderId, 'orderId');
   const shipperId = readId(req.body?.shipperId, 'shipperId');
@@ -283,6 +326,27 @@ paymentRoutes.post('/:paymentId/callback', requirePermission('payment.manage'), 
   res.json(result);
 }));
 
+paymentRoutes.post('/orders/:orderId/mock-pay', requirePermission('payment.view'), asyncHandler(async (req, res) => {
+  const orderId = readId(req.params.orderId, 'orderId');
+  const order = await assertOrderAccess(req.user, orderId);
+  if (req.user.role !== 'ADMIN' && Number(order.customer_user_id) !== Number(req.user.id)) {
+    throw new HttpError(403, 'Permission denied');
+  }
+  const rows = await query(
+    `SELECT * FROM payments WHERE order_id = ? AND status IN ('PENDING','PROCESSING','FAILED') AND method <> 'COD'
+     ORDER BY id DESC LIMIT 1`,
+    [orderId]
+  );
+  if (!rows[0]) throw new HttpError(400, 'Đơn không có khoản thanh toán online đang chờ');
+  const outcome = req.body?.outcome === 'FAILED' ? 'FAILED' : 'PAID';
+  const result = await processPaymentCallback(Number(rows[0].id), outcome, {
+    gateway: 'MOCK_GATEWAY',
+    transactionId: `MOCK-${Date.now()}`
+  });
+  audit(req, 'PAYMENT_MOCK_PAY', 'PAYMENT', rows[0].id, result);
+  res.json(result);
+}));
+
 paymentRoutes.get('/cod', requirePermission('payment.view'), asyncHandler(async (req, res) => {
   const where = [];
   const params = [];
@@ -290,6 +354,12 @@ paymentRoutes.get('/cod', requirePermission('payment.view'), asyncHandler(async 
     const shipper = await requireShipper(req.user.id);
     where.push('ct.shipper_id = ?');
     params.push(shipper.id);
+  } else if (req.user.role === 'CUSTOMER') {
+    where.push('o.customer_id IN (SELECT id FROM customer_profiles WHERE user_id = ?)');
+    params.push(req.user.id);
+  } else if (req.user.role === 'RESTAURANT') {
+    where.push('o.restaurant_id IN (SELECT id FROM restaurants WHERE owner_user_id = ?)');
+    params.push(req.user.id);
   }
   const rows = await query(
     `SELECT ct.*, o.order_code
@@ -1056,7 +1126,7 @@ function mapUser(row) { return { id: Number(row.id), username: row.username, ema
 function mapShipper(row) { return { id: Number(row.id), userId: Number(row.user_id), fullName: row.full_name, identityNumber: row.identity_number, vehicleType: row.vehicle_type, vehiclePlate: row.vehicle_plate, drivingLicense: row.driving_license, rating: Number(row.rating), totalReviews: Number(row.total_reviews), totalDeliveries: Number(row.total_deliveries), totalEarnings: Number(row.total_earnings), availabilityStatus: row.availability_status, currentLatitude: row.current_latitude, currentLongitude: row.current_longitude, lastLocationAt: row.last_location_at, createdAt: row.created_at, updatedAt: row.updated_at }; }
 function mapDocument(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), documentType: row.document_type, documentNumber: row.document_number, imageUrl: row.image_url, verified: Boolean(row.verified), verifiedBy: row.verified_by, verifiedAt: row.verified_at, createdAt: row.created_at }; }
 function mapAssignment(row) { return { id: Number(row.id), orderId: Number(row.order_id), shipperId: Number(row.shipper_id), assignedBy: row.assigned_by, status: row.assignment_status, orderCode: row.order_code, restaurantName: row.restaurant_name, deliveryAddress: row.delivery_address, totalAmount: Number(row.total_amount), offeredAt: row.offered_at, acceptedAt: row.accepted_at, rejectedAt: row.rejected_at, rejectReason: row.reject_reason }; }
-function mapDelivery(row) { return { id: Number(row.id), orderId: Number(row.order_id), orderCode: row.order_code, shipperId: row.shipper_id === null ? null : Number(row.shipper_id), shipperName: row.shipper_name ?? null, restaurantName: row.restaurant_name ?? null, pickupAddress: row.pickup_address, deliveryAddress: row.delivery_address, distanceKm: Number(row.distance_km), deliveryFee: Number(row.delivery_fee), status: row.delivery_status, proofImageUrl: row.proof_image_url, receiverSignatureUrl: row.receiver_signature_url, createdAt: row.created_at, updatedAt: row.updated_at }; }
+function mapDelivery(row) { return { id: Number(row.id), orderId: Number(row.order_id), orderCode: row.order_code, shipperId: row.shipper_id === null ? null : Number(row.shipper_id), shipperName: row.shipper_name ?? null, restaurantName: row.restaurant_name ?? null, pickupAddress: row.pickup_address, deliveryAddress: row.delivery_address, pickupLatitude: row.pickup_latitude == null ? null : Number(row.pickup_latitude), pickupLongitude: row.pickup_longitude == null ? null : Number(row.pickup_longitude), deliveryLatitude: row.delivery_latitude == null ? null : Number(row.delivery_latitude), deliveryLongitude: row.delivery_longitude == null ? null : Number(row.delivery_longitude), paymentMethod: row.payment_method ?? null, totalAmount: row.total_amount == null ? null : Number(row.total_amount), orderStatus: row.order_status ?? null, distanceKm: Number(row.distance_km), deliveryFee: Number(row.delivery_fee), status: row.delivery_status, proofImageUrl: row.proof_image_url, receiverSignatureUrl: row.receiver_signature_url, createdAt: row.created_at, updatedAt: row.updated_at }; }
 function mapLocation(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), deliveryId: row.delivery_id === null ? null : Number(row.delivery_id), latitude: Number(row.latitude), longitude: Number(row.longitude), speed: Number(row.speed), heading: Number(row.heading), accuracy: row.accuracy === null ? null : Number(row.accuracy), recordedAt: row.recorded_at }; }
 function mapEarning(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), deliveryId: Number(row.delivery_id), orderId: Number(row.order_id), deliveryFee: Number(row.delivery_fee), bonus: Number(row.bonus), tipAmount: Number(row.tip_amount), platformFee: Number(row.platform_fee), netEarning: Number(row.net_earning), createdAt: row.created_at }; }
 function mapWithdrawal(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), amount: Number(row.amount), bankName: row.bank_name, bankAccount: row.bank_account, accountHolder: row.account_holder, status: row.status, requestedAt: row.requested_at, processedAt: row.processed_at, rejectReason: row.reject_reason }; }

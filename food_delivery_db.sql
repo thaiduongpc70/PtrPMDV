@@ -2888,6 +2888,9 @@ WHERE code IN (
     'order.view',
     'order.update',
     'delivery.view',
+    'delivery.assign',
+    'delivery.location.view',
+    'payment.view',
     'promotion.view',
     'promotion.manage',
     'report.view',
@@ -2938,6 +2941,7 @@ WHERE code IN (
     'order.cancel',
     'delivery.view',
     'delivery.location.view',
+    'payment.view',
     'promotion.view',
     'review.create',
     'support.create'
