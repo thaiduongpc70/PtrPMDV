@@ -265,6 +265,7 @@ deliveryRoutes.get('/available-shippers', requirePermission('delivery.assign'), 
 deliveryRoutes.get('/active', requireRole('ADMIN'), asyncHandler(async (_req, res) => {
   const rows = await query(
     `SELECT d.*, o.order_code, o.order_status, o.payment_method, o.total_amount, r.name AS restaurant_name,
+            o.customer_note, o.shipper_note, o.need_utensils, o.contactless_delivery, o.receiver_name, o.receiver_phone,
             sp.full_name AS shipper_name, sp.current_latitude, sp.current_longitude
      FROM deliveries d
      INNER JOIN orders o ON o.id = d.order_id
@@ -467,6 +468,30 @@ communicationRoutes.post('/orders/:orderId/shipper-review', requireRole('CUSTOME
   );
   audit(req, 'SHIPPER_REVIEW_CREATE', 'SHIPPER_REVIEW', result.insertId);
   res.status(201).json({ id: Number(result.insertId), orderId: order.id });
+}));
+
+communicationRoutes.post('/orders/:orderId/item-reviews', requireRole('CUSTOMER'), requirePermission('review.create'), asyncHandler(async (req, res) => {
+  const order = await requireCustomerDeliveredOrder(req.user.id, readId(req.params.orderId, 'orderId'));
+  const reviews = Array.isArray(req.body?.items) ? req.body.items : [];
+  if (reviews.length === 0 || reviews.length > 50) throw new HttpError(400, 'items must contain 1-50 reviews');
+  const lines = await query('SELECT id, menu_item_id FROM order_items WHERE order_id = ? AND menu_item_id IS NOT NULL', [order.id]);
+  const byLine = new Map(lines.map(line => [Number(line.id), Number(line.menu_item_id)]));
+  const created = [];
+  for (const review of reviews) {
+    const orderItemId = readId(review?.orderItemId, 'orderItemId');
+    if (!byLine.has(orderItemId)) throw new HttpError(400, 'orderItemId does not belong to this order');
+    const result = await query(
+      `INSERT INTO menu_item_reviews (order_id, order_item_id, menu_item_id, customer_id, rating, comment)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [order.id, orderItemId, byLine.get(orderItemId), order.customer_id, readRating(review.rating), nullableText(review.comment, 2000)]
+    ).catch(error => {
+      if (error?.code === 'ER_DUP_ENTRY') throw new HttpError(409, 'Món này trong đơn đã được đánh giá');
+      throw error;
+    });
+    created.push({ id: Number(result.insertId), orderItemId, menuItemId: byLine.get(orderItemId) });
+  }
+  audit(req, 'MENU_ITEM_REVIEW_CREATE', 'ORDER', order.id, { count: created.length });
+  res.status(201).json({ orderId: Number(order.id), items: created, totalItems: created.length });
 }));
 
 communicationRoutes.get('/chat/sessions', asyncHandler(async (req, res) => {
@@ -722,10 +747,11 @@ async function createAssignment(input) {
       `UPDATE orders SET shipper_id = ?, order_status = 'SHIPPER_ASSIGNED' WHERE id = ?`,
       [input.shipperId, input.orderId]
     );
+    // Trigger trg_order_status_history đã ghi dòng chuyển trạng thái; bổ sung người thực hiện/ghi chú thay vì ghi thêm dòng trùng.
     await connection.execute(
-      `INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, note)
-       VALUES (?, ?, 'SHIPPER_ASSIGNED', ?, 'Shipper assigned')`,
-      [input.orderId, orderRows[0].order_status, input.assignedBy]
+      `UPDATE order_status_history SET changed_by = ?, note = 'Shipper assigned'
+       WHERE order_id = ? AND new_status = 'SHIPPER_ASSIGNED' ORDER BY id DESC LIMIT 1`,
+      [input.assignedBy, input.orderId]
     );
     await connection.execute(
       `INSERT INTO delivery_status_history (delivery_id, status, note)
@@ -757,7 +783,7 @@ async function acceptAssignment(userId, assignmentId) {
     );
     await connection.execute(`UPDATE shipper_profiles SET availability_status = 'BUSY' WHERE id = ?`, [shipper.id]);
     await connection.execute(
-      `INSERT INTO delivery_status_history (delivery_id, status, note) VALUES (?, 'ACCEPTED', 'Shipper accepted')`,
+      `UPDATE delivery_status_history SET note = 'Shipper accepted' WHERE delivery_id = ? AND status = 'ACCEPTED' ORDER BY id DESC LIMIT 1`,
       [rows[0].delivery_id]
     );
     return { assignmentId, deliveryId: Number(rows[0].delivery_id), orderId: Number(rows[0].order_id), status: 'ACCEPTED' };
@@ -802,12 +828,13 @@ async function updateDeliveryStatus(input) {
       [statusToOrder[input.status], input.status, input.status, rows[0].order_id]
     );
     await connection.execute(
-      `INSERT INTO delivery_status_history (delivery_id, status, latitude, longitude, note)
-       VALUES (?, ?, ?, ?, ?)`,
-      [input.deliveryId, input.status, input.latitude, input.longitude, input.note]
+      `UPDATE delivery_status_history SET latitude = ?, longitude = ?, note = COALESCE(?, note)
+       WHERE delivery_id = ? AND status = ? AND (note IS NULL OR note <> 'GPS update') ORDER BY id DESC LIMIT 1`,
+      [input.latitude, input.longitude, input.note, input.deliveryId, input.status]
     );
     if (input.status === 'DELIVERED') {
-      await connection.execute(`UPDATE shipper_profiles SET availability_status = 'AVAILABLE', total_deliveries = total_deliveries + 1 WHERE id = ?`, [input.shipperId]);
+      // total_deliveries do trigger trg_order_delivered_statistics cộng khi đơn chuyển DELIVERED; không cộng lần nữa ở đây.
+      await connection.execute(`UPDATE shipper_profiles SET availability_status = 'AVAILABLE' WHERE id = ?`, [input.shipperId]);
       await connection.execute(`UPDATE orders SET payment_status = IF(payment_method = 'COD', 'PAID', payment_status) WHERE id = ?`, [rows[0].order_id]);
       await connection.execute(`UPDATE payments SET status = IF(method = 'COD', 'PAID', status), paid_at = IF(method = 'COD', CURRENT_TIMESTAMP, paid_at) WHERE order_id = ?`, [rows[0].order_id]);
       await connection.execute(
@@ -817,11 +844,14 @@ async function updateDeliveryStatus(input) {
          ON DUPLICATE KEY UPDATE status = status`,
         [rows[0].order_id]
       ).catch(() => null);
-      await connection.execute(
+      const earning = await connection.execute(
         `INSERT IGNORE INTO shipper_earnings (shipper_id, delivery_id, delivery_fee, bonus, tip_amount, platform_fee, net_earning)
          VALUES (?, ?, ?, 0, 0, 0, ?)`,
         [input.shipperId, input.deliveryId, Number(rows[0].delivery_fee ?? 0), Number(rows[0].delivery_fee ?? 0)]
       );
+      if (earning.affectedRows > 0) {
+        await connection.execute('UPDATE shipper_profiles SET total_earnings = total_earnings + ? WHERE id = ?', [Number(rows[0].delivery_fee ?? 0), input.shipperId]);
+      }
       await connection.execute(
         `INSERT IGNORE INTO restaurant_commissions (order_id, restaurant_id, order_amount, commission_rate, commission_amount)
          SELECT o.id, o.restaurant_id, o.total_amount, r.commission_rate, ROUND(o.total_amount * r.commission_rate / 100, 2)
@@ -842,6 +872,7 @@ async function listDeliveries(filters = {}) {
   if (filters.shipperId) { where.push('d.shipper_id = ?'); params.push(filters.shipperId); }
   return query(
     `SELECT d.*, o.order_code, o.order_status, o.payment_method, o.total_amount, r.name AS restaurant_name,
+            o.customer_note, o.shipper_note, o.need_utensils, o.contactless_delivery, o.receiver_name, o.receiver_phone,
             sp.full_name AS shipper_name
      FROM deliveries d
      INNER JOIN orders o ON o.id = d.order_id
@@ -887,9 +918,8 @@ async function cancelOrder(user, orderId, body) {
       [orderId]
     );
     await connection.execute(
-      `INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, note)
-       VALUES (?, ?, 'CANCELLED', ?, ?)`,
-      [orderId, order.order_status, user.id, nullableText(body?.reason, 500) ?? 'Order cancelled']
+      `UPDATE order_status_history SET changed_by = ?, note = ? WHERE order_id = ? AND new_status = 'CANCELLED' ORDER BY id DESC LIMIT 1`,
+      [user.id, nullableText(body?.reason, 500) ?? 'Order cancelled', orderId]
     );
     const refundAmount = ['PAID', 'PARTIALLY_REFUNDED'].includes(order.payment_status)
       ? Number(order.total_amount)
@@ -1034,29 +1064,34 @@ async function generateSettlements(periodStart, periodEnd, restaurantId) {
   const params = [periodStart, periodEnd];
   if (restaurantId) { where.push('o.restaurant_id = ?'); params.push(restaurantId); }
   const rows = await query(
-    `SELECT o.restaurant_id, SUM(o.total_amount) AS gross_sales,
+    `SELECT o.restaurant_id, SUM(o.subtotal) AS gross_sales,
             COALESCE(SUM(rc.commission_amount), 0) AS commission_amount,
+            COALESCE((SELECT SUM(pu.discount_amount) FROM promotion_usage pu INNER JOIN promotions p ON p.id = pu.promotion_id INNER JOIN orders po ON po.id = pu.order_id
+                      WHERE p.restaurant_id = o.restaurant_id AND po.restaurant_id = o.restaurant_id AND po.order_status = 'DELIVERED' AND DATE(po.delivered_at) BETWEEN ? AND ?), 0) AS shop_discount,
             COALESCE((SELECT SUM(ref.amount) FROM refunds ref INNER JOIN orders ro ON ro.id = ref.order_id
-                      WHERE ro.restaurant_id = o.restaurant_id AND ref.status IN ('PENDING','PROCESSING','COMPLETED')
+                      WHERE ro.restaurant_id = o.restaurant_id AND ro.order_status = 'DELIVERED' AND ref.status IN ('PENDING','PROCESSING','COMPLETED')
                       AND DATE(ref.created_at) BETWEEN ? AND ?), 0) AS refund_amount
      FROM orders o
      LEFT JOIN restaurant_commissions rc ON rc.order_id = o.id
      WHERE ${where.join(' AND ')}
      GROUP BY o.restaurant_id`,
-    [periodStart, periodEnd, ...params]
+    [periodStart, periodEnd, periodStart, periodEnd, ...params]
   );
   const items = [];
   for (const row of rows) {
     const gross = Number(row.gross_sales);
     const commission = Number(row.commission_amount);
     const refund = Number(row.refund_amount);
-    const net = gross - commission - refund;
+    // Doanh thu quán = tiền món (phí giao thuộc về tài xế, không tính cho quán); voucher do quán tự cấp được trừ vào kỳ như một khoản điều chỉnh,
+    // voucher toàn sàn do nền tảng chịu nên quán vẫn nhận đủ tiền món.
+    const adjustment = -Number(row.shop_discount);
+    const net = gross - commission - refund + adjustment;
     await query(
-      `INSERT INTO restaurant_settlements (restaurant_id, period_start, period_end, gross_sales, commission_amount, refund_amount, net_amount)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [row.restaurant_id, periodStart, periodEnd, gross, commission, refund, net]
+      `INSERT INTO restaurant_settlements (restaurant_id, period_start, period_end, gross_sales, commission_amount, refund_amount, adjustment_amount, net_amount)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [row.restaurant_id, periodStart, periodEnd, gross, commission, refund, adjustment, net]
     );
-    items.push({ restaurantId: Number(row.restaurant_id), periodStart, periodEnd, grossSales: gross, commissionAmount: commission, refundAmount: refund, netAmount: net, status: 'PENDING' });
+    items.push({ restaurantId: Number(row.restaurant_id), periodStart, periodEnd, grossSales: gross, commissionAmount: commission, refundAmount: refund, adjustmentAmount: adjustment, netAmount: net, status: 'PENDING' });
   }
   return items;
 }
@@ -1126,7 +1161,7 @@ function mapUser(row) { return { id: Number(row.id), username: row.username, ema
 function mapShipper(row) { return { id: Number(row.id), userId: Number(row.user_id), fullName: row.full_name, identityNumber: row.identity_number, vehicleType: row.vehicle_type, vehiclePlate: row.vehicle_plate, drivingLicense: row.driving_license, rating: Number(row.rating), totalReviews: Number(row.total_reviews), totalDeliveries: Number(row.total_deliveries), totalEarnings: Number(row.total_earnings), availabilityStatus: row.availability_status, currentLatitude: row.current_latitude, currentLongitude: row.current_longitude, lastLocationAt: row.last_location_at, createdAt: row.created_at, updatedAt: row.updated_at }; }
 function mapDocument(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), documentType: row.document_type, documentNumber: row.document_number, imageUrl: row.image_url, verified: Boolean(row.verified), verifiedBy: row.verified_by, verifiedAt: row.verified_at, createdAt: row.created_at }; }
 function mapAssignment(row) { return { id: Number(row.id), orderId: Number(row.order_id), shipperId: Number(row.shipper_id), assignedBy: row.assigned_by, status: row.assignment_status, orderCode: row.order_code, restaurantName: row.restaurant_name, deliveryAddress: row.delivery_address, totalAmount: Number(row.total_amount), offeredAt: row.offered_at, acceptedAt: row.accepted_at, rejectedAt: row.rejected_at, rejectReason: row.reject_reason }; }
-function mapDelivery(row) { return { id: Number(row.id), orderId: Number(row.order_id), orderCode: row.order_code, shipperId: row.shipper_id === null ? null : Number(row.shipper_id), shipperName: row.shipper_name ?? null, restaurantName: row.restaurant_name ?? null, pickupAddress: row.pickup_address, deliveryAddress: row.delivery_address, pickupLatitude: row.pickup_latitude == null ? null : Number(row.pickup_latitude), pickupLongitude: row.pickup_longitude == null ? null : Number(row.pickup_longitude), deliveryLatitude: row.delivery_latitude == null ? null : Number(row.delivery_latitude), deliveryLongitude: row.delivery_longitude == null ? null : Number(row.delivery_longitude), paymentMethod: row.payment_method ?? null, totalAmount: row.total_amount == null ? null : Number(row.total_amount), orderStatus: row.order_status ?? null, distanceKm: Number(row.distance_km), deliveryFee: Number(row.delivery_fee), status: row.delivery_status, proofImageUrl: row.proof_image_url, receiverSignatureUrl: row.receiver_signature_url, createdAt: row.created_at, updatedAt: row.updated_at }; }
+function mapDelivery(row) { return { id: Number(row.id), orderId: Number(row.order_id), orderCode: row.order_code, shipperId: row.shipper_id === null ? null : Number(row.shipper_id), shipperName: row.shipper_name ?? null, restaurantName: row.restaurant_name ?? null, pickupAddress: row.pickup_address, deliveryAddress: row.delivery_address, pickupLatitude: row.pickup_latitude == null ? null : Number(row.pickup_latitude), pickupLongitude: row.pickup_longitude == null ? null : Number(row.pickup_longitude), deliveryLatitude: row.delivery_latitude == null ? null : Number(row.delivery_latitude), deliveryLongitude: row.delivery_longitude == null ? null : Number(row.delivery_longitude), receiverName: row.receiver_name ?? null, receiverPhone: row.receiver_phone ?? null, customerNote: row.customer_note ?? null, shipperNote: row.shipper_note ?? null, needUtensils: row.need_utensils == null ? true : Boolean(row.need_utensils), contactlessDelivery: row.contactless_delivery == null ? false : Boolean(row.contactless_delivery), paymentMethod: row.payment_method ?? null, totalAmount: row.total_amount == null ? null : Number(row.total_amount), orderStatus: row.order_status ?? null, distanceKm: Number(row.distance_km), deliveryFee: Number(row.delivery_fee), status: row.delivery_status, proofImageUrl: row.proof_image_url, receiverSignatureUrl: row.receiver_signature_url, createdAt: row.created_at, updatedAt: row.updated_at }; }
 function mapLocation(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), deliveryId: row.delivery_id === null ? null : Number(row.delivery_id), latitude: Number(row.latitude), longitude: Number(row.longitude), speed: Number(row.speed), heading: Number(row.heading), accuracy: row.accuracy === null ? null : Number(row.accuracy), recordedAt: row.recorded_at }; }
 function mapEarning(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), deliveryId: Number(row.delivery_id), orderId: Number(row.order_id), deliveryFee: Number(row.delivery_fee), bonus: Number(row.bonus), tipAmount: Number(row.tip_amount), platformFee: Number(row.platform_fee), netEarning: Number(row.net_earning), createdAt: row.created_at }; }
 function mapWithdrawal(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), amount: Number(row.amount), bankName: row.bank_name, bankAccount: row.bank_account, accountHolder: row.account_holder, status: row.status, requestedAt: row.requested_at, processedAt: row.processed_at, rejectReason: row.reject_reason }; }

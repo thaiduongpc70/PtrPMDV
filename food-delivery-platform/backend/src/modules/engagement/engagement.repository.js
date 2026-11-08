@@ -1,4 +1,5 @@
 import { query, withTransaction } from '../../shared/database/mysql.js';
+import { listVouchers } from './voucher.js';
 
 export const engagementRepository = {
   async ownsRestaurant(userId, restaurantId) {
@@ -9,7 +10,7 @@ export const engagementRepository = {
     return rows.length > 0;
   },
   async listPromotions(filters = {}) {
-    const where = ["p.status = 'ACTIVE'", 'p.deleted_at IS NULL', '(p.start_at IS NULL OR p.start_at <= CURRENT_TIMESTAMP)', '(p.end_at IS NULL OR p.end_at >= CURRENT_TIMESTAMP)'];
+    const where = ["p.status = 'ACTIVE'", 'p.deleted_at IS NULL', '(p.start_at IS NULL OR p.start_at <= CURRENT_TIMESTAMP)', '(p.end_at IS NULL OR p.end_at >= CURRENT_TIMESTAMP)', 'p.customer_id IS NULL', '(p.usage_limit IS NULL OR p.used_count < p.usage_limit)'];
     const params = [];
     if (filters.restaurantId) { where.push('(p.restaurant_id IS NULL OR p.restaurant_id = ?)'); params.push(filters.restaurantId); }
     const rows = await query(
@@ -68,26 +69,12 @@ export const engagementRepository = {
     return result.affectedRows > 0;
   },
 
-  async findApplicable(customerId, restaurantId, code, subtotal) {
-    const rows = await query(
-      `SELECT p.id, p.restaurant_id, p.code, p.name, p.discount_type, p.discount_value,
-              p.max_discount, p.minimum_order, p.usage_limit, p.usage_per_customer, p.used_count
-       FROM promotions p
-       WHERE UPPER(p.code) = UPPER(?) AND p.status = 'ACTIVE' AND p.deleted_at IS NULL
-         AND (p.restaurant_id IS NULL OR p.restaurant_id = ?)
-         AND p.start_at <= CURRENT_TIMESTAMP AND p.end_at >= CURRENT_TIMESTAMP
-         AND p.minimum_order <= ?
-         AND (p.usage_limit IS NULL OR p.used_count < p.usage_limit)
-         AND (SELECT COUNT(*) FROM promotion_usage pu INNER JOIN customer_profiles cp ON cp.id = pu.customer_id
-              WHERE pu.promotion_id = p.id AND cp.user_id = ?) < p.usage_per_customer
-       LIMIT 1`, [code, restaurantId, subtotal, customerId]
-    );
-    if (!rows[0]) return null;
-    const row = rows[0];
-    const raw = row.discount_type === 'PERCENT'
-      ? Number(subtotal) * Number(row.discount_value) / 100
-      : row.discount_type === 'FREE_DELIVERY' ? 0 : Number(row.discount_value);
-    return { ...mapPromotion(row), discountAmount: Math.max(0, Math.min(Number(subtotal), row.max_discount == null ? raw : Math.min(raw, Number(row.max_discount)))) };
+  async findApplicable(userId, restaurantId, code, subtotal) {
+    const profile = (await query('SELECT id FROM customer_profiles WHERE user_id = ? LIMIT 1', [userId]))[0];
+    if (!profile) return null;
+    const fee = Number((await query("SELECT setting_value FROM system_settings WHERE setting_key = 'delivery_base_fee' LIMIT 1"))[0]?.setting_value ?? 15000);
+    const [voucher] = await listVouchers(query, { customerId: Number(profile.id), restaurantId, subtotal: Number(subtotal), deliveryFee: fee, code });
+    return voucher?.eligible ? voucher : null;
   },
 
   async recordUsage(connection, promotionId, customerId, orderId, discountAmount) {

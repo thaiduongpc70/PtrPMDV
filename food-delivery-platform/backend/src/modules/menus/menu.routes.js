@@ -25,6 +25,7 @@ restaurantMenuRoutes.post('/:restaurantId/menu-items/:itemId/variants', requireP
 restaurantMenuRoutes.patch('/:restaurantId/menu-items/:itemId/variants/:variantId', requirePermission('menu.update'), controller.updateVariant);
 restaurantMenuRoutes.delete('/:restaurantId/menu-items/:itemId/variants/:variantId', requirePermission('menu.delete'), controller.deleteVariant);
 restaurantMenuRoutes.put('/:restaurantId/menu-items/:itemId/topping-groups', requirePermission('menu.update'), controller.linkToppingGroups);
+restaurantMenuRoutes.put('/:restaurantId/menu-items/:itemId/combo', requirePermission('menu.update'), controller.setCombo);
 
 restaurantMenuRoutes.get('/:restaurantId/topping-groups', requirePermission('menu.view'), controller.listToppingGroups);
 restaurantMenuRoutes.post('/:restaurantId/topping-groups', requirePermission('menu.create'), controller.createToppingGroup);

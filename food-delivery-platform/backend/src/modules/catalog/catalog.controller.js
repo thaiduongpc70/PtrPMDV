@@ -2,6 +2,10 @@ import { asyncHandler } from '../../shared/http/async-handler.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { catalogService } from './catalog.service.js';
 
+export const getStorefront = asyncHandler(async (_req, res) => res.json(await catalogService.getStorefront()));
+export const listCollections = asyncHandler(async (req, res) => res.json(await catalogService.listCollections(req.query)));
+export const listCities = asyncHandler(async (_req, res) => res.json(await catalogService.listCities()));
+export const listDistricts = asyncHandler(async (req, res) => res.json(await catalogService.listDistricts(req.query)));
 export const searchRestaurants = asyncHandler(async (req, res) => {
   const restaurants = await catalogService.searchRestaurants({ ...req.query, userId: req.user?.id });
   res.json(restaurants);
@@ -37,6 +41,11 @@ export const getRestaurantMenu = asyncHandler(async (req, res) => {
 export const listRestaurantReviews = asyncHandler(async (req, res) => {
   const restaurantId = readId(req.params.restaurantId);
   const result = await catalogService.listRestaurantReviews(restaurantId, req.query);
+  res.json(result);
+});
+
+export const listMenuItemReviews = asyncHandler(async (req, res) => {
+  const result = await catalogService.listMenuItemReviews(readId(req.params.itemId), req.query);
   res.json(result);
 });
 

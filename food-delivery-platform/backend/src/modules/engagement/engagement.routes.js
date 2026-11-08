@@ -20,6 +20,7 @@ engagementRestaurantRoutes.use(requireAuth, requireRole('RESTAURANT'), requirePe
 engagementRestaurantRoutes.get('/:restaurantId/promotions', controller.listOwnerPromotions);
 engagementRestaurantRoutes.post('/:restaurantId/promotions', controller.createPromotion);
 engagementRestaurantRoutes.patch('/:restaurantId/promotions/:promotionId', controller.updatePromotion);
+engagementRestaurantRoutes.post('/:restaurantId/promotions/:promotionId/extend', controller.extendPromotion);
 engagementRestaurantRoutes.delete('/:restaurantId/promotions/:promotionId', controller.deletePromotion);
 
 export const engagementAdminRoutes = Router();

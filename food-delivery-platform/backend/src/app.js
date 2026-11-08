@@ -10,6 +10,8 @@ import { auditLogRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { catalogRoutes } from './modules/catalog/catalog.routes.js';
 import { engagementAdminRoutes, engagementCustomerRoutes, engagementPublicRoutes, engagementRestaurantRoutes } from './modules/engagement/engagement.routes.js';
+import { rewardsCustomerRoutes } from './modules/engagement/rewards.routes.js';
+import { analyticsRoutes } from './modules/analytics/analytics.routes.js';
 import { notificationRoutes } from './modules/notifications/notification.routes.js';
 import { customerOrderRoutes, restaurantOrderRoutes } from './modules/orders/order.routes.js';
 import { adminDashboardRoutes } from './modules/dashboard/admin-dashboard.routes.js';
@@ -46,7 +48,11 @@ import { invalidateResponseCache, responseCache } from './shared/cache/response-
 export function createApp() {
   const app = express();
 
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: { ...helmet.contentSecurityPolicy.getDefaultDirectives(), 'img-src': ["'self'", 'data:', 'https://tile.openstreetmap.org', 'https://*.tile.openstreetmap.org'] }
+    }
+  }));
   app.use(cors({
     origin(origin, callback) {
       if (!origin || env.corsOrigins.includes('*') || env.corsOrigins.includes(origin)) {
@@ -97,6 +103,8 @@ export function createApp() {
   app.use('/api/catalog', engagementPublicRoutes);
   app.use('/api/admin/banners', engagementAdminRoutes);
   app.use('/api/customer', engagementCustomerRoutes);
+  app.use('/api/analytics', analyticsRoutes);
+  app.use('/api/customer', rewardsCustomerRoutes);
   app.use('/api/customer', customerOrderRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/shippers', shipperRoutes);

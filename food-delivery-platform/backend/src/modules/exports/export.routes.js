@@ -3,6 +3,7 @@ import { query } from '../../shared/database/mysql.js';
 import { asyncHandler } from '../../shared/http/async-handler.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { requireAuth, requireRole } from '../../shared/middlewares/require-auth.middleware.js';
+import { localizeDataset, toPdf, toXlsx } from './file-writers.js';
 
 /* Dataset exports. JSON by default ({title, columns, rows}) so the web client can render CSV / PDF itself;
    `?format=csv` streams a UTF-8 (BOM) CSV attachment that opens correctly in Excel. */
@@ -252,12 +253,37 @@ function toCsv(dataset) {
   return `﻿${lines.join('\r\n')}\r\n`;
 }
 
-function send(req, res, name, dataset) {
+const FILE_TYPES = {
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  pdf: 'application/pdf'
+};
+
+function exportMeta(req) {
+  const filters = [];
+  if (isDate(req.query.from)) filters.push(`từ ${req.query.from.split('-').reverse().join('/')}`);
+  if (isDate(req.query.to)) filters.push(`đến ${req.query.to.split('-').reverse().join('/')}`);
+  if (req.query.status) filters.push(`trạng thái ${String(req.query.status).slice(0, 30)}`);
+  return { user: req.user?.fullName ?? req.user?.username ?? '', filters: filters.join(' ') };
+}
+
+export async function sendDataset(req, res, name, dataset) { return send(req, res, name, dataset); }
+
+async function send(req, res, name, dataset) {
   const generatedAt = new Date().toISOString();
-  if (req.query.format === 'csv') {
+  const format = req.query.format;
+  if (format === 'xlsx' || format === 'pdf') {
+    const localized = localizeDataset(dataset);
+    const file = format === 'xlsx' ? await toXlsx(localized, exportMeta(req)) : await toPdf(localized, exportMeta(req));
+    res.setHeader('Content-Type', FILE_TYPES[format]);
+    res.setHeader('Content-Disposition', `attachment; filename="${name}-${generatedAt.slice(0, 10)}.${format}"`);
+    res.setHeader('Content-Length', file.length);
+    res.end(file);
+    return;
+  }
+  if (format === 'csv') {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${name}-${generatedAt.slice(0, 10)}.csv"`);
-    res.send(toCsv(dataset));
+    res.send(toCsv(localizeDataset(dataset)));
     return;
   }
   res.json({ name, ...dataset, total: dataset.rows.length, truncated: dataset.rows.length >= LIMIT, generatedAt });
@@ -273,7 +299,7 @@ adminExportRoutes.get('/:dataset', asyncHandler(async (req, res) => {
   const builder = ADMIN_DATASETS[req.params.dataset];
   if (!builder) throw new HttpError(404, `Unknown dataset. Available: ${Object.keys(ADMIN_DATASETS).join(', ')}`);
   audit(req, 'ADMIN_EXPORT', req.params.dataset);
-  send(req, res, req.params.dataset, await builder(req));
+  await send(req, res, req.params.dataset, await builder(req));
 }));
 
 restaurantExportRoutes.get('/:restaurantId/:dataset', asyncHandler(async (req, res) => {
@@ -285,5 +311,5 @@ restaurantExportRoutes.get('/:restaurantId/:dataset', asyncHandler(async (req, r
   const builder = RESTAURANT_DATASETS[req.params.dataset];
   if (!builder) throw new HttpError(404, `Unknown dataset. Available: ${Object.keys(RESTAURANT_DATASETS).join(', ')}`);
   audit(req, 'RESTAURANT_EXPORT', `${restaurantId}:${req.params.dataset}`);
-  send(req, res, `restaurant-${restaurantId}-${req.params.dataset}`, await builder(req, restaurantId));
+  await send(req, res, `restaurant-${restaurantId}-${req.params.dataset}`, await builder(req, restaurantId));
 }));

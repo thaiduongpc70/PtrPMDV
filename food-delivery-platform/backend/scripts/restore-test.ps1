@@ -40,7 +40,9 @@ $env:MYSQL_PWD = $dbPassword
 & $mysql --host=$dbHost --port=$dbPort --user=$dbUser --execute="DROP DATABASE IF EXISTS ``$TestDatabase``; CREATE DATABASE ``$TestDatabase`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 if ($LASTEXITCODE -ne 0) { throw "Could not create restore-test database" }
 
-Get-Content -LiteralPath $BackupPath -Raw | & $mysql --host=$dbHost --port=$dbPort --user=$dbUser $TestDatabase
+# Nạp bằng lệnh source của mysql (không pipe qua PowerShell để khỏi đổi bảng mã làm hỏng tiếng Việt).
+$sourcePath = (Resolve-Path -LiteralPath $BackupPath).Path.Replace([string][char]92, '/')
+& $mysql --host=$dbHost --port=$dbPort --user=$dbUser --default-character-set=utf8mb4 --database=$TestDatabase --execute="source $sourcePath"
 if ($LASTEXITCODE -ne 0) { throw "Restore import failed" }
 
 $checkSql = @"
@@ -49,7 +51,8 @@ UNION ALL SELECT CONCAT('active_restaurants=', COUNT(*)) FROM restaurants WHERE 
 UNION ALL SELECT CONCAT('active_menu_items=', COUNT(*)) FROM menu_items WHERE deleted_at IS NULL
 UNION ALL SELECT CONCAT('raw_users=', COUNT(*)) FROM users
 UNION ALL SELECT CONCAT('raw_restaurants=', COUNT(*)) FROM restaurants
-UNION ALL SELECT CONCAT('raw_menu_items=', COUNT(*)) FROM menu_items;
+UNION ALL SELECT CONCAT('raw_menu_items=', COUNT(*)) FROM menu_items
+UNION ALL SELECT CONCAT('vietnamese_names_ok=', COUNT(*)) FROM restaurants WHERE name LIKE CONCAT('%', CONVERT(UNHEX('42E1BABF70') USING utf8mb4) COLLATE utf8mb4_unicode_ci, '%');
 "@
 & $mysql --host=$dbHost --port=$dbPort --user=$dbUser --batch --skip-column-names --database=$TestDatabase --execute=$checkSql
 if ($LASTEXITCODE -ne 0) { throw "Restore verification query failed" }

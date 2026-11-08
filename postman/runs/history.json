@@ -1,5 +1,65 @@
 [
   {
+    "id": "20261013-213427",
+    "startedAt": "2026-10-13T14:34:27.220Z",
+    "durationMs": 41042,
+    "scope": "Toàn bộ collection",
+    "baseUrl": "http://localhost:3000",
+    "requests": 276,
+    "assertions": 440,
+    "failedAssertions": 0,
+    "requestErrors": 0,
+    "result": "PASSED"
+  },
+  {
+    "id": "20261013-213326",
+    "startedAt": "2026-10-13T14:33:26.078Z",
+    "durationMs": 39832,
+    "scope": "Toàn bộ collection",
+    "baseUrl": "http://localhost:3000",
+    "requests": 276,
+    "assertions": 440,
+    "failedAssertions": 1,
+    "requestErrors": 0,
+    "result": "FAILED"
+  },
+  {
+    "id": "20261013-212902",
+    "startedAt": "2026-10-13T14:29:02.336Z",
+    "durationMs": 38209,
+    "scope": "Toàn bộ collection",
+    "baseUrl": "http://localhost:3000",
+    "requests": 269,
+    "assertions": 425,
+    "failedAssertions": 0,
+    "requestErrors": 0,
+    "result": "PASSED"
+  },
+  {
+    "id": "20261013-212751",
+    "startedAt": "2026-10-13T14:27:51.697Z",
+    "durationMs": 38630,
+    "scope": "Toàn bộ collection",
+    "baseUrl": "http://localhost:3000",
+    "requests": 269,
+    "assertions": 424,
+    "failedAssertions": 12,
+    "requestErrors": 0,
+    "result": "FAILED"
+  },
+  {
+    "id": "20261013-212635",
+    "startedAt": "2026-10-13T14:26:35.495Z",
+    "durationMs": 38830,
+    "scope": "Toàn bộ collection",
+    "baseUrl": "http://localhost:3000",
+    "requests": 269,
+    "assertions": 424,
+    "failedAssertions": 14,
+    "requestErrors": 0,
+    "result": "FAILED"
+  },
+  {
     "id": "20261013-110733",
     "startedAt": "2026-10-13T04:07:33.979Z",
     "durationMs": 38176,

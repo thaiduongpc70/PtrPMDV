@@ -1,4 +1,7 @@
 import { query, withTransaction } from '../../shared/database/mysql.js';
+import { listVouchers, priceOrder } from '../engagement/voucher.js';
+import { deliveryFeeFor, distanceKm, feeSettings } from '../../shared/pricing/delivery-fee.js';
+import { isOpenNow, ordersAllowedWhenClosed } from '../../shared/time/opening-hours.js';
 
 export const orderRepository = {
   async getCartForUser(userId, restaurantId = null) {
@@ -144,13 +147,15 @@ export const orderRepository = {
       const address = addressRows[0];
       const cartRows = await connection.execute(
         `SELECT c.id, c.restaurant_id, r.name AS restaurant_name, r.owner_user_id, r.status, r.minimum_order,
-                r.address AS restaurant_address, r.latitude AS restaurant_latitude, r.longitude AS restaurant_longitude
+                r.address AS restaurant_address, r.latitude AS restaurant_latitude, r.longitude AS restaurant_longitude,
+                TIME_FORMAT(r.opening_time, '%H:%i:%s') AS opening_time, TIME_FORMAT(r.closing_time, '%H:%i:%s') AS closing_time
          FROM carts c INNER JOIN restaurants r ON r.id = c.restaurant_id
          INNER JOIN customer_profiles cp ON cp.id = c.customer_id
          WHERE cp.user_id = ? AND c.restaurant_id = ? AND r.status = 'ACTIVE' AND r.deleted_at IS NULL LIMIT 1 FOR UPDATE`, [userId, input.restaurantId]
       );
       if (!cartRows[0]) return { error: 'CART_EMPTY' };
       const cart = cartRows[0];
+      if (!ordersAllowedWhenClosed() && !isOpenNow(cart.opening_time, cart.closing_time)) return { error: 'RESTAURANT_CLOSED', openingTime: cart.opening_time, closingTime: cart.closing_time };
       const itemRows = await connection.execute(
         `SELECT ci.id, ci.menu_item_id, ci.variant_id, ci.quantity, ci.note,
                 mi.name, mi.base_price, mi.discount_price, COALESCE(mi.discount_price, mi.base_price) AS effective_price,
@@ -175,29 +180,28 @@ export const orderRepository = {
       });
       const subtotal = roundMoney(items.reduce((sum, item) => sum + item.totalPrice, 0));
       if (subtotal < Number(cart.minimum_order ?? 0)) return { error: 'MINIMUM_ORDER_NOT_MET', minimumOrder: Number(cart.minimum_order) };
-      const settings = await connection.execute(`SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('delivery_base_fee', 'tax_rate')`);
+      const settings = await connection.execute(`SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('delivery_base_fee', 'delivery_price_per_km', 'max_delivery_distance', 'tax_rate')`);
       const settingMap = Object.fromEntries(settings.map(row => [row.setting_key, Number(row.setting_value)]));
-      let deliveryFee = Number.isFinite(settingMap.delivery_base_fee) ? settingMap.delivery_base_fee : 15000;
-      const serviceFee = 0;
-      const taxAmount = roundMoney(subtotal * ((settingMap.tax_rate ?? 0) / 100));
-      let discountAmount = 0;
+      const shipping = deliveryFeeFor(feeSettings(settingMap), distanceKm(cart.restaurant_latitude, cart.restaurant_longitude, address.latitude, address.longitude));
+      if (shipping.tooFar) return { error: 'ADDRESS_TOO_FAR', km: shipping.km, maxKm: feeSettings(settingMap).maxKm };
+      const deliveryFee = shipping.fee;
       let promotion = null;
       if (input.promotionCode) {
-        promotion = await findApplicablePromotion(connection, customer.id, cart.restaurant_id, input.promotionCode, subtotal);
-        if (!promotion) return { error: 'PROMOTION_INVALID' };
-        discountAmount = promotion.discountType === 'FREE_DELIVERY' ? deliveryFee : promotion.discountAmount;
-        if (promotion.discountType === 'FREE_DELIVERY') deliveryFee = 0;
+        const [voucher] = await listVouchers((text, params) => connection.execute(text, params), { customerId: customer.id, restaurantId: cart.restaurant_id, subtotal, deliveryFee, code: input.promotionCode });
+        if (!voucher || !voucher.eligible) return { error: 'PROMOTION_INVALID' };
+        promotion = voucher;
       }
-      const totalAmount = roundMoney(Math.max(0, subtotal - discountAmount) + deliveryFee + serviceFee + taxAmount);
+      const { discountAmount, serviceFee, taxAmount, totalAmount } = priceOrder({ subtotal, deliveryFee, taxRate: settingMap.tax_rate ?? 0, promotion });
       const orderCode = `FD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
       const orderResult = await connection.execute(
         `INSERT INTO orders (order_code, idempotency_key, customer_id, restaurant_id, delivery_address_id,
            receiver_name, receiver_phone, delivery_address, delivery_latitude, delivery_longitude,
            subtotal, discount_amount, delivery_fee, service_fee, tax_amount, total_amount,
-           payment_method, payment_status, order_status, customer_note)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING', ?)`,
+           payment_method, payment_status, order_status, customer_note, shipper_note, need_utensils, contactless_delivery)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING', ?, ?, ?, ?)`,
         [orderCode, input.idempotencyKey, customer.id, cart.restaurant_id, address.id, address.receiver_name, address.receiver_phone,
-          formatAddress(address), address.latitude, address.longitude, subtotal, discountAmount, deliveryFee, serviceFee, taxAmount, totalAmount, input.paymentMethod, input.customerNote]
+          formatAddress(address), address.latitude, address.longitude, subtotal, discountAmount, deliveryFee, serviceFee, taxAmount, totalAmount, input.paymentMethod,
+          input.customerNote, input.shipperNote, input.needUtensils, input.contactlessDelivery]
       );
       const orderId = Number(orderResult.insertId);
       for (const item of items) {
@@ -248,9 +252,10 @@ export const orderRepository = {
     const rows = await query(
       `SELECT o.id, o.order_code, o.customer_id, o.restaurant_id, r.name AS restaurant_name,
               o.subtotal, o.discount_amount, o.delivery_fee, o.total_amount, o.payment_method,
-              o.payment_status, o.order_status, o.customer_note, o.ordered_at, o.created_at
+              o.payment_status, o.order_status, o.customer_note, o.shipper_note, o.need_utensils, o.contactless_delivery,
+              o.ordered_at, o.created_at
        FROM orders o INNER JOIN restaurants r ON r.id = o.restaurant_id WHERE ${where.join(' AND ')}
-       ORDER BY o.created_at ASC, o.id ASC LIMIT 100`, params
+       ORDER BY o.created_at DESC, o.id DESC LIMIT 100`, params
     );
     return rows.map(mapOrderSummary);
   },
@@ -284,7 +289,8 @@ export const orderRepository = {
             ? 'cancelled_at = CURRENT_TIMESTAMP'
             : '';
       await connection.execute(`UPDATE orders SET order_status = ?${updates ? `, ${updates}` : ''} WHERE id = ?`, [targetStatus, orderId]);
-      await connection.execute('INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, note) VALUES (?, ?, ?, ?, ?)', [orderId, current.order_status, targetStatus, userId, note]);
+      // Trigger trg_order_status_history đã ghi dòng chuyển trạng thái; bổ sung người thực hiện/ghi chú thay vì ghi thêm dòng trùng.
+      await connection.execute('UPDATE order_status_history SET changed_by = ?, note = ? WHERE order_id = ? AND new_status = ? ORDER BY id DESC LIMIT 1', [userId, note, orderId, targetStatus]);
       if (targetStatus === 'CANCELLED') await connection.execute('INSERT INTO order_cancellations (order_id, cancelled_by, reason_code, reason, refund_amount) VALUES (?, ?, ?, ?, 0)', [orderId, userId, reasonCode ?? 'RESTAURANT_REJECTED', note]);
       const updatedRows = await connection.execute('SELECT o.*, r.name AS restaurant_name, r.owner_user_id, u.email AS customer_email FROM orders o INNER JOIN restaurants r ON r.id = o.restaurant_id INNER JOIN customer_profiles cp ON cp.id = o.customer_id INNER JOIN users u ON u.id = cp.user_id WHERE o.id = ? LIMIT 1', [orderId]);
       return { before: mapOrderSummary(current), after: mapOrderSummary(updatedRows[0]), customerUserId: Number(current.customer_user_id), customerEmail: current.customer_email, restaurantOwnerUserId: Number(current.owner_user_id), orderCode: current.order_code, orderId: Number(orderId), status: targetStatus };
@@ -316,28 +322,24 @@ async function loadAndValidateToppings(connection, itemId, toppingIds) {
   return rows.map(row => ({ id: Number(row.id), name: row.name, price: Number(row.price) }));
 }
 async function readVariantAdjustment(connection, variantId, itemId) { if (variantId === null) return 0; const rows = await connection.execute('SELECT price_adjustment FROM menu_item_variants WHERE id = ? AND menu_item_id = ? AND status = \'ACTIVE\' LIMIT 1', [variantId, itemId]); return rows[0] ? Number(rows[0].price_adjustment) : 0; }
-async function findApplicablePromotion(connection, customerId, restaurantId, code, subtotal) {
-  const rows = await connection.execute(
-    `SELECT p.id, p.code, p.discount_type, p.discount_value, p.max_discount, p.minimum_order, p.usage_limit,
-            p.usage_per_customer, p.used_count,
-            (SELECT COUNT(*) FROM promotion_usage pu WHERE pu.promotion_id = p.id AND pu.customer_id = ?) AS customer_usage
-     FROM promotions p WHERE UPPER(p.code) = UPPER(?) AND p.status = 'ACTIVE' AND p.deleted_at IS NULL
-       AND (p.restaurant_id IS NULL OR p.restaurant_id = ?) AND p.start_at <= CURRENT_TIMESTAMP AND p.end_at >= CURRENT_TIMESTAMP
-       AND p.minimum_order <= ? AND (p.usage_limit IS NULL OR p.used_count < p.usage_limit) LIMIT 1`, [customerId, code, restaurantId, subtotal]
-  );
-  if (!rows[0] || Number(rows[0].customer_usage) >= Number(rows[0].usage_per_customer)) return null;
-  const row = rows[0];
-  const raw = row.discount_type === 'PERCENT' ? subtotal * Number(row.discount_value) / 100 : Number(row.discount_value);
-  return { id: Number(row.id), discountType: row.discount_type, discountAmount: roundMoney(Math.min(subtotal, row.max_discount == null ? raw : Math.min(raw, Number(row.max_discount)))) };
-}
 function formatAddress(row) { return [row.address_line, row.ward, row.district, row.city].filter(Boolean).join(', '); }
 function mapCart(row) { return { id: Number(row.id), customerId: Number(row.customer_id), restaurantId: Number(row.restaurant_id), restaurantName: row.restaurant_name, restaurantStatus: row.restaurant_status, minimumOrder: Number(row.minimum_order), restaurantOwnerUserId: Number(row.owner_user_id), items: [], subtotal: 0 }; }
 function mapCartTopping(row) { return { id: Number(row.topping_id), name: row.name, price: Number(row.price), quantity: Number(row.quantity) }; }
-function mapOrderSummary(row) { return { id: Number(row.id), orderCode: row.order_code, customerId: row.customer_id == null ? null : Number(row.customer_id), restaurantId: Number(row.restaurant_id), restaurantName: row.restaurant_name, subtotal: Number(row.subtotal), discountAmount: Number(row.discount_amount), deliveryFee: Number(row.delivery_fee), serviceFee: Number(row.service_fee ?? 0), taxAmount: Number(row.tax_amount ?? 0), totalAmount: Number(row.total_amount), paymentMethod: row.payment_method, paymentStatus: row.payment_status, status: row.order_status, customerNote: row.customer_note ?? null, orderedAt: row.ordered_at, confirmedAt: row.confirmed_at ?? null, preparedAt: row.prepared_at ?? null, createdAt: row.created_at }; }
+function mapOrderSummary(row) { return { id: Number(row.id), orderCode: row.order_code, customerId: row.customer_id == null ? null : Number(row.customer_id), restaurantId: Number(row.restaurant_id), restaurantName: row.restaurant_name, subtotal: Number(row.subtotal), discountAmount: Number(row.discount_amount), deliveryFee: Number(row.delivery_fee), serviceFee: Number(row.service_fee ?? 0), taxAmount: Number(row.tax_amount ?? 0), totalAmount: Number(row.total_amount), paymentMethod: row.payment_method, paymentStatus: row.payment_status, status: row.order_status, customerNote: row.customer_note ?? null, shipperNote: row.shipper_note ?? null, needUtensils: row.need_utensils == null ? true : Boolean(row.need_utensils), contactlessDelivery: row.contactless_delivery == null ? false : Boolean(row.contactless_delivery), orderedAt: row.ordered_at, confirmedAt: row.confirmed_at ?? null, preparedAt: row.prepared_at ?? null, createdAt: row.created_at }; }
 async function loadOrderDetail(row) {
   const items = await query(`SELECT oi.id, oi.menu_item_id, oi.variant_id, oi.item_name, oi.variant_name, oi.quantity, oi.unit_price, oi.total_price, oi.note FROM order_items oi WHERE oi.order_id = ? ORDER BY oi.id ASC`, [row.id]);
   const history = await query(`SELECT old_status, new_status, changed_by, note, created_at FROM order_status_history WHERE order_id = ? ORDER BY id ASC`, [row.id]);
-  return { ...mapOrderSummary(row), deliveryAddress: row.delivery_address, receiverName: row.receiver_name, receiverPhone: row.receiver_phone, customerNote: row.customer_note ?? null, items: items.map(item => ({ id: Number(item.id), menuItemId: item.menu_item_id == null ? null : Number(item.menu_item_id), variantId: item.variant_id == null ? null : Number(item.variant_id), name: item.item_name, variantName: item.variant_name ?? null, quantity: Number(item.quantity), unitPrice: Number(item.unit_price), totalPrice: Number(item.total_price), note: item.note ?? null })), statusHistory: history.map(value => ({ oldStatus: value.old_status ?? null, newStatus: value.new_status, changedBy: value.changed_by == null ? null : Number(value.changed_by), note: value.note ?? null, createdAt: value.created_at })), customerUserId: Number(row.customer_user_id), restaurantOwnerUserId: Number(row.owner_user_id), customerEmail: row.customer_email, orderCode: row.order_code };
+  const toppingRows = items.length === 0 ? [] : await query(
+    `SELECT order_item_id, topping_name, price, quantity FROM order_item_toppings WHERE order_item_id IN (${items.map(() => '?').join(',')}) ORDER BY id ASC`, items.map(item => item.id)
+  );
+  const toppingsByItem = groupBy(toppingRows, topping => Number(topping.order_item_id));
+  const menuItemIds = [...new Set(items.map(item => item.menu_item_id).filter(id => id != null).map(Number))];
+  const comboRows = menuItemIds.length === 0 ? [] : await query(
+    `SELECT c.combo_item_id, c.quantity, mi.name FROM menu_item_combo_components c INNER JOIN menu_items mi ON mi.id = c.component_item_id
+     WHERE c.combo_item_id IN (${menuItemIds.map(() => '?').join(',')}) ORDER BY mi.id ASC`, menuItemIds
+  );
+  const componentsByCombo = groupBy(comboRows, component => Number(component.combo_item_id));
+  return { ...mapOrderSummary(row), deliveryAddress: row.delivery_address, receiverName: row.receiver_name, receiverPhone: row.receiver_phone, customerNote: row.customer_note ?? null, items: items.map(item => ({ id: Number(item.id), menuItemId: item.menu_item_id == null ? null : Number(item.menu_item_id), variantId: item.variant_id == null ? null : Number(item.variant_id), name: item.item_name, variantName: item.variant_name ?? null, quantity: Number(item.quantity), unitPrice: Number(item.unit_price), totalPrice: Number(item.total_price), note: item.note ?? null, components: (componentsByCombo.get(Number(item.menu_item_id)) ?? []).map(part => ({ name: part.name, quantity: Number(part.quantity) })), toppings: (toppingsByItem.get(Number(item.id)) ?? []).map(topping => ({ name: topping.topping_name, price: Number(topping.price), quantity: Number(topping.quantity) })) })), statusHistory: history.map(value => ({ oldStatus: value.old_status ?? null, newStatus: value.new_status, changedBy: value.changed_by == null ? null : Number(value.changed_by), note: value.note ?? null, createdAt: value.created_at })), customerUserId: Number(row.customer_user_id), restaurantOwnerUserId: Number(row.owner_user_id), customerEmail: row.customer_email, orderCode: row.order_code };
 }
 function groupBy(items, keyFn) { const map = new Map(); for (const item of items) { const key = keyFn(item); const list = map.get(key) ?? []; list.push(item); map.set(key, list); } return map; }
 function roundMoney(value) { return Math.round(Number(value) * 100) / 100; }

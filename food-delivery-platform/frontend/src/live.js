@@ -1,77 +1,16 @@
-/* Live layer: bản đồ mock, theo dõi đơn, chat, thanh toán giả lập, hoá đơn, điều phối shipper.
-   Định vị/bản đồ là mock (SVG), mọi dữ liệu còn lại đi qua API thật qua window.FD. */
+/* Live layer: bản đồ thật (Leaflet + OpenStreetMap) với toạ độ lưu trong DB, theo dõi đơn, chat, thanh toán, hoá đơn, điều phối shipper.
+   Mọi dữ liệu đi qua API thật qua window.FD; vị trí tài xế là GPS thật của thiết bị. */
 (function () {
-  const BOUNDS = { minLat: 10.74, maxLat: 10.81, minLng: 106.65, maxLng: 106.73 };
-  const W = 640;
-  const H = 400;
+  const HCM_CENTER = [10.7769, 106.7009];
   const $ = selector => document.querySelector(selector);
   const fd = () => window.FD;
   const esc = value => fd().escapeHtml(value);
 
-  /* ---------- toạ độ mock ---------- */
-  function inBounds(lat, lng) {
-    return Number.isFinite(lat) && Number.isFinite(lng)
-      && lat >= BOUNDS.minLat && lat <= BOUNDS.maxLat && lng >= BOUNDS.minLng && lng <= BOUNDS.maxLng;
-  }
-
-  function hash(text) {
-    let h = 2166136261;
-    for (const ch of String(text)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-    return (h >>> 0) / 4294967295;
-  }
-
-  function fallbackPoint(seed) {
-    return {
-      lat: BOUNDS.minLat + (BOUNDS.maxLat - BOUNDS.minLat) * (0.14 + 0.72 * hash(`${seed}:a`)),
-      lng: BOUNDS.minLng + (BOUNDS.maxLng - BOUNDS.minLng) * (0.12 + 0.76 * hash(`${seed}:b`))
-    };
-  }
-
-  function pointOf(lat, lng, seed) {
+  /* ---------- toạ độ: chỉ dùng toạ độ thật lưu trong DB, không có toạ độ bịa ---------- */
+  function pointOf(lat, lng) {
     const la = Number(lat);
     const ln = Number(lng);
-    return inBounds(la, ln) ? { lat: la, lng: ln } : fallbackPoint(seed);
-  }
-
-  function toXY(point) {
-    return {
-      x: ((point.lng - BOUNDS.minLng) / (BOUNDS.maxLng - BOUNDS.minLng)) * W,
-      y: ((BOUNDS.maxLat - point.lat) / (BOUNDS.maxLat - BOUNDS.minLat)) * H
-    };
-  }
-
-  function toLatLng(x, y) {
-    return {
-      lat: BOUNDS.maxLat - (y / H) * (BOUNDS.maxLat - BOUNDS.minLat),
-      lng: BOUNDS.minLng + (x / W) * (BOUNDS.maxLng - BOUNDS.minLng)
-    };
-  }
-
-  // Đường đi kiểu phố vuông: ngang rồi dọc.
-  function routePath(a, b) {
-    const pa = toXY(a);
-    const pb = toXY(b);
-    return [pa, { x: pb.x, y: pa.y }, pb];
-  }
-
-  function pathLength(points) {
-    let total = 0;
-    for (let i = 1; i < points.length; i += 1) total += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
-    return total;
-  }
-
-  function pointAlong(points, t) {
-    const target = pathLength(points) * Math.max(0, Math.min(1, t));
-    let walked = 0;
-    for (let i = 1; i < points.length; i += 1) {
-      const seg = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
-      if (walked + seg >= target && seg > 0) {
-        const k = (target - walked) / seg;
-        return { x: points[i - 1].x + (points[i].x - points[i - 1].x) * k, y: points[i - 1].y + (points[i].y - points[i - 1].y) * k };
-      }
-      walked += seg;
-    }
-    return points[points.length - 1];
+    return lat !== null && lat !== undefined && lng !== null && lng !== undefined && Number.isFinite(la) && Number.isFinite(ln) && Math.abs(la) <= 90 && Math.abs(ln) <= 180 ? { lat: la, lng: ln } : null;
   }
 
   function haversineKm(a, b) {
@@ -82,74 +21,59 @@
     return 12742 * Math.asin(Math.sqrt(h));
   }
 
-  /* ---------- bản đồ SVG mock ---------- */
+  /* ---------- bản đồ thật: Leaflet + OpenStreetMap ---------- */
   const ICONS = { restaurant: '🍜', customer: '🏠', shipper: '🛵' };
 
-  class MockMap {
+  class RealMap {
     constructor(container, { onPick } = {}) {
       this.container = container;
       this.markers = new Map();
+      this.routeLayer = null;
+      this.fitted = false;
       container.classList.add('fd-map');
-      container.innerHTML = `
-        <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Bản đồ giả lập khu vực TP.HCM">
-          <rect width="${W}" height="${H}" fill="#eef3ec"/>
-          <path d="M0 330 C120 300 200 360 330 320 S560 250 640 280 L640 400 L0 400Z" fill="#cfe5f3"/>
-          <rect x="40" y="40" width="90" height="60" rx="8" fill="#d6ead0"/>
-          <rect x="470" y="70" width="110" height="70" rx="8" fill="#d6ead0"/>
-          ${[80, 160, 240, 320, 400, 480, 560].map(x => `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="#fff" stroke-width="9"/>`).join('')}
-          ${[60, 130, 200, 270].map(y => `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#fff" stroke-width="9"/>`).join('')}
-          <line x1="0" y1="0" x2="${W}" y2="${H * 0.7}" stroke="#f6e2b3" stroke-width="7" opacity=".8"/>
-          <text x="22" y="372" class="fd-map-label">Sông Sài Gòn</text>
-          <text x="250" y="30" class="fd-map-label">Quận 1</text>
-          <text x="500" y="200" class="fd-map-label">Quận 3</text>
-          <g class="fd-routes"></g>
-          <g class="fd-markers"></g>
-        </svg>
-        <span class="fd-map-badge">Bản đồ giả lập</span>`;
-      this.svg = container.querySelector('svg');
-      this.routes = container.querySelector('.fd-routes');
-      this.layer = container.querySelector('.fd-markers');
+      this.map = window.L.map(container, { zoomControl: true, attributionControl: true }).setView(HCM_CENTER, 12);
+      window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(this.map);
       if (onPick) {
-        this.svg.classList.add('is-pickable');
-        this.svg.addEventListener('click', event => {
-          const box = this.svg.getBoundingClientRect();
-          onPick(toLatLng(((event.clientX - box.left) / box.width) * W, ((event.clientY - box.top) / box.height) * H));
-        });
+        container.classList.add('is-pickable');
+        this.map.on('click', event => onPick({ lat: event.latlng.lat, lng: event.latlng.lng }));
       }
+      // Bản đồ nằm trong panel có thể đang ẩn lúc tạo: tính lại kích thước khi hiện
+      setTimeout(() => this.map.invalidateSize(), 120);
     }
 
     setRoutes(routes) {
-      this.routes.innerHTML = routes.map(route => `
-        <polyline points="${route.points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}"
-          fill="none" stroke="${route.color || '#0f766e'}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"
-          ${route.dashed ? 'stroke-dasharray="2 9"' : ''} opacity=".85"/>`).join('');
+      this.routeLayer?.remove();
+      this.routeLayer = window.L.layerGroup(routes.filter(route => route.points.length > 1).map(route => window.L.polyline(route.points.map(p => [p.lat, p.lng]), {
+        color: route.color || '#0f766e', weight: 4, opacity: 0.85, dashArray: route.dashed ? '2 9' : null, lineCap: 'round'
+      }))).addTo(this.map);
     }
 
     setMarker(key, { point, kind, title }) {
-      let node = this.markers.get(key);
-      if (!point) {
-        node?.remove();
-        this.markers.delete(key);
+      const current = this.markers.get(key);
+      if (!point) { current?.remove(); this.markers.delete(key); return; }
+      if (current) {
+        current.setLatLng([point.lat, point.lng]);
+        current.getElement()?.setAttribute('title', title || '');
         return;
       }
-      if (!node) {
-        node = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        node.classList.add('fd-marker', `fd-marker-${kind}`);
-        node.innerHTML = `<title></title><circle r="15"/><text text-anchor="middle" dy="5">${ICONS[kind] || '📍'}</text>`;
-        this.layer.appendChild(node);
-        this.markers.set(key, node);
-      }
-      const xy = point.x === undefined ? toXY(point) : point;
-      node.style.transform = `translate(${xy.x.toFixed(1)}px, ${xy.y.toFixed(1)}px)`;
-      node.querySelector('title').textContent = title || '';
+      const icon = window.L.divIcon({ className: '', html: `<div class="fd-pin fd-pin-${kind}" title="${esc(title || '')}">${ICONS[kind] || '📍'}</div>`, iconSize: [32, 32], iconAnchor: [16, 16] });
+      const marker = window.L.marker([point.lat, point.lng], { icon, title: title || '' }).addTo(this.map);
+      this.markers.set(key, marker);
+    }
+
+    /** Thu phóng vừa khít các điểm đang có (chỉ khi tập điểm thay đổi, không giật bản đồ mỗi lần tài xế di chuyển). */
+    fit() {
+      const points = [...this.markers.values()].map(marker => marker.getLatLng());
+      if (!points.length) return;
+      const signature = points.length;
+      if (this.fitted === signature) return;
+      this.fitted = signature;
+      this.map.fitBounds(window.L.latLngBounds(points), { padding: [36, 36], maxZoom: 16 });
     }
 
     prune(keys) {
-      for (const [key, node] of this.markers) {
-        if (!keys.has(key)) {
-          node.remove();
-          this.markers.delete(key);
-        }
+      for (const [key, marker] of this.markers) {
+        if (!keys.has(key)) { marker.remove(); this.markers.delete(key); }
       }
     }
 
@@ -202,13 +126,12 @@
 
   async function startTracking(root, order, { role }) {
     stopTracking();
-    const map = new MockMap(root.querySelector('[data-fd="map"]'));
+    const map = new RealMap(root.querySelector('[data-fd="map"]'));
     const etaEl = root.querySelector('[data-fd="eta"]');
     const chip = root.querySelector('[data-fd="live-chip"]');
     const stepsEl = root.querySelector('[data-fd="steps"]');
-    const restaurantPoint = pointOf(order.pickupLatitude, order.pickupLongitude, `r${order.id}`);
-    const homePoint = pointOf(order.deliveryLatitude, order.deliveryLongitude, `o${order.id}`);
-    const t0 = Date.now();
+    const restaurantPoint = pointOf(order.pickupLatitude, order.pickupLongitude);
+    const homePoint = pointOf(order.deliveryLatitude, order.deliveryLongitude);
 
     const tick = async () => {
       if (!map.alive()) { stopTracking(); return; }
@@ -232,53 +155,40 @@
       }
       stepsEl.innerHTML = stepper(status);
 
-      const rp = pointOf(delivery?.pickupLatitude, delivery?.pickupLongitude, `r${order.id}`);
-      const hp = pointOf(delivery?.deliveryLatitude, delivery?.deliveryLongitude, `o${order.id}`);
-      map.setMarker('restaurant', { point: rp || restaurantPoint, kind: 'restaurant', title: order.restaurantName || 'Nhà hàng' });
-      map.setMarker('customer', { point: hp || homePoint, kind: 'customer', title: 'Địa chỉ giao hàng' });
+      const rp = pointOf(delivery?.pickupLatitude, delivery?.pickupLongitude) || restaurantPoint;
+      const hp = pointOf(delivery?.deliveryLatitude, delivery?.deliveryLongitude) || homePoint;
+      map.setMarker('restaurant', { point: rp, kind: 'restaurant', title: order.restaurantName || 'Nhà hàng' });
+      map.setMarker('customer', { point: hp, kind: 'customer', title: 'Địa chỉ giao hàng' });
 
-      const routes = [{ points: routePath(rp, hp), color: '#94a3b8', dashed: true }];
+      const routes = rp && hp ? [{ points: [rp, hp], color: '#94a3b8', dashed: true }] : [];
       let message = 'Đang chờ nhà hàng xử lý đơn.';
       chip.textContent = fd().statusLabel(status);
 
       if (delivery && delivery.shipperId) {
         const toRestaurant = ['ASSIGNED', 'ACCEPTED'].includes(delivery.status);
-        const start = pointOf(null, null, `s${delivery.shipperId}`);
-        let shipper;
-        let source = 'GPS';
-        if (latest && inBounds(latest.latitude, latest.longitude)) {
-          shipper = { lat: latest.latitude, lng: latest.longitude };
-        } else if (delivery.status === 'DELIVERED') {
-          shipper = hp;
-        } else {
-          source = 'ước tính';
-          const elapsed = (Date.now() - t0) / 1000;
-          if (toRestaurant) shipper = pointToLatLng(pointAlong(routePath(start, rp), Math.min(0.85, elapsed / 90)));
-          else shipper = pointToLatLng(pointAlong(routePath(rp, hp), Math.min(0.9, elapsed / 120)));
-        }
+        const shipper = latest ? pointOf(latest.latitude, latest.longitude) : null;
         map.setMarker('shipper', { point: shipper, kind: 'shipper', title: delivery.shipperName || 'Tài xế' });
-        routes.push({ points: routePath(shipper, toRestaurant ? rp : hp), color: '#0f766e' });
+        const target = toRestaurant ? rp : hp;
         if (delivery.status === 'DELIVERED') {
           message = `Đơn đã được ${esc(delivery.shipperName || 'tài xế')} giao thành công.`;
+        } else if (shipper && target) {
+          routes.push({ points: [shipper, target], color: '#0f766e' });
+          message = `${esc(delivery.shipperName || 'Tài xế')} ${toRestaurant ? 'đang đến nhà hàng lấy món' : 'đang giao đến bạn'} · cách ${haversineKm(shipper, target).toFixed(1)} km, ước tính còn ${eta(shipper, target)} phút · vị trí GPS lúc ${new Date(latest.recordedAt).toLocaleTimeString('vi-VN')}`;
         } else {
-          const minutes = eta(shipper, toRestaurant ? rp : hp);
-          message = `${esc(delivery.shipperName || 'Tài xế')} ${toRestaurant ? 'đang đến nhà hàng lấy món' : 'đang giao đến bạn'} · còn khoảng ${minutes} phút · vị trí ${source}`;
+          message = `${esc(delivery.shipperName || 'Tài xế')} đã nhận đơn nhưng chưa chia sẻ vị trí GPS.`;
         }
       } else {
         map.setMarker('shipper', { point: null });
         if (status === 'CANCELLED') message = 'Đơn đã bị hủy.';
         else if (['READY_FOR_PICKUP', 'SHIPPER_ASSIGNED'].includes(status)) message = 'Món đã sẵn sàng, đang chờ tài xế nhận đơn.';
       }
+      map.fit();
       map.setRoutes(routes);
       etaEl.innerHTML = message;
     };
 
     await tick();
     trackTimer = setInterval(tick, 4000);
-  }
-
-  function pointToLatLng(xy) {
-    return toLatLng(xy.x, xy.y);
   }
 
   /* ---------- chat theo đơn ---------- */
@@ -341,18 +251,18 @@
     chatTimers.set(key, setInterval(load, 4000));
   }
 
-  /* ---------- thanh toán giả lập & hoá đơn ---------- */
+  /* ---------- thanh toán (sandbox, chưa nối cổng thật) & hoá đơn ---------- */
   function paymentMarkup(order) {
     const online = order.paymentMethod !== 'COD';
     const unpaid = online && ['PENDING', 'FAILED', 'PROCESSING'].includes(order.paymentStatus);
     if (!unpaid) {
       return `<section class="fd-block"><div class="fd-block-head"><strong>Thanh toán</strong>
         <span class="status-chip">${esc(fd().statusLabel(order.paymentStatus))}</span></div>
-        <p class="muted">${online ? 'Đã thanh toán qua cổng giả lập.' : 'Thanh toán tiền mặt khi nhận hàng (COD).'}</p></section>`;
+        <p class="muted">${online ? 'Đã thanh toán qua cổng thanh toán thử nghiệm.' : 'Thanh toán tiền mặt khi nhận hàng (COD).'}</p></section>`;
     }
     return `
       <section class="fd-block fd-gateway">
-        <div class="fd-block-head"><strong>Cổng thanh toán (giả lập)</strong><span class="status-chip">Chờ thanh toán</span></div>
+        <div class="fd-block-head"><strong>Cổng thanh toán thử nghiệm (sandbox)</strong><span class="status-chip">Chờ thanh toán</span></div>
         <div class="fd-card-face"><small>${esc(order.paymentMethod)}</small><b>4111 1111 1111 1111</b><span>NGUYEN VAN A · 12/30</span></div>
         <p class="muted">Cần thanh toán ${fd().formatMoney(order.totalAmount)}. Đây là cổng mô phỏng, không trừ tiền thật.</p>
         <div class="button-row">
@@ -484,14 +394,13 @@
   }
 
   /* ---------- hook: shipper ---------- */
-  const sim = { timer: null, deliveryId: null, point: null };
+  const gps = { watchId: null, deliveryId: null, point: null, lastSent: 0 };
   let shipperMap = null;
 
-  function stopSim() {
-    if (sim.timer) clearInterval(sim.timer);
-    sim.timer = null;
-    sim.deliveryId = null;
-    sim.point = null;
+  function stopGps() {
+    if (gps.watchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(gps.watchId);
+    gps.watchId = null;
+    gps.deliveryId = null;
   }
 
   async function onShipperDeliveries(items) {
@@ -536,18 +445,18 @@
     });
 
     if (!active) {
-      stopSim();
+      stopGps();
       host.innerHTML = '<section class="panel fd-block"><strong>Bản đồ chuyến giao</strong><p class="muted">Chưa có chuyến giao đang thực hiện. Nhận một đề nghị giao hàng để bắt đầu.</p></section>';
       shipperMap = null;
       return;
     }
 
-    const rp = pointOf(active.pickupLatitude, active.pickupLongitude, `r${active.orderId}`);
-    const hp = pointOf(active.deliveryLatitude, active.deliveryLongitude, `o${active.orderId}`);
+    const rp = pointOf(active.pickupLatitude, active.pickupLongitude);
+    const hp = pointOf(active.deliveryLatitude, active.deliveryLongitude);
     const toRestaurant = ['ASSIGNED', 'ACCEPTED'].includes(active.status);
     let profile = null;
     try { profile = await fd().api('/api/shippers/profile'); } catch { /* bỏ qua */ }
-    const here = pointOf(profile?.currentLatitude, profile?.currentLongitude, `s${active.shipperId}`);
+    const here = gps.point || pointOf(profile?.currentLatitude, profile?.currentLongitude);
 
     host.innerHTML = `
       <section class="panel fd-block">
@@ -555,16 +464,17 @@
         <div class="fd-map-wrap" data-fd="map"></div>
         <p class="muted">${toRestaurant ? 'Đến nhà hàng lấy món' : 'Giao đến khách'} · ${esc(toRestaurant ? active.pickupAddress : active.deliveryAddress)}</p>
         <div class="button-row">
-          <button class="primary-button" type="button" data-fd="sim">${sim.deliveryId === active.id ? 'Dừng giả lập GPS' : 'Chạy giả lập hành trình'}</button>
+          <button class="primary-button" type="button" data-fd="gps">${gps.deliveryId === active.id ? 'Dừng chia sẻ vị trí' : 'Chia sẻ vị trí GPS của tôi'}</button>
         </div>
-        <p class="muted" data-fd="sim-note"></p>
+        <p class="muted" data-fd="gps-note">${here ? `Vị trí gần nhất đã ghi nhận trong hệ thống.` : 'Chưa có vị trí. Bấm "Chia sẻ vị trí GPS" để khách thấy bạn trên bản đồ.'}</p>
       </section>`;
-    shipperMap = new MockMap(host.querySelector('[data-fd="map"]'));
+    shipperMap = new RealMap(host.querySelector('[data-fd="map"]'));
     shipperMap.setMarker('restaurant', { point: rp, kind: 'restaurant', title: active.restaurantName || 'Nhà hàng' });
     shipperMap.setMarker('customer', { point: hp, kind: 'customer', title: 'Khách hàng' });
-    shipperMap.setMarker('shipper', { point: sim.point || here, kind: 'shipper', title: 'Bạn' });
-    shipperMap.setRoutes([{ points: routePath(here, rp), color: '#0f766e' }, { points: routePath(rp, hp), color: '#94a3b8', dashed: true }]);
-    host.querySelector('[data-fd="sim"]').addEventListener('click', () => (sim.deliveryId === active.id ? (stopSim(), onShipperDeliveries(items)) : startSim(active, here, rp, hp)));
+    shipperMap.setMarker('shipper', { point: here, kind: 'shipper', title: 'Bạn' });
+    shipperMap.setRoutes([...(here && (toRestaurant ? rp : hp) ? [{ points: [here, toRestaurant ? rp : hp], color: '#0f766e' }] : []), ...(rp && hp ? [{ points: [rp, hp], color: '#94a3b8', dashed: true }] : [])]);
+    shipperMap.fit();
+    host.querySelector('[data-fd="gps"]').addEventListener('click', () => (gps.deliveryId === active.id ? (stopGps(), onShipperDeliveries(items)) : startGps(active)));
   }
 
   async function collectCod(item, button) {
@@ -581,65 +491,54 @@
     }
   }
 
-  function startSim(delivery, here, rp, hp) {
-    stopSim();
-    sim.deliveryId = delivery.id;
-    let phase = ['ASSIGNED', 'ACCEPTED'].includes(delivery.status) ? 0 : 1;
-    let t = 0;
-    const note = () => $('#fdShipperLive [data-fd="sim-note"]');
-    const button = $('#fdShipperLive [data-fd="sim"]');
-    if (button) button.textContent = 'Dừng giả lập GPS';
-    sim.timer = setInterval(async () => {
-      if (!shipperMap?.alive()) { stopSim(); return; }
-      const path = phase === 0 ? routePath(here, rp) : routePath(rp, hp);
-      t = Math.min(1, t + 0.1);
-      const xy = pointAlong(path, t);
-      const position = toLatLng(xy.x, xy.y);
-      sim.point = position;
-      shipperMap.setMarker('shipper', { point: position, kind: 'shipper', title: 'Bạn' });
+  /* Chia sẻ GPS thật của thiết bị: mỗi khi trình duyệt báo vị trí mới (tối đa 1 lần/5 giây) gửi lên /api/shippers/locations */
+  function startGps(delivery) {
+    stopGps();
+    const note = () => $('#fdShipperLive [data-fd="gps-note"]');
+    if (!navigator.geolocation) { fd().setStatus('Thiết bị không hỗ trợ định vị GPS.', true); return; }
+    gps.deliveryId = delivery.id;
+    const button = $('#fdShipperLive [data-fd="gps"]');
+    if (button) button.textContent = 'Dừng chia sẻ vị trí';
+    gps.watchId = navigator.geolocation.watchPosition(async position => {
+      const point = { lat: position.coords.latitude, lng: position.coords.longitude };
+      gps.point = point;
+      shipperMap?.setMarker('shipper', { point, kind: 'shipper', title: 'Bạn' });
+      shipperMap?.fit();
+      if (Date.now() - gps.lastSent < 5000) return;
+      gps.lastSent = Date.now();
       try {
         await fd().api('/api/shippers/locations', {
           method: 'POST',
-          body: JSON.stringify({ deliveryId: delivery.id, latitude: Number(position.lat.toFixed(6)), longitude: Number(position.lng.toFixed(6)), speed: 24 })
+          body: JSON.stringify({
+            deliveryId: delivery.id, latitude: Number(point.lat.toFixed(6)), longitude: Number(point.lng.toFixed(6)),
+            speed: position.coords.speed ? Number((position.coords.speed * 3.6).toFixed(1)) : 0, accuracy: position.coords.accuracy ? Number(position.coords.accuracy.toFixed(1)) : undefined,
+            heading: position.coords.heading ?? undefined
+          })
         });
+        if (note()) note().textContent = `Đã gửi vị trí lúc ${new Date().toLocaleTimeString('vi-VN')} (sai số ${Math.round(position.coords.accuracy || 0)} m).`;
       } catch { /* mất mạng tạm thời */ }
-      if (note()) note().textContent = `${phase === 0 ? 'Đang đến nhà hàng' : 'Đang đến khách'} · ${Math.round(t * 100)}%`;
-      if (t >= 1) {
-        clearInterval(sim.timer);
-        sim.timer = null;
-        if (phase === 0) {
-          try {
-            await fd().api(`/api/shippers/deliveries/${delivery.id}/status`, { method: 'POST', body: JSON.stringify({ status: 'PICKED_UP', note: 'Giả lập: đã lấy hàng' }) });
-            await fd().api(`/api/shippers/deliveries/${delivery.id}/status`, { method: 'POST', body: JSON.stringify({ status: 'DELIVERING', note: 'Giả lập: bắt đầu giao' }) });
-          } catch (error) { fd().setStatus(error.message, true); }
-          phase = 1;
-          t = 0;
-          sim.deliveryId = null;
-          await fd().loadShipperDashboard();
-          startSim({ ...delivery, status: 'DELIVERING' }, rp, rp, hp);
-        } else {
-          sim.deliveryId = null;
-          if (note()) note().textContent = 'Đã đến nơi. Bấm "Đã giao" để hoàn tất chuyến.';
-          fd().setStatus('Đã đến địa chỉ khách. Hãy xác nhận "Đã giao".');
-        }
-      }
-    }, 1500);
+    }, error => {
+      if (note()) note().textContent = `Không lấy được GPS: ${error.message}`;
+      stopGps();
+    }, { enableHighAccuracy: true, maximumAge: 4000, timeout: 15000 });
   }
 
-  // Chọn vị trí tài xế bằng bản đồ mock
+  // Chọn vị trí tài xế: chạm bản đồ hoặc lấy GPS thiết bị
   function mountLocationPicker() {
     const form = $('#shipperLocationForm');
     if (!form || $('#fdLocationPicker')) return;
     const host = document.createElement('div');
     host.id = 'fdLocationPicker';
-    host.innerHTML = '<p class="muted">Hoặc chạm vào bản đồ để đặt vị trí hiện tại (mock).</p><div class="fd-map-wrap" data-fd="map"></div>';
+    host.innerHTML = '<p class="muted">Chạm vào bản đồ để đặt vị trí, hoặc dùng GPS của thiết bị.</p><div class="button-row"><button class="secondary-button compact-button" type="button" data-fd="locate">🎯 Dùng vị trí GPS hiện tại</button></div><div class="fd-map-wrap" data-fd="map"></div>';
     form.after(host);
-    const picker = new MockMap(host.querySelector('[data-fd="map"]'), {
-      onPick: point => {
-        $('#shipperLatitude').value = point.lat.toFixed(6);
-        $('#shipperLongitude').value = point.lng.toFixed(6);
-        picker.setMarker('shipper', { point, kind: 'shipper', title: 'Vị trí của bạn' });
-      }
+    const place = point => {
+      $('#shipperLatitude').value = point.lat.toFixed(6);
+      $('#shipperLongitude').value = point.lng.toFixed(6);
+      picker.setMarker('shipper', { point, kind: 'shipper', title: 'Vị trí của bạn' });
+    };
+    const picker = new RealMap(host.querySelector('[data-fd="map"]'), { onPick: place });
+    host.querySelector('[data-fd="locate"]').addEventListener('click', () => {
+      navigator.geolocation?.getCurrentPosition(position => { const point = { lat: position.coords.latitude, lng: position.coords.longitude }; place(point); picker.map.setView([point.lat, point.lng], 15); }, error => fd().setStatus(`Không lấy được GPS: ${error.message}`, true), { enableHighAccuracy: true, timeout: 15000 });
     });
   }
 
@@ -650,7 +549,7 @@
         <div class="fd-map-wrap" data-fd="map"></div>
         <div class="card-list" data-fd="list"></div>
       </div>`;
-    const map = new MockMap(container.querySelector('[data-fd="map"]'));
+    const map = new RealMap(container.querySelector('[data-fd="map"]'));
     const list = container.querySelector('[data-fd="list"]');
     let timer = null;
     const refresh = async () => {
@@ -660,17 +559,19 @@
         const keys = new Set();
         const routes = [];
         items.forEach(d => {
-          const rp = pointOf(d.pickupLatitude, d.pickupLongitude, `r${d.orderId}`);
-          const hp = pointOf(d.deliveryLatitude, d.deliveryLongitude, `o${d.orderId}`);
-          const sp = pointOf(d.shipperLatitude, d.shipperLongitude, `s${d.shipperId}`);
+          const rp = pointOf(d.pickupLatitude, d.pickupLongitude);
+          const hp = pointOf(d.deliveryLatitude, d.deliveryLongitude);
+          const sp = pointOf(d.shipperLatitude, d.shipperLongitude);
           map.setMarker(`r${d.id}`, { point: rp, kind: 'restaurant', title: `${d.restaurantName} (${d.orderCode})` });
           map.setMarker(`c${d.id}`, { point: hp, kind: 'customer', title: `Khách ${d.orderCode}` });
           map.setMarker(`s${d.id}`, { point: sp, kind: 'shipper', title: `${d.shipperName || 'Tài xế'} · ${d.orderCode}` });
           keys.add(`r${d.id}`).add(`c${d.id}`).add(`s${d.id}`);
-          routes.push({ points: routePath(sp, ['ASSIGNED', 'ACCEPTED'].includes(d.status) ? rp : hp), color: '#ee4d2d' });
+          const target = ['ASSIGNED', 'ACCEPTED'].includes(d.status) ? rp : hp;
+          if (sp && target) routes.push({ points: [sp, target], color: '#ee4d2d' });
         });
         map.prune(keys);
         map.setRoutes(routes);
+        map.fit();
         list.innerHTML = items.length ? items.map(d => `
           <article class="order-card">
             <strong>${esc(d.orderCode)} · ${esc(fd().statusLabel(d.status))}</strong>
@@ -687,7 +588,7 @@
   }
 
   function createPicker(container, initial, onPick) {
-    const map = new MockMap(container, {
+    const map = new RealMap(container, {
       onPick: point => {
         map.setMarker('customer', { point, kind: 'customer', title: 'Vị trí đã chọn' });
         onPick(point);
@@ -704,6 +605,6 @@
     onShipperDeliveries,
     mountLocationPicker,
     renderAdminMap,
-    stopAll() { stopTracking(); stopSim(); }
+    stopAll() { stopTracking(); stopGps(); }
   };
 }());

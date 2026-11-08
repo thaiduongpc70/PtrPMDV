@@ -1,4 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
+import ExcelJS from 'exceljs';
+import { localizeDataset, toPdf, toXlsx } from '../exports/file-writers.js';
 import { join } from 'node:path';
 import { query } from '../../shared/database/mysql.js';
 import { HttpError } from '../../shared/http/http-error.js';
@@ -7,10 +9,11 @@ import { logger } from '../../shared/observability/logger.js';
 const storageRoot = join(process.cwd(), '..', '..', 'storage');
 const exportRoot = join(storageRoot, 'exports');
 
-export async function importData({ userId, jobType = 'MENU_ITEMS', fileName = 'import.csv', content, format = null }) {
+export async function importData({ userId, jobType = 'MENU_ITEMS', fileName = 'import.csv', content, format = null, encoding = null }) {
   if (!content || typeof content !== 'string') throw new HttpError(400, 'Import content is required');
   const normalizedFormat = inferImportFormat(fileName, format);
-  const rows = normalizedFormat === 'CSV' ? parseCsv(content) : parseSpreadsheetXml(content);
+  const rows = normalizedFormat === 'XLSX' ? await parseXlsx(Buffer.from(content, encoding === 'base64' ? 'base64' : 'utf8'))
+    : normalizedFormat === 'CSV' ? parseCsv(content) : parseSpreadsheetXml(content);
   const result = await query(
     `INSERT INTO import_jobs (user_id, job_type, file_url, total_rows, status)
      VALUES (?, ?, ?, ?, 'PROCESSING')`,
@@ -58,15 +61,17 @@ export async function createExport({ userId, exportType = 'ORDERS', format = 'CS
     const rows = await exportRows(String(exportType).toUpperCase(), filters);
     await mkdir(exportRoot, { recursive: true });
     const stamp = new Date().toISOString().replaceAll(/[-:.TZ]/g, '').slice(0, 14);
-    const extension = normalizedFormat === 'CSV' ? 'csv' : normalizedFormat === 'EXCEL' ? 'xls' : 'pdf';
+    const extension = normalizedFormat === 'CSV' ? 'csv' : normalizedFormat === 'EXCEL' ? 'xlsx' : 'pdf';
     const fileName = `${String(exportType).toLowerCase()}-${jobId}-${stamp}.${extension}`;
     const filePath = join(exportRoot, fileName);
+    // Excel (.xlsx) và PDF là file thật do máy chủ sinh ra; CSV có BOM để Excel đọc đúng tiếng Việt
+    const dataset = localizeDataset(rowsToDataset(String(exportType).toUpperCase(), rows));
     const output = normalizedFormat === 'CSV'
-      ? rowsToCsv(rows)
+      ? `\uFEFF${rowsToCsv(rows)}`
       : normalizedFormat === 'EXCEL'
-        ? rowsToSpreadsheetXml(rows)
-        : rowsToPdf(rows, `${exportType} export`);
-    await writeFile(filePath, output, 'utf8');
+        ? await toXlsx(dataset, { user: 'Tác vụ nền' })
+        : await toPdf(dataset, { user: 'Tác vụ nền' });
+    await writeFile(filePath, output, normalizedFormat === 'CSV' ? 'utf8' : undefined);
     await query(
       `UPDATE export_jobs SET status = 'COMPLETED', file_url = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [`/exports/${fileName}`, jobId]
@@ -173,6 +178,29 @@ export function parseCsv(content) {
   });
 }
 
+/** Đọc file .xlsx thật (sheet đầu tiên, dòng 1 là tiêu đề cột). */
+export async function parseXlsx(buffer) {
+  const workbook = new ExcelJS.Workbook();
+  try { await workbook.xlsx.load(buffer); } catch { throw new HttpError(400, 'File .xlsx không đọc được'); }
+  const sheet = workbook.worksheets[0];
+  if (!sheet || sheet.rowCount < 2) throw new HttpError(400, 'Excel sheet must contain a header and at least one row');
+  const cellText = cell => {
+    const value = cell?.value;
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') return String(value.text ?? value.result ?? (value.richText ? value.richText.map(part => part.text).join('') : '')).trim();
+    return String(value).trim();
+  };
+  const headers = sheet.getRow(1).values.slice(1).map(value => cellText({ value }).toLowerCase());
+  if (!headers.some(Boolean)) throw new HttpError(400, 'Excel header row is empty');
+  const rows = [];
+  sheet.eachRow({ includeEmpty: false }, (row, number) => {
+    if (number === 1) return;
+    const values = headers.map((_, index) => cellText(row.getCell(index + 1)));
+    if (values.some(value => value !== '')) rows.push(Object.fromEntries(headers.map((header, index) => [header, values[index]])));
+  });
+  return rows;
+}
+
 export function parseSpreadsheetXml(content) {
   const xml = String(content).replace(/^\uFEFF/, '');
   if (!/<Workbook[\s>]/i.test(xml) && !/<ss:Workbook[\s>]/i.test(xml)) {
@@ -198,12 +226,13 @@ function inferImportFormat(fileName, format) {
   const requested = String(format || '').trim().toUpperCase();
   if (requested) {
     if (requested === 'CSV') return 'CSV';
+    if (requested === 'XLSX') return 'XLSX';
     if (requested === 'EXCEL' || requested === 'XLS' || requested === 'XML') return 'EXCEL';
     throw new HttpError(400, 'format must be CSV or EXCEL');
   }
   const lower = String(fileName || '').toLowerCase();
   if (lower.endsWith('.xls') || lower.endsWith('.xml')) return 'EXCEL';
-  if (lower.endsWith('.xlsx')) throw new HttpError(400, 'XLSX import requires converting to SpreadsheetML .xls/.xml or CSV in this offline build');
+  if (lower.endsWith('.xlsx')) return 'XLSX';
   return 'CSV';
 }
 
@@ -261,7 +290,7 @@ async function importRestaurant(row, userId) {
   await query(
     `INSERT INTO restaurants (owner_user_id, name, description, phone, address, district, city, opening_time, closing_time, minimum_order, average_prepare_time, commission_rate, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, '07:00:00', '22:00:00', ?, ?, 15, 'PENDING')`,
-    [userId, name, row.description || null, row.phone || null, required(row.address, 'address'), row.district || null, row.city || 'TP.HCM', positiveNumber(row.minimum_order || 0, 'minimum_order'), positiveNumber(row.average_prepare_time || 20, 'average_prepare_time')]
+    [userId, name, row.description || null, row.phone || null, required(row.address, 'address'), row.district || null, row.city || 'Hưng Yên', positiveNumber(row.minimum_order || 0, 'minimum_order'), positiveNumber(row.average_prepare_time || 20, 'average_prepare_time')]
   );
 }
 
@@ -292,37 +321,22 @@ function rowsToCsv(rows) {
     .join('\r\n');
 }
 
-function rowsToSpreadsheetXml(rows) {
-  const headers = rows.length ? Object.keys(rows[0]) : [];
-  const cells = values => values.map(value => `<Cell><Data ss:Type="String">${xmlEscape(value)}</Data></Cell>`).join('');
-  return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Export"><Table><Row>${cells(headers)}</Row>${rows.map(row => `<Row>${cells(headers.map(header => row[header]))}</Row>`).join('')}</Table></Worksheet></Workbook>`;
+const EXPORT_LABELS = {
+  order_code: 'Mã đơn', order_status: 'Trạng thái đơn', payment_status: 'Trạng thái thanh toán', payment_method: 'Phương thức thanh toán', subtotal: 'Tiền món', discount_amount: 'Giảm giá',
+  delivery_fee: 'Phí giao', total_amount: 'Tổng cộng', created_at: 'Thời gian', restaurant_name: 'Nhà hàng', full_name: 'Họ tên', availability_status: 'Trạng thái', total_deliveries: 'Số chuyến',
+  total_earnings: 'Tổng thu nhập', rating: 'Đánh giá', email: 'Email', period_start: 'Từ ngày', period_end: 'Đến ngày', gross_sales: 'Doanh thu món', commission_amount: 'Hoa hồng',
+  refund_amount: 'Hoàn tiền', net_amount: 'Thực nhận', status: 'Trạng thái'
+};
+const EXPORT_TITLES = { ORDERS: 'Danh sách đơn hàng', REVENUE: 'Doanh thu theo đơn', SHIPPER: 'Danh sách tài xế', SETTLEMENT: 'Đối soát nhà hàng' };
+
+function rowsToDataset(exportType, rows) {
+  const keys = rows.length ? Object.keys(rows[0]) : [];
+  const typeOf = key => (/(amount|total_|fee|subtotal|sales|earnings)/.test(key) ? 'money' : /_at$/.test(key) ? 'datetime' : /^period_/.test(key) ? 'date' : /(deliveries|rating)/.test(key) ? 'number' : 'text');
+  const columns = keys.map(key => ({ key: camel(key), label: EXPORT_LABELS[key] ?? key, type: typeOf(key) }));
+  return { title: EXPORT_TITLES[exportType] ?? `Xuất ${exportType}`, columns, rows: rows.map(row => Object.fromEntries(keys.map(key => [camel(key), typeOf(key) === 'money' || typeOf(key) === 'number' ? Number(row[key]) : row[key]]))) };
 }
 
-function rowsToPdf(rows, title) {
-  const lines = [title, ...rows.slice(0, 50).map(row => Object.values(row).join(' | '))];
-  const text = lines.map((line, index) => `BT /F1 8 Tf 40 ${780 - index * 14} Td (${pdfEscape(String(line).slice(0, 180))}) Tj ET`).join('\n');
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-    `<< /Length ${text.length} >>\nstream\n${text}\nendstream`
-  ];
-  let pdf = '%PDF-1.4\n';
-  const offsets = [0];
-  for (let index = 0; index < objects.length; index += 1) {
-    offsets.push(pdf.length);
-    pdf += `${index + 1} 0 obj\n${objects[index]}\nendobj\n`;
-  }
-  const xref = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.slice(1).map(offset => `${String(offset).padStart(10, '0')} 00000 n `).join('\n')}\ntrailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return pdf;
-}
-
-function xmlEscape(value) {
-  return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-}
+function camel(value) { return value.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()); }
 
 function decodeXml(value) {
   return String(value ?? '')
@@ -333,10 +347,6 @@ function decodeXml(value) {
     .replaceAll('&gt;', '>')
     .replaceAll('&amp;', '&')
     .trim();
-}
-
-function pdfEscape(value) {
-  return value.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)');
 }
 
 function required(value, field) {

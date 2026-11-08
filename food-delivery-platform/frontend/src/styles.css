@@ -620,15 +620,6 @@ td .row-actions button { min-height: 32px; padding: 4px 12px; font-size: .8rem; 
 .fd-block { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
 .fd-block-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .fd-map-wrap { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: #eef3ec; }
-.fd-map svg { display: block; width: 100%; height: auto; }
-.fd-map svg.is-pickable { cursor: crosshair; }
-.fd-map-label { fill: #6b7a72; font-size: 12px; font-weight: 600; }
-.fd-map-badge { position: absolute; left: 8px; top: 8px; padding: 2px 9px; border-radius: 999px; background: rgba(255, 255, 255, .92); color: var(--muted); font-size: .7rem; }
-.fd-marker { font-size: 17px; transition: transform 1.2s linear; }
-.fd-marker circle { fill: #fff; stroke: var(--brand); stroke-width: 2.5; }
-.fd-marker-restaurant circle { stroke: #ea580c; }
-.fd-marker-shipper circle { fill: #eff6ff; stroke: #2563eb; }
-.fd-marker-shipper { filter: drop-shadow(0 2px 4px rgba(37, 99, 235, .45)); }
 .fd-steps { display: flex; flex-wrap: wrap; gap: 6px; }
 .fd-steps span { padding: 4px 10px; border-radius: 999px; background: var(--line-2); color: var(--muted); font-size: .75rem; font-weight: 500; }
 .fd-steps .is-done { background: var(--success-soft); color: var(--success); }
@@ -826,3 +817,172 @@ body[data-role="restaurant"] .partner-cta, body[data-role="admin"] .partner-cta,
 .export-row span { flex: 1; font-size: .88rem; font-weight: 600; }
 @media print { .partner-cta, .contact-widget, .export-menu { display: none !important; } }
 .app-card .cell-main { display: grid; gap: 2px; }
+
+/* Đánh giá món */
+.rating-line { font-size: .78rem; color: var(--muted); }
+.rating-line b { color: #e8a317; font-weight: 700; }
+.item-reviews { margin: 4px 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.review-summary { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+.review-score { display: grid; justify-items: center; line-height: 1.1; }
+.review-score strong { font-size: 2rem; color: var(--ink); }
+.review-score span { color: #e8a317; font-size: 1.1rem; }
+.review-score small { color: var(--muted); margin-top: 2px; }
+.review-bars { display: grid; gap: 4px; }
+.review-bar { display: grid; grid-template-columns: 28px 1fr 34px; gap: 8px; align-items: center; font-size: .78rem; color: var(--muted); }
+.review-bar i { display: block; height: 7px; border-radius: 4px; background: #eef0f3; overflow: hidden; }
+.review-bar b { display: block; height: 100%; background: #e8a317; border-radius: 4px; }
+.review-bar em { font-style: normal; text-align: right; }
+.review-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.review-list li { padding-top: 8px; border-top: 1px solid var(--line); font-size: .86rem; }
+.review-list p { margin: 3px 0 0; color: var(--ink); }
+.review-stars { color: #e8a317; letter-spacing: 1px; }
+
+/* Modal món: tuỳ chọn, ghi chú, số lượng, tổng tiền (kiểu ShopeeFood/GrabFood) */
+.item-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: .84rem; }
+.item-meta span:first-child { color: #b9770e; font-weight: 600; }
+.item-option-form { gap: 10px; }
+.option-box.has-error { border-color: var(--danger); background: var(--danger-soft); }
+.option-box strong { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.option-box .group-hint { font-size: .8rem; }
+.topping-list label:has(input:checked) { outline: 1.5px solid var(--brand); background: var(--brand-soft); }
+.topping-list label:has(input:disabled) { opacity: .5; }
+.note-box textarea { width: 100%; resize: vertical; min-height: 56px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.note-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.note-chip { padding: 4px 11px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: .8rem; cursor: pointer; }
+.note-chip.is-active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); }
+.note-count { justify-self: end; }
+.item-form-error { padding: 8px 12px; border-radius: 8px; background: var(--danger-soft); color: var(--danger); font-size: .86rem; }
+.item-submit-bar { position: sticky; bottom: -24px; display: flex; align-items: center; gap: 12px; padding: 12px 0; background: linear-gradient(to top, #fff 80%, rgba(255,255,255,0)); }
+.item-submit-bar .primary-button { flex: 1; }
+.qty-stepper { display: flex; align-items: center; gap: 4px; }
+.qty-stepper input { width: 46px; text-align: center; padding: 6px 4px; border: 1px solid var(--line); border-radius: 8px; font-weight: 600; -moz-appearance: textfield; }
+.qty-stepper input::-webkit-inner-spin-button { display: none; }
+
+/* Giỏ hàng, checkout, chi tiết đơn */
+.cart-note { width: 100%; margin-top: 4px; padding: 5px 9px; border: 1px dashed var(--line); border-radius: 8px; font-size: .8rem; background: transparent; }
+.cart-note:focus { border-style: solid; border-color: var(--brand); outline: none; }
+.delivery-options { display: grid; gap: 6px; }
+.check-line { display: flex; align-items: center; gap: 8px; font-size: .86rem; font-weight: 500; }
+.order-prefs { display: grid; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--bg); font-size: .84rem; }
+
+/* Trang chủ kiểu ShopeeFood: chọn tỉnh/thành, tab sắp xếp, thẻ quán */
+.city-picker { position: relative; }
+.city-pill { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; }
+.city-pill:hover, .city-pill[aria-expanded="true"] { border-color: var(--brand); }
+.city-pill .location-text { display: grid; text-align: left; line-height: 1.15; }
+.city-pill small { font-size: .68rem; color: var(--muted); }
+.city-pill strong { font-size: .88rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.city-panel { position: absolute; z-index: 60; top: calc(100% + 8px); left: 0; width: 300px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; box-shadow: var(--shadow); }
+.city-panel input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.city-panel ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.city-panel li button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; text-align: left; cursor: pointer; }
+.city-panel li button:hover { background: var(--brand-soft); }
+.city-panel li button.is-active { background: var(--brand-soft); color: var(--brand-dark); font-weight: 600; }
+.city-panel li small { color: var(--muted); font-size: .74rem; }
+.city-empty { padding: 10px; }
+.sort-tabs { display: flex; gap: 8px; margin: 12px 0; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.sort-tabs button { flex: 0 0 auto; padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-weight: 600; font-size: .88rem; color: var(--ink-2); cursor: pointer; transition: all .15s; }
+.sort-tabs button:hover { border-color: var(--brand); color: var(--brand); }
+.sort-tabs button.is-active { border-color: var(--brand); background: var(--brand); color: #fff; box-shadow: 0 4px 10px rgba(238, 77, 45, .25); }
+.filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+.filter-row select { width: auto; min-width: 200px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.filter-row .muted { font-size: .8rem; }
+.load-more { display: flex; justify-content: center; margin-top: 18px; }
+.photo-chip.chip-distance { top: 10px; bottom: auto; left: 10px; right: auto; background: rgba(255, 255, 255, .92); color: var(--ink); }
+.photo-chip.chip-closed { top: 50%; left: 50%; right: auto; bottom: auto; transform: translate(-50%, -50%); padding: 6px 14px; background: rgba(0, 0, 0, .72); color: #fff; font-size: .8rem; }
+.restaurant-card.is-closed .restaurant-cover, .restaurant-card.is-closed .card-body { opacity: .55; }
+.promo-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.promo-tag { padding: 2px 8px; border-radius: 6px; background: var(--brand-soft); color: var(--brand-dark); font-size: .74rem; font-weight: 600; }
+.coming-soon { grid-column: 1 / -1; display: grid; justify-items: center; gap: 10px; padding: 36px 16px; text-align: center; }
+@media (max-width: 760px) { .city-panel { position: fixed; left: 16px; right: 16px; width: auto; top: 70px; } .city-pill strong { max-width: 80px; } }
+
+/* Ưu đãi: voucher, báo giá, điểm thưởng, combo */
+.cart-quote { display: grid; gap: 8px; }
+.quote-hint { display: grid; gap: 6px; padding: 8px 10px; border-radius: 10px; background: #fff8e6; color: #7a5200; font-size: .84rem; }
+.quote-hint i { display: block; height: 6px; border-radius: 4px; background: #ffe7a8; overflow: hidden; }
+.quote-hint i b { display: block; height: 100%; background: #f5a300; border-radius: 4px; }
+.voucher-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px dashed var(--brand); border-radius: 10px; background: var(--brand-soft); color: var(--ink); font-size: .88rem; text-align: left; cursor: pointer; }
+.voucher-row.is-applied { border-style: solid; }
+.quote-warn { padding: 8px 10px; border-radius: 8px; background: var(--danger-soft); color: var(--danger); font-size: .84rem; }
+.fee-row.is-discount b { color: var(--success); }
+.fee-row.is-total { padding-top: 8px; border-top: 1px solid var(--line); font-size: 1.05rem; }
+.fee-row.is-total b { color: var(--brand); }
+.voucher-modal { position: relative; width: min(560px, 94vw); max-height: 86vh; overflow-y: auto; padding: 22px; border-radius: 16px; background: #fff; display: grid; gap: 10px; align-content: start; }
+.voucher-modal h4, .offers-content h4 { margin: 10px 0 0; font-size: .95rem; }
+.voucher-code-form { display: flex; gap: 8px; }
+.voucher-code-form input { flex: 1; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; text-transform: uppercase; }
+.voucher-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.voucher-ticket { display: flex; border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden; }
+.voucher-ticket.is-disabled { opacity: .62; }
+.vt-left { display: grid; place-content: center; gap: 2px; min-width: 88px; padding: 10px; background: var(--brand); color: #fff; text-align: center; }
+.vt-left strong { font-size: 1.05rem; }
+.vt-left small { font-size: .68rem; opacity: .9; }
+.vt-left.scope-RESTAURANT { background: #2f7de1; }
+.vt-left.scope-PERSONAL { background: #7b3fe4; }
+.vt-body { display: grid; gap: 3px; padding: 10px 12px; font-size: .82rem; }
+.vt-body b { font-size: .92rem; }
+.vt-body code { padding: 1px 6px; border-radius: 4px; background: var(--bg); }
+.vt-short { color: var(--danger); font-weight: 600; }
+.loyalty-card { display: flex; align-items: center; gap: 18px; padding: 16px 18px; border-radius: 14px; background: linear-gradient(120deg, #ee4d2d, #ff8a3d); color: #fff; }
+.loyalty-card strong { font-size: 2rem; margin-right: 6px; }
+.loyalty-card small { display: block; opacity: .9; }
+.loyalty-card p { margin: 0; font-size: .84rem; opacity: .95; }
+.reward-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.reward-card { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: .84rem; align-content: space-between; }
+.point-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .86rem; }
+.point-history li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.point-history .pos { color: var(--success); }
+.point-history .neg { color: var(--danger); }
+.shop-vouchers { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0 10px; }
+.shop-voucher { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px dashed var(--brand); border-radius: 10px; background: var(--brand-soft); cursor: pointer; text-align: left; }
+.shop-voucher b { padding: 4px 8px; border-radius: 6px; background: var(--brand); color: #fff; font-size: .8rem; }
+.shop-voucher span { display: grid; font-size: .84rem; font-weight: 600; }
+.shop-voucher small { color: var(--muted); font-weight: 400; font-size: .72rem; }
+.combo-box { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid #f4c2b6; border-radius: 12px; background: #fffaf8; }
+.combo-box ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .86rem; }
+.combo-box li { display: flex; justify-content: space-between; gap: 10px; }
+.combo-total { display: flex; justify-content: space-between; gap: 10px; padding-top: 6px; border-top: 1px dashed #f4c2b6; font-size: .86rem; }
+.combo-total b { color: var(--brand); }
+.combo-save { justify-self: start; padding: 2px 8px; border-radius: 6px; background: var(--success-soft); color: var(--success); font-size: .74rem; font-weight: 600; }
+
+.quota-bar { display: block; height: 6px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.quota-bar b { display: block; height: 100%; background: var(--brand); }
+.combo-components { display: grid; gap: 6px; max-height: 260px; overflow-y: auto; padding: 4px; border: 1px solid var(--line); border-radius: 10px; }
+.combo-pick { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 10px; font-size: .86rem; }
+.combo-pick input { width: 56px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; text-align: center; }
+.cart-note { min-width: 240px; }
+
+/* Thống kê & báo cáo */
+.an-page { display: grid; gap: 16px; }
+.an-head h3 { font-size: 1.25rem; }
+.an-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.range-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.range-custom { display: flex; align-items: center; gap: 6px; }
+.range-custom input[type=date] { padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.export-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.delta { display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; font-size: .72rem; font-weight: 600; vertical-align: middle; }
+.delta.is-good { background: var(--success-soft); color: var(--success); }
+.delta.is-bad { background: var(--danger-soft); color: var(--danger); }
+.line-chart svg { width: 100%; height: auto; display: block; }
+.stack-chart { display: flex; align-items: flex-end; gap: 3px; }
+.stack-col { flex: 1; display: grid; justify-items: center; gap: 2px; min-width: 0; }
+.stack-col .stack { width: 100%; max-width: 22px; display: flex; flex-direction: column-reverse; border-radius: 3px 3px 0 0; overflow: hidden; background: #f3f4f6; }
+.stack-col label { font-size: .64rem; color: var(--muted); white-space: nowrap; }
+.heatmap { display: grid; gap: 2px; font-size: .62rem; color: var(--muted); }
+.heat-row { display: grid; grid-template-columns: 24px repeat(24, 1fr); gap: 2px; align-items: center; }
+.heat-row i { height: 18px; border-radius: 3px; background: #f3f4f6; border: 1px solid rgba(0,0,0,.03); }
+.heat-head span { text-align: center; }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--brand); }
+tfoot td { font-weight: 700; background: var(--brand-soft); }
+.an-embed { margin-bottom: 18px; }
+.hbar-fill.is-red { background: #ef4444; }
+
+/* Bản đồ thật (Leaflet + OpenStreetMap) */
+.fd-map { height: 360px; z-index: 0; }
+.fd-map.is-pickable { cursor: crosshair; }
+.fd-admin-map .fd-map { height: 460px; }
+.fd-pin { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #fff; border: 2.5px solid var(--brand); font-size: 17px; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+.fd-pin-restaurant { border-color: #ea580c; }
+.fd-pin-customer { border-color: #12a05c; }
+.fd-pin-shipper { border-color: #2563eb; background: #eff6ff; }

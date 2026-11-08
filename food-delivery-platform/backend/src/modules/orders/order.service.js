@@ -66,7 +66,7 @@ function handleCartResult(result) {
 }
 function handleCheckoutResult(result) {
   if (result?.existing) return;
-  const messages = { CUSTOMER_NOT_FOUND: [404, 'Customer profile not found'], ADDRESS_NOT_FOUND: [400, 'Delivery address not found'], CART_EMPTY: [409, 'Cart is empty'], CART_ITEM_UNAVAILABLE: [409, 'One or more menu items are unavailable'], MINIMUM_ORDER_NOT_MET: [400, `Minimum order is ${result.minimumOrder}`], PROMOTION_INVALID: [400, 'Promotion is invalid or expired'] };
+  const messages = { CUSTOMER_NOT_FOUND: [404, 'Customer profile not found'], ADDRESS_NOT_FOUND: [400, 'Delivery address not found'], ADDRESS_TOO_FAR: [400, `Địa chỉ cách quán ${result.km} km, vượt quá giới hạn giao hàng ${result.maxKm} km nên đơn này không được giao`], RESTAURANT_CLOSED: [409, `Quán đang đóng cửa${result.openingTime ? ` (mở cửa ${result.openingTime.slice(0, 5)} – ${result.closingTime.slice(0, 5)})` : ''}, vui lòng đặt lại trong giờ mở cửa`], CART_EMPTY: [409, 'Cart is empty'], CART_ITEM_UNAVAILABLE: [409, 'One or more menu items are unavailable'], MINIMUM_ORDER_NOT_MET: [400, `Minimum order is ${result.minimumOrder}`], PROMOTION_INVALID: [400, 'Promotion is invalid or expired'] };
   if (result?.error) { const [status, message] = messages[result.error] ?? [400, 'Checkout cannot be completed']; throw new HttpError(status, message); }
 }
 function mapCartError(error) { if (error?.message === 'REQUIRED_TOPPINGS_MISSING' || error?.message === 'TOPPING_SELECTION_INVALID') return new HttpError(400, 'Topping selection does not meet the group limits'); if (error?.message === 'TOPPING_UNAVAILABLE') return new HttpError(400, 'One or more toppings are unavailable'); return error; }

@@ -14,6 +14,17 @@
     "seed:real": "node scripts/seed-realistic.mjs",
     "seed:demo": "node scripts/seed-realistic.mjs",
     "seed:history": "node scripts/seed-history.mjs",
+    "data:reset": "node scripts/reset-for-realistic-data.mjs",
+    "data:menus": "node scripts/load-menus.mjs",
+    "data:options": "node scripts/enrich-menu-options.mjs",
+    "data:promotions": "node scripts/load-promotions.mjs",
+    "data:banners": "node scripts/load-banners.mjs",
+    "data:simulate": "node scripts/simulate-activity.mjs",
+    "data:extras": "node scripts/simulate-extras.mjs",
+    "data:finalize": "node scripts/finalize-realistic-data.mjs",
+    "data:spread": "node scripts/spread-timeline.mjs --yes",
+    "data:closeout": "node scripts/simulate-closeout.mjs",
+    "data:cleanup-tests": "node scripts/cleanup-test-artifacts.mjs",
     "test:postman": "node scripts/run-postman.mjs",
     "test:e2e": "node scripts/run-postman.mjs --folder \"99 - Full E2E Flow\"",
     "test": "node --import ./scripts/setup-test-env.mjs --test",
@@ -21,18 +32,24 @@
     "smoke": "node scripts/smoke.mjs",
     "db:backup": "powershell.exe -ExecutionPolicy Bypass -File ./scripts/backup-db.ps1",
     "db:restore:test": "powershell.exe -ExecutionPolicy Bypass -File ./scripts/restore-test.ps1",
-    "package:release": "node scripts/package-release.mjs"
+    "package:release": "node scripts/package-release.mjs",
+    "docs:generate": "node ../../tools/generate-dev-docs.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dejavu-fonts-ttf": "^2.37.3",
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "express": "^4.18.2",
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
-    "mysql2": "^3.9.7"
+    "mysql2": "^3.9.7",
+    "pdfkit": "^0.20.2"
   },
   "devDependencies": {
+    "leaflet": "^1.9.4",
     "newman": "^6.2.3",
+    "sharp": "^0.35.5",
     "yaml": "^2.9.1"
   }
 }

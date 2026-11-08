@@ -13,12 +13,12 @@ services:
       DB_USER: food_delivery_app
       DB_PASSWORD: food_delivery_password
       JWT_SECRET: change-this-secret-in-compose
-      CORS_ORIGINS: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3001
       REDIS_URL: redis://redis:6379
       MAIL_HOST: mailhog
       MAIL_PORT: 1025
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       mysql:
         condition: service_healthy

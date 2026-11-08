@@ -4,6 +4,11 @@ Tạo tự động bởi `npm run test:postman` / `npm run test:e2e`. Mới nh�
 
 | KQ | Thời điểm | Phạm vi | Requests | Assertions | Lỗi | Thời gian | Báo cáo chi tiết |
 | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
+| ✅ | 21:34:27 13/10/2026 | Toàn bộ collection | 276 | 440 | 0 | 41.0s | runs/20261013-213427.json |
+| ❌ | 21:33:26 13/10/2026 | Toàn bộ collection | 276 | 440 | 1 | 39.8s | runs/20261013-213326.json |
+| ✅ | 21:29:02 13/10/2026 | Toàn bộ collection | 269 | 425 | 0 | 38.2s | runs/20261013-212902.json |
+| ❌ | 21:27:51 13/10/2026 | Toàn bộ collection | 269 | 424 | 12 | 38.6s | runs/20261013-212751.json |
+| ❌ | 21:26:35 13/10/2026 | Toàn bộ collection | 269 | 424 | 14 | 38.8s | runs/20261013-212635.json |
 | ✅ | 11:07:33 13/10/2026 | Toàn bộ collection | 269 | 424 | 0 | 38.2s | runs/20261013-110733.json |
 | ✅ | 11:07:10 13/10/2026 | 99 - Full E2E Flow | 71 | 110 | 0 | 10.2s | runs/20261013-110710.json |
 | ✅ | 10:33:20 13/10/2026 | 99 - Full E2E Flow | 71 | 110 | 0 | 10.2s | runs/20261013-103320.json |

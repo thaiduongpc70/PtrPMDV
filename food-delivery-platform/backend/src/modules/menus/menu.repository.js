@@ -133,7 +133,7 @@ export const menuRepository = {
     const rows = await query(
       `SELECT mi.id, mi.restaurant_id, mi.category_id, mi.name, mi.description, mi.image_url,
               mi.base_price, mi.discount_price, mi.preparation_time, mi.is_available,
-              mi.is_featured, mi.sold_count, mi.created_at, mi.updated_at
+              mi.is_featured, mi.sold_count, mi.item_type, mi.created_at, mi.updated_at
        FROM menu_items mi INNER JOIN restaurants r ON r.id = mi.restaurant_id
        WHERE ${where.join(' AND ')} ORDER BY mi.is_featured DESC, mi.id DESC LIMIT ? OFFSET ?`,
       [...params, filters.pageSize ?? 50, filters.offset ?? 0]
@@ -145,7 +145,7 @@ export const menuRepository = {
     const rows = await query(
       `SELECT mi.id, mi.restaurant_id, mi.category_id, mi.name, mi.description, mi.image_url,
               mi.base_price, mi.discount_price, mi.preparation_time, mi.is_available,
-              mi.is_featured, mi.sold_count, mi.created_at, mi.updated_at
+              mi.is_featured, mi.sold_count, mi.item_type, mi.created_at, mi.updated_at
        FROM menu_items mi INNER JOIN restaurants r ON r.id = mi.restaurant_id
        WHERE r.owner_user_id = ? AND mi.restaurant_id = ? AND mi.id = ?
          AND mi.deleted_at IS NULL LIMIT 1`,
@@ -283,14 +283,46 @@ export const menuRepository = {
     return result.affectedRows > 0;
   },
 
+  /** Biến một món thành combo (hoặc trả về món thường nếu components rỗng). Thành phần phải là món thường của cùng quán. */
+  async setComboComponents(itemId, restaurantId, components) {
+    return withTransaction(async connection => {
+      const itemRows = await connection.execute(
+        'SELECT id FROM menu_items WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL FOR UPDATE', [itemId, restaurantId]
+      );
+      if (itemRows.length === 0) return { error: 'NOT_FOUND' };
+      if (components.length > 0) {
+        const ids = components.map(part => part.itemId);
+        const found = await connection.execute(
+          `SELECT id, COALESCE(discount_price, base_price) AS price FROM menu_items
+           WHERE restaurant_id = ? AND deleted_at IS NULL AND item_type = 'DISH' AND id <> ? AND id IN (${ids.map(() => '?').join(',')})`,
+          [restaurantId, itemId, ...ids]
+        );
+        if (found.length !== ids.length) return { error: 'INVALID_COMPONENTS' };
+      }
+      await connection.execute('DELETE FROM menu_item_combo_components WHERE combo_item_id = ?', [itemId]);
+      for (const part of components) {
+        await connection.execute('INSERT INTO menu_item_combo_components (combo_item_id, component_item_id, quantity) VALUES (?, ?, ?)', [itemId, part.itemId, part.quantity]);
+      }
+      await connection.execute('UPDATE menu_items SET item_type = ? WHERE id = ?', [components.length > 0 ? 'COMBO' : 'DISH', itemId]);
+      return { itemId, components };
+    });
+  },
+
   async linkToppingGroups(itemId, restaurantId, groupIds) {
     return withTransaction(async connection => {
       const itemRows = await connection.execute(
         `SELECT id FROM menu_items WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL FOR UPDATE`, [itemId, restaurantId]
       );
       if (itemRows.length === 0) return false;
-      await connection.execute('DELETE FROM menu_item_topping_groups WHERE menu_item_id = ?', [itemId]);
-      for (const groupId of groupIds) {
+      // Chỉ xoá/ thêm đúng liên kết thay đổi (khoá theo khoá chính) để nhiều yêu cầu đồng thời không bị deadlock gap-lock.
+      const currentRows = await connection.execute('SELECT topping_group_id FROM menu_item_topping_groups WHERE menu_item_id = ?', [itemId]);
+      const current = new Set(currentRows.map(row => Number(row.topping_group_id)));
+      for (const groupId of current) {
+        if (!groupIds.includes(groupId)) {
+          await connection.execute('DELETE FROM menu_item_topping_groups WHERE menu_item_id = ? AND topping_group_id = ?', [itemId, groupId]);
+        }
+      }
+      for (const groupId of groupIds.filter(id => !current.has(id))) {
         await connection.execute(
           `INSERT INTO menu_item_topping_groups (menu_item_id, topping_group_id)
            SELECT ?, id FROM topping_groups WHERE id = ? AND restaurant_id = ?`, [itemId, groupId, restaurantId]
@@ -304,7 +336,7 @@ export const menuRepository = {
 function mapRestaurant(row) { return { id: Number(row.id), name: row.name, status: row.status, minimumOrder: Number(row.minimum_order) }; }
 function mapMenu(row) { return { id: Number(row.id), restaurantId: Number(row.restaurant_id), name: row.name, description: row.description ?? null, startTime: row.start_time ?? null, endTime: row.end_time ?? null, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }; }
 function mapCategory(row) { return { id: Number(row.id), restaurantId: Number(row.restaurant_id), menuId: row.menu_id == null ? null : Number(row.menu_id), name: row.name, description: row.description ?? null, sortOrder: Number(row.sort_order), status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }; }
-function mapItem(row) { return { id: Number(row.id), restaurantId: Number(row.restaurant_id), categoryId: row.category_id == null ? null : Number(row.category_id), name: row.name, description: row.description ?? null, imageUrl: row.image_url ?? null, basePrice: Number(row.base_price), discountPrice: row.discount_price == null ? null : Number(row.discount_price), effectivePrice: Number(row.discount_price ?? row.base_price), preparationTime: Number(row.preparation_time), isAvailable: Boolean(row.is_available), isFeatured: Boolean(row.is_featured), soldCount: Number(row.sold_count), createdAt: row.created_at, updatedAt: row.updated_at }; }
+function mapItem(row) { return { id: Number(row.id), restaurantId: Number(row.restaurant_id), categoryId: row.category_id == null ? null : Number(row.category_id), name: row.name, description: row.description ?? null, imageUrl: row.image_url ?? null, basePrice: Number(row.base_price), discountPrice: row.discount_price == null ? null : Number(row.discount_price), effectivePrice: Number(row.discount_price ?? row.base_price), preparationTime: Number(row.preparation_time), isAvailable: Boolean(row.is_available), isFeatured: Boolean(row.is_featured), itemType: row.item_type ?? 'DISH', soldCount: Number(row.sold_count), createdAt: row.created_at, updatedAt: row.updated_at }; }
 function mapVariant(row) { return { id: Number(row.id), menuItemId: Number(row.menu_item_id), name: row.name, priceAdjustment: Number(row.price_adjustment), status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }; }
 function mapToppingGroup(row) { return { id: Number(row.id), restaurantId: Number(row.restaurant_id), name: row.name, minSelect: Number(row.min_select), maxSelect: Number(row.max_select), required: Boolean(row.required), createdAt: row.created_at, updatedAt: row.updated_at }; }
 function mapTopping(row) { return { id: Number(row.id), groupId: Number(row.group_id), name: row.name, price: Number(row.price), status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }; }

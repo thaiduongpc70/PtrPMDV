@@ -332,13 +332,14 @@ const promotionRow = row => ({
   restaurantId: row.restaurant_id === null ? null : Number(row.restaurant_id), restaurantName: row.restaurant_name ?? null,
   discountType: row.discount_type, discountValue: Number(row.discount_value),
   maxDiscount: row.max_discount === null ? null : Number(row.max_discount), minimumOrder: Number(row.minimum_order),
-  startAt: row.start_at, endAt: row.end_at, usageLimit: row.usage_limit, usedCount: Number(row.used_count), status: row.status
+  startAt: row.start_at, endAt: row.end_at, usageLimit: row.usage_limit, usedCount: Number(row.used_count), status: row.status,
+  firstOrderOnly: Boolean(row.first_order_only), personal: row.customer_id != null
 });
 
 adminManageRoutes.get('/promotions', asyncHandler(async (_req, res) => {
   const rows = await query(
     `SELECT p.*, r.name AS restaurant_name FROM promotions p LEFT JOIN restaurants r ON r.id = p.restaurant_id
-     WHERE p.deleted_at IS NULL ORDER BY p.created_at DESC LIMIT 200`
+     WHERE p.deleted_at IS NULL AND p.customer_id IS NULL ORDER BY (p.restaurant_id IS NULL) DESC, p.created_at DESC LIMIT 300`
   );
   res.json({ items: rows.map(promotionRow) });
 }));
@@ -351,17 +352,20 @@ adminManageRoutes.post('/promotions', asyncHandler(async (req, res) => {
   const value = money(b.discountValue ?? 0, 'discountValue');
   if (type === 'PERCENT' && value > 100) throw new HttpError(400, 'discountValue must be <= 100');
   const start = new Date(b.startAt ?? Date.now());
-  const end = new Date(b.endAt ?? Date.now() + 30 * 86400000);
+  // Mã giảm giá chung (giảm % / giảm trực tiếp) không giới hạn hạn ngạch và ngày; freeship bắt buộc có hạn ngạch + ngày kết thúc.
+  const isFreeship = type === 'FREE_DELIVERY';
+  if (isFreeship && (!b.usageLimit || !b.endAt)) throw new HttpError(400, 'Mã freeship phải có hạn ngạch (usageLimit) và ngày kết thúc (endAt)');
+  const end = new Date(b.endAt ?? (isFreeship ? Date.now() + 30 * 86400000 : '2099-12-31T16:59:59Z'));
   if (Number.isNaN(+start) || Number.isNaN(+end) || end <= start) throw new HttpError(400, 'Invalid time range');
   try {
     const result = await query(
       `INSERT INTO promotions (restaurant_id, code, name, description, discount_type, discount_value, max_discount,
-        minimum_order, start_at, end_at, usage_limit, usage_per_customer)
-       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        minimum_order, start_at, end_at, usage_limit, usage_per_customer, first_order_only)
+       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [code, name, str(b.description, 1000, 'description'), type, value,
         b.maxDiscount === undefined || b.maxDiscount === '' ? null : money(b.maxDiscount, 'maxDiscount'),
         money(b.minimumOrder ?? 0, 'minimumOrder'), start, end,
-        b.usageLimit ? id(b.usageLimit, 'usageLimit') : null, b.usagePerCustomer ? id(b.usagePerCustomer, 'usagePerCustomer') : 1]
+        isFreeship ? id(b.usageLimit, 'usageLimit') : null, b.usagePerCustomer ? id(b.usagePerCustomer, 'usagePerCustomer') : 1, b.firstOrderOnly === true]
     );
     audit(req, 'ADMIN_PROMOTION_CREATE', 'PROMOTION', result.insertId);
     res.status(201).json({ id: Number(result.insertId), code });
@@ -377,6 +381,57 @@ adminManageRoutes.patch('/promotions/:promotionId', asyncHandler(async (req, res
   await query('UPDATE promotions SET status = ? WHERE id = ? AND deleted_at IS NULL', [status, promotionId]);
   audit(req, 'ADMIN_PROMOTION_STATUS', 'PROMOTION', promotionId);
   res.json({ id: promotionId, status });
+}));
+
+const rewardRow = row => ({
+  id: Number(row.id), name: row.name, description: row.description, pointsCost: Number(row.points_cost), discountType: row.discount_type,
+  discountValue: Number(row.discount_value), maxDiscount: row.max_discount === null ? null : Number(row.max_discount), minimumOrder: Number(row.minimum_order),
+  validDays: Number(row.valid_days), stock: row.stock === null ? null : Number(row.stock), status: row.status, redeemed: Number(row.redeemed ?? 0)
+});
+
+adminManageRoutes.get('/loyalty-rewards', asyncHandler(async (_req, res) => {
+  const rows = await query(`SELECT lr.*, (SELECT COUNT(*) FROM loyalty_transactions lt WHERE lt.reward_id = lr.id AND lt.type = 'REDEEM') AS redeemed
+    FROM loyalty_rewards lr ORDER BY lr.points_cost`);
+  res.json({ items: rows.map(rewardRow) });
+}));
+
+adminManageRoutes.post('/loyalty-rewards', asyncHandler(async (req, res) => {
+  const b = req.body ?? {};
+  const type = oneOf(b.discountType, ['PERCENT', 'FIXED_AMOUNT', 'FREE_DELIVERY'], 'discountType');
+  const value = money(b.discountValue ?? 0, 'discountValue');
+  if (type === 'PERCENT' && value > 100) throw new HttpError(400, 'discountValue must be <= 100');
+  const result = await query(
+    `INSERT INTO loyalty_rewards (name, description, points_cost, discount_type, discount_value, max_discount, minimum_order, valid_days, stock)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [str(b.name, 200, 'name', { required: true }), str(b.description, 500, 'description'), id(b.pointsCost, 'pointsCost'), type, value,
+      b.maxDiscount === undefined || b.maxDiscount === null || b.maxDiscount === '' ? null : money(b.maxDiscount, 'maxDiscount'),
+      money(b.minimumOrder ?? 0, 'minimumOrder'), b.validDays ? id(b.validDays, 'validDays') : 30, b.stock === undefined || b.stock === null || b.stock === '' ? null : Number(b.stock)]
+  );
+  audit(req, 'ADMIN_REWARD_CREATE', 'LOYALTY_REWARD', result.insertId);
+  res.status(201).json({ id: Number(result.insertId) });
+}));
+
+adminManageRoutes.patch('/loyalty-rewards/:rewardId', asyncHandler(async (req, res) => {
+  const rewardId = id(req.params.rewardId, 'rewardId');
+  const status = oneOf(req.body?.status, ['ACTIVE', 'INACTIVE'], 'status');
+  await query('UPDATE loyalty_rewards SET status = ? WHERE id = ?', [status, rewardId]);
+  audit(req, 'ADMIN_REWARD_STATUS', 'LOYALTY_REWARD', rewardId);
+  res.json({ id: rewardId, status });
+}));
+
+adminManageRoutes.post('/promotions/:promotionId/extend', asyncHandler(async (req, res) => {
+  const promotionId = id(req.params.promotionId, 'promotionId');
+  const rows = await query('SELECT * FROM promotions WHERE id = ? AND restaurant_id IS NULL AND customer_id IS NULL AND deleted_at IS NULL LIMIT 1', [promotionId]);
+  if (!rows[0]) throw new HttpError(404, 'Voucher nền tảng không tồn tại');
+  const days = Number(req.body?.days ?? 0);
+  const addQuota = Number(req.body?.addQuota ?? 0);
+  if (!Number.isInteger(days) || days < 0 || days > 365 || !Number.isInteger(addQuota) || addQuota < 0 || (days === 0 && addQuota === 0)) throw new HttpError(400, 'Cần gia hạn 1-365 ngày và/hoặc thêm hạn ngạch');
+  await query(
+    `UPDATE promotions SET end_at = IF(? > 0, DATE_ADD(GREATEST(end_at, CURRENT_TIMESTAMP), INTERVAL ? DAY), end_at),
+       usage_limit = IF(usage_limit IS NULL, NULL, usage_limit + ?), status = 'ACTIVE' WHERE id = ?`, [days, days, addQuota, promotionId]
+  );
+  audit(req, 'ADMIN_PROMOTION_EXTEND', 'PROMOTION', promotionId);
+  res.json({ id: promotionId, extendedDays: days, addedQuota: addQuota });
 }));
 
 adminManageRoutes.delete('/promotions/:promotionId', asyncHandler(async (req, res) => {
@@ -481,7 +536,7 @@ adminManageRoutes.post('/zones', asyncHandler(async (req, res) => {
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [str(b.name, 150, 'name', { required: true }), str(b.city, 100, 'city', { required: true }), str(b.district, 100, 'district'),
       money(b.baseFee ?? 15000, 'baseFee'), money(b.pricePerKm ?? 5000, 'pricePerKm'), money(b.minimumFee ?? 15000, 'minimumFee'),
-      money(b.maximumDistance ?? 20, 'maximumDistance', { min: 1 })]
+      money(b.maximumDistance ?? 15, 'maximumDistance', { min: 1 })]
   );
   audit(req, 'ADMIN_ZONE_CREATE', 'DELIVERY_ZONE', result.insertId);
   res.status(201).json({ id: Number(result.insertId) });

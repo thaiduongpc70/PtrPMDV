@@ -18,7 +18,8 @@ export function validateCartItem(input) {
 }
 
 export function validateCartItemPatch(input) {
-  const quantity = readInteger(input?.quantity, 'Quantity', 1, 99, null);
+  if (input?.quantity === undefined && input?.toppingIds === undefined && input?.note === undefined) throw new HttpError(400, 'Quantity is required');
+  const quantity = input?.quantity === undefined ? null : readInteger(input.quantity, 'Quantity', 1, 99, null);
   const toppingIds = input?.toppingIds === undefined ? undefined : Array.from(new Set(input.toppingIds.map(value => readId(value, 'Topping id'))));
   return { quantity, toppingIds, note: input?.note === undefined ? undefined : optionalText(input.note, 'Item note', 500) };
 }
@@ -30,7 +31,19 @@ export function validateCheckout(input, headerIdempotencyKey) {
   if (!paymentMethods.has(paymentMethod)) throw new HttpError(400, 'Payment method is invalid');
   const idempotencyKey = optionalText(headerIdempotencyKey ?? input?.idempotencyKey, 'Idempotency key', 100) ?? createIdempotencyKey();
   const promotionCode = optionalText(input?.promotionCode, 'Promotion code', 50)?.toUpperCase() ?? null;
-  return { restaurantId, addressId, paymentMethod, customerNote: optionalText(input?.customerNote, 'Customer note', 1000), idempotencyKey, promotionCode };
+  return {
+    restaurantId, addressId, paymentMethod, idempotencyKey, promotionCode,
+    customerNote: optionalText(input?.customerNote, 'Customer note', 1000),
+    shipperNote: optionalText(input?.shipperNote, 'Shipper note', 500),
+    needUtensils: readBoolean(input?.needUtensils, 'needUtensils', true),
+    contactlessDelivery: readBoolean(input?.contactlessDelivery, 'contactlessDelivery', false)
+  };
+}
+
+function readBoolean(value, field, fallback) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value !== 'boolean') throw new HttpError(400, `${field} must be true or false`);
+  return value;
 }
 
 export function readId(value, field) {

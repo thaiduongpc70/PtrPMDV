@@ -1,4 +1,4 @@
-/* Address book: choose / add / edit / delete delivery addresses (map picker is mock). */
+/* Address book: choose / add / edit / delete delivery addresses (map picker is OpenStreetMap). */
 (function () {
   const U = window.FDUI;
   const fd = () => window.FD;
@@ -64,7 +64,7 @@
 
   function showForm(address) {
     const known = fd().state.addresses.find(item => item.isDefault) || fd().state.addresses[0] || {};
-    const a = address || { label: 'Nhà riêng', receiverName: known.receiverName || fd().state.user?.fullName || '', receiverPhone: known.receiverPhone || fd().state.user?.phone || '', city: known.city || 'TP.HCM', isDefault: !fd().state.addresses.length };
+    const a = address || { label: 'Nhà riêng', receiverName: known.receiverName || fd().state.user?.fullName || '', receiverPhone: known.receiverPhone || fd().state.user?.phone || '', city: known.city || fd().state.city || '', isDefault: !fd().state.addresses.length };
     dialog.body.innerHTML = `
       <form class="stacked-form compact-form" id="addressDialogForm">
         <label>Loại địa chỉ<select name="label">${LABELS.map(l => `<option ${l === a.label ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
@@ -72,10 +72,10 @@
         <label>Số điện thoại<input name="receiverPhone" required value="${esc(a.receiverPhone)}" placeholder="0901234567"></label>
         <label class="wide-field">Số nhà, tên đường<input name="addressLine" required maxlength="255" value="${esc(a.addressLine || '')}" placeholder="25 Nguyễn Văn Nguyễn"></label>
         <label>Phường / Xã<input name="ward" value="${esc(a.ward || '')}"></label>
-        <label>Quận / Huyện<input name="district" value="${esc(a.district || '')}"></label>
-        <label>Tỉnh / Thành phố<input name="city" required value="${esc(a.city || 'TP.HCM')}"></label>
+        <label>Phường / Xã<input name="district" value="${esc(a.district || '')}"></label>
+        <label>Tỉnh / Thành phố<input name="city" required value="${esc(a.city || fd().state.city || '')}"></label>
         <div class="wide-field address-map">
-          <div class="fd-block-head"><strong>Ghim vị trí trên bản đồ</strong><span class="muted" id="pickedCoords">${a.latitude ? `${Number(a.latitude).toFixed(5)}, ${Number(a.longitude).toFixed(5)}` : 'Chạm vào bản đồ để chọn (mock)'}</span></div>
+          <div class="fd-block-head"><strong>Ghim vị trí trên bản đồ</strong><span class="muted" id="pickedCoords">${a.latitude ? `${Number(a.latitude).toFixed(5)}, ${Number(a.longitude).toFixed(5)}` : 'Chạm vào bản đồ để chọn vị trí'}</span></div>
           <div class="fd-map-wrap" id="addressMap"></div>
         </div>
         <label class="checkbox-field wide-field"><input type="checkbox" name="isDefault" ${a.isDefault ? 'checked' : ''} ${a.isDefault && address ? 'disabled' : ''}> Đặt làm địa chỉ giao hàng mặc định</label>
@@ -93,7 +93,7 @@
       const payload = {
         label: f.get('label'), receiverName: f.get('receiverName').trim(), receiverPhone: f.get('receiverPhone').trim(),
         addressLine: f.get('addressLine').trim(), ward: f.get('ward').trim() || null, district: f.get('district').trim() || null,
-        city: f.get('city').trim() || 'TP.HCM', isDefault: f.get('isDefault') === 'on' || Boolean(a.isDefault),
+        city: f.get('city').trim() || fd().state.city, isDefault: f.get('isDefault') === 'on' || Boolean(a.isDefault),
         latitude: coords ? Number(coords.lat.toFixed(7)) : null, longitude: coords ? Number(coords.lng.toFixed(7)) : null
       };
       const saved = await act(() => (address

@@ -911,7 +911,40 @@
                 "exec": [
                   "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
                   "pm.test('Search menu items: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
-                  "pm.test(\"menu items exist\", () => pm.expect(json.items.length > 0).to.be.true);"
+                  "pm.test(\"menu items exist\", () => pm.expect(json.items.length > 0).to.be.true);",
+                  "pm.test(\"menu items carry rating fields\", () => pm.expect(json.items[0]).to.include.all.keys('rating', 'totalReviews'));",
+                  "pm.collectionVariables.set('publicMenuItemId', json.items[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dish reviews",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/catalog/menu-items/{{publicMenuItemId}}/reviews?pageSize=5",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
+                  "pm.test('Dish reviews: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "pm.test(\"summary has distribution 1-5\", () => pm.expect(Object.keys(json.summary.distribution).sort()).to.eql(['1','2','3','4','5']));",
+                  "pm.test(\"average matches rating range\", () => pm.expect(json.summary.total === 0 || (json.summary.average >= 1 && json.summary.average <= 5)).to.be.true);",
+                  "pm.test(\"page size respected\", () => pm.expect(json.items.length <= 5).to.be.true);"
                 ]
               }
             }
@@ -941,6 +974,34 @@
                   "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
                   "pm.test('Restaurant detail: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
                   "pm.test(\"matching restaurant\", () => pm.expect(json.id == pm.collectionVariables.get(\"publicRestaurantId\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dish reviews - invalid id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/catalog/menu-items/abc/reviews",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
+                  "pm.test('Invalid dish id: HTTP 400', () => pm.expect(pm.response.code).to.be.oneOf([400]));"
                 ]
               }
             }
@@ -3214,6 +3275,195 @@
                 "exec": [
                   "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
                   "pm.test('Review shipper: HTTP 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Order lines for review",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/orders/{{orderId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
+                  "pm.test('Order detail: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "pm.test(\"order has lines\", () => pm.expect(json.items.length >= 1).to.be.true);",
+                  "pm.collectionVariables.set('orderItemId', json.items[0].id);",
+                  "pm.collectionVariables.set('reviewedMenuItemId', json.items[0].menuItemId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review dishes of the order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/communications/orders/{{orderId}}/item-reviews",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"orderItemId\": {{orderItemId}}, \"rating\": 4, \"comment\": \"Món ngon, đóng gói kỹ.\" }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
+                  "pm.test('Review dishes: HTTP 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "pm.test(\"one review stored\", () => pm.expect(json.totalItems).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicate dish review rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/communications/orders/{{orderId}}/item-reviews",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"orderItemId\": {{orderItemId}}, \"rating\": 1 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
+                  "pm.test('Second review of same line: HTTP 409', () => pm.expect(pm.response.code).to.be.oneOf([409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dish review needs rating 1-5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/communications/orders/{{orderId}}/item-reviews",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"orderItemId\": {{orderItemId}}, \"rating\": 9 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
+                  "pm.test('Rating 9: HTTP 400', () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dish rating is updated",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/catalog/menu-items/{{reviewedMenuItemId}}/reviews?pageSize=50",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
+                  "pm.test('Dish reviews: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "pm.test(\"new review is listed\", () => pm.expect(json.items.some(r => r.orderId === Number(pm.collectionVariables.get('orderId')) && r.rating === 4)).to.be.true);",
+                  "pm.test(\"counts match distribution\", () => pm.expect(Object.values(json.summary.distribution).reduce((a, b) => a + b, 0)).to.eql(json.summary.total));"
                 ]
               }
             }
@@ -8310,7 +8560,10 @@
                   "const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;",
                   "pm.test('Restaurant lists available shippers: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
                   "pm.test(\"a shipper is available\", () => pm.expect(json.items.length > 0).to.be.true);",
-                  "{ const v = (json.items[0]?.id); if (v !== undefined && v !== null) pm.collectionVariables.set('shipperId', v); }"
+                  "// Nhiều tài xế đang rảnh: chọn đúng tài xế của tài khoản bao.shipper đã đăng nhập ở bước trước.",
+                  "const mine = json.items.find(s => s.fullName === 'Trần Quốc Bảo');",
+                  "pm.test(\"bao.shipper is in the available list\", () => pm.expect(!!mine).to.be.true);",
+                  "if (mine) pm.collectionVariables.set('shipperId', mine.id);"
                 ]
               }
             }

@@ -1,4 +1,5 @@
 import { HttpError } from './http-error.js';
+import { logger } from '../observability/logger.js';
 
 export function errorHandler(error, req, res, next) {
   if (res.headersSent) {
@@ -10,6 +11,10 @@ export function errorHandler(error, req, res, next) {
   const statusCode = normalizedError instanceof HttpError
     ? normalizedError.statusCode
     : 500;
+
+  if (statusCode === 500) {
+    logger.error('http.unhandled_error', { method: req.method, path: req.originalUrl, errorMessage: error?.message, code: error?.code, stack: error?.stack });
+  }
 
   res.status(statusCode).json({
     message: statusCode === 500 ? 'Internal server error' : normalizedError.message

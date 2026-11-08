@@ -36,9 +36,23 @@ function getMysqlClient() {
   return mysql;
 }
 
+const RETRYABLE_ERRORS = new Set(['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT']);
+const MAX_TRANSACTION_ATTEMPTS = 4;
+
 export async function query(sql, params = []) {
-  const [rows] = await getPool().execute(sql, params);
-  return rows;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const [rows] = await getPool().execute(sql, params);
+      return rows;
+    } catch (error) {
+      // Câu lệnh đơn lẻ (autocommit) đã được MySQL rollback hoàn toàn nên an toàn để thử lại khi bị chọn làm nạn nhân deadlock.
+      if (error?.code === 'ER_LOCK_DEADLOCK' && attempt < MAX_TRANSACTION_ATTEMPTS) {
+        await new Promise(resolve => setTimeout(resolve, 15 * attempt + Math.floor(Math.random() * 25)));
+        continue;
+      }
+      throw error;
+    }
+  }
 }
 
 export async function checkDatabaseConnection() {
@@ -63,25 +77,32 @@ export async function closePool() {
   }
 }
 
+/** Chạy `work` trong một transaction; tự thử lại khi MySQL chọn nó làm nạn nhân của deadlock. */
 export async function withTransaction(work) {
-  const connection = await getPool().getConnection();
+  for (let attempt = 1; ; attempt += 1) {
+    const connection = await getPool().getConnection();
 
-  try {
-    await connection.beginTransaction();
+    try {
+      await connection.beginTransaction();
 
-    const result = await work({
-      execute: async (sql, params = []) => {
-        const [rows] = await connection.execute(sql, params);
-        return rows;
+      const result = await work({
+        execute: async (sql, params = []) => {
+          const [rows] = await connection.execute(sql, params);
+          return rows;
+        }
+      });
+
+      await connection.commit();
+      return result;
+    } catch (error) {
+      await connection.rollback();
+      if (RETRYABLE_ERRORS.has(error?.code) && attempt < MAX_TRANSACTION_ATTEMPTS) {
+        await new Promise(resolve => setTimeout(resolve, 15 * attempt + Math.floor(Math.random() * 25)));
+        continue;
       }
-    });
-
-    await connection.commit();
-    return result;
-  } catch (error) {
-    await connection.rollback();
-    throw error;
-  } finally {
-    connection.release();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 }

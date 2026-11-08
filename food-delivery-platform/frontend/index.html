@@ -9,36 +9,50 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" href="./assets/food-delivery-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
     <link rel="stylesheet" href="./src/styles.css">
+    <link rel="stylesheet" href="./src/storefront.css">
+    <script src="./vendor/leaflet/leaflet.js"></script>
     <script src="./src/live.js" defer></script>
     <script src="./src/app.js" defer></script>
     <script src="./src/ui.js" defer></script>
+    <script src="./src/analytics.js" defer></script>
     <script src="./src/address.js" defer></script>
     <script src="./src/admin.js" defer></script>
     <script src="./src/restaurant.js" defer></script>
     <script src="./src/widgets.js" defer></script>
     <script src="./src/export.js" defer></script>
+    <script src="./src/commitment.js" defer></script>
     <script src="./src/partner.js" defer></script>
   </head>
-  <body data-screen="customer" data-auth="guest" data-role="guest">
+  <body data-screen="customer" data-auth="guest" data-role="guest" class="sf-landing">
     <div class="promo-strip" data-storefront>
-      <span>🛵 Freeship đơn từ 99.000đ · nhập mã <b>FREESHIP</b></span>
-      <span class="promo-strip-right">Hotline <b>1900 6868</b> · 7:00 – 23:00 mỗi ngày</span>
+      <span id="stripPromo"></span>
+      <span class="promo-strip-right" id="stripContact"></span>
     </div>
-    <header class="app-header">
+    <header class="app-header sf-header">
       <a class="brand" href="#" data-home aria-label="FoodGo">
-        <img src="./assets/food-delivery-mark.svg" alt="" width="40" height="40">
-        <span><strong>FoodGo</strong><small>Giao nhanh · Ăn ngon</small></span>
+        <img src="./assets/food-delivery-mark.svg" alt="" width="32" height="32">
+        <span><strong>FoodGo</strong></span>
       </a>
-      <button class="location-pill" type="button" id="loadAddressesButton" data-storefront title="Địa chỉ giao hàng">
-        <span class="pin" aria-hidden="true">📍</span>
-        <span class="location-text"><small>Giao đến</small><strong id="defaultAddressText">Chọn địa chỉ giao hàng</strong></span>
-      </button>
-      <form class="header-search" id="searchForm" data-storefront role="search">
-        <span aria-hidden="true">🔍</span>
-        <input id="catalogKeyword" type="search" placeholder="Tìm món ăn, nhà hàng: phở, cơm tấm, trà sữa…" aria-label="Tìm kiếm">
-        <button class="primary-button" type="submit">Tìm</button>
-      </form>
+      <div class="city-picker" data-storefront>
+        <button class="city-pill" type="button" id="cityPill" aria-haspopup="listbox" aria-expanded="false" title="Chọn tỉnh/thành">
+          <strong id="cityName"></strong><span aria-hidden="true">▾</span>
+        </button>
+        <div class="city-panel" id="cityPanel" hidden>
+          <input id="citySearch" type="search" placeholder="Tìm tỉnh/thành…" aria-label="Tìm tỉnh thành" autocomplete="off">
+          <ul id="cityList" role="listbox"></ul>
+        </div>
+      </div>
+      <nav class="sf-nav" data-storefront aria-label="Điều hướng cửa hàng">
+        <button class="is-active" type="button" data-subview-target="customer:catalog">Đồ ăn</button>
+        <button type="button" data-sf-collection="combo">Combo</button>
+        <button type="button" data-subview-target="customer:offers">Ưu đãi</button>
+        <button type="button" data-subview-target="customer:orders" data-auth-only>Đơn hàng</button>
+        <button type="button" data-subview-target="customer:favorites" data-auth-only>Yêu thích</button>
+        <button type="button" data-subview-target="customer:stats" data-auth-only>Chi tiêu</button>
+        <button type="button" data-subview-target="customer:support">Hỗ trợ</button>
+      </nav>
       <nav class="main-tabs" aria-label="Phân hệ">
         <button class="is-active" type="button" data-screen-target="customer" data-role-tab="CUSTOMER">Cửa hàng</button>
         <button type="button" data-screen-target="restaurant" data-role-tab="RESTAURANT" hidden>Quản lý nhà hàng</button>
@@ -46,10 +60,11 @@
         <button type="button" data-screen-target="admin" data-role-tab="ADMIN" hidden>Quản trị hệ thống</button>
       </nav>
       <div class="session-actions">
+        <button class="icon-button" type="button" data-storefront data-sf-search title="Tìm kiếm" aria-label="Tìm kiếm">🔍</button>
         <button class="icon-button bell-button" type="button" id="notifButton" data-auth-only title="Thông báo" aria-label="Thông báo">🔔<span class="badge" id="notifCount" hidden>0</span></button>
         <button class="icon-button cart-button" type="button" data-storefront data-subview-target="customer:cart" title="Giỏ hàng" aria-label="Giỏ hàng">🛒<span class="badge" id="cartBadge" hidden>0</span></button>
-        <button class="ghost-button" type="button" id="openLoginButton" data-guest-only>Đăng nhập</button>
-        <button class="primary-button compact-button" type="button" id="openRegisterButton" data-guest-only>Đăng ký</button>
+        <button class="sf-login" type="button" id="openLoginButton" data-guest-only>Đăng nhập</button>
+        <button class="sf-register" type="button" id="openRegisterButton" data-guest-only>Đăng ký</button>
         <div class="user-menu" data-auth-only>
           <button class="user-button" type="button" id="userMenuButton" aria-haspopup="true">
             <span class="avatar" id="userAvatar">?</span>
@@ -71,56 +86,64 @@
       
 
       <section class="screen is-active" id="customerScreen" data-screen-panel="customer">
-        <nav class="sub-tabs store-tabs" aria-label="Màn khách hàng">
-          <button class="is-active" type="button" data-subview-target="customer:catalog">Khám phá</button>
-          <button type="button" data-subview-target="customer:detail">Nhà hàng</button>
-          <button type="button" data-subview-target="customer:cart">Giỏ hàng & đặt món</button>
-          <button type="button" data-subview-target="customer:orders">Đơn hàng của tôi</button>
-          <button type="button" data-subview-target="customer:favorites">Yêu thích</button>
-          <button type="button" data-subview-target="customer:support">Hỗ trợ</button>
-        </nav>
-
         <section class="customer-home">
-          <div class="discovery-panel is-subview-active" data-view-panel="customer:catalog">
-            <div class="hero">
-              <div class="hero-main">
-                <div class="banner-strip" id="bannerStrip"></div>
-                <div class="hero-dots" id="heroDots"></div>
+          <div class="discovery-panel is-subview-active sf-landing" data-view-panel="customer:catalog">
+            <section class="sf-hero">
+              <div class="sf-hero-inner">
+                <div class="sf-hero-left">
+                  <h1 id="sfHeadline">Đặt đồ ăn, giao hàng nhanh</h1>
+                  <p class="sf-sub" id="sfSub">Đang tải…</p>
+                  <form class="sf-search" id="searchForm" role="search" data-storefront>
+                    <input id="catalogKeyword" type="search" placeholder="Tìm địa điểm, món ăn, địa chỉ…" aria-label="Tìm kiếm" autocomplete="off">
+                    <button type="submit" aria-label="Tìm">🔍</button>
+                  </form>
+                  <div class="sf-chips" id="categoryStrip"></div>
+                  <p class="sf-promo-line" id="sfPromoLine"></p>
+                  <div class="sf-cta">
+                    <button type="button" data-partner="restaurant">Đăng ký nhà hàng</button>
+                    <button type="button" data-partner="shipper">Trở thành tài xế</button>
+                  </div>
+                </div>
+                <div class="sf-hero-right">
+                  <button class="sf-crumb" type="button" id="loadAddressesButton" data-storefront title="Địa chỉ giao hàng">
+                    <b>Đồ ăn</b><span>→</span><span class="sf-crumb-text" id="defaultAddressText">Chọn địa chỉ giao hàng</span><i aria-hidden="true">›</i>
+                  </button>
+                  <section class="sf-card">
+                    <header class="sf-card-head"><h2>Bộ sưu tập</h2><button type="button" class="sf-link" id="toggleCollections">Xem tất cả</button></header>
+                    <div class="sf-collections" id="collectionGrid"></div>
+                  </section>
+                  <section class="sf-card sf-list" id="restaurantSection">
+                    <div class="sf-list-head">
+                      <nav class="sf-tabs" id="sortTabs" role="tablist" aria-label="Sắp xếp nhà hàng">
+                        <button type="button" role="tab" class="is-active" data-sort="featured">Nổi bật</button>
+                        <button type="button" role="tab" data-sort="nearest">Gần tôi</button>
+                        <button type="button" role="tab" data-sort="popular">Bán chạy</button>
+                        <button type="button" role="tab" data-sort="top_rated">Đánh giá</button>
+                        <button type="button" role="tab" data-sort="fastest">Giao nhanh</button>
+                        <button type="button" role="tab" data-sort="promo">Ưu đãi</button>
+                      </nav>
+                    </div>
+                    <div class="sf-list-tools">
+                      <select id="districtFilter" aria-label="Phường/xã"><option value="">Tất cả phường/xã</option></select>
+                      <label class="check-line"><input type="checkbox" id="openNowFilter"> <span>Đang mở cửa</span></label>
+                      <button class="sf-link" type="button" id="useGpsButton">🎯 Vị trí hiện tại</button>
+                      <button class="sf-link" type="button" id="refreshCustomerButton" title="Làm mới">↻</button>
+                      <span class="muted" id="geoNote"></span>
+                    </div>
+                    <div class="sf-active-filter" id="activeCollection" hidden></div>
+                    <p class="sf-count"><b id="restaurantHeading">Quán nổi bật</b> · <span id="restaurantCount">Đang tải…</span></p>
+                    <div class="sf-rows" id="restaurantList"></div>
+                    <div class="load-more"><button class="sf-more" type="button" id="loadMoreRestaurants" hidden>Xem thêm ↻</button></div>
+                  </section>
+                </div>
               </div>
-              <div class="hero-side">
-                <button class="promo-tile tile-orange" type="button" data-quick-search="cơm">
-                  <span class="tile-emoji">🍚</span><strong>Cơm trưa văn phòng</strong><small>Giao trong 25 phút</small>
-                </button>
-                <button class="promo-tile tile-green" type="button" data-quick-search="trà sữa">
-                  <span class="tile-emoji">🧋</span><strong>Trà sữa – Giải khát</strong><small>Ưu đãi cuối tuần</small>
-                </button>
+            </section>
+            <section class="sf-section">
+              <div class="sf-section-inner">
+                <div class="section-head"><div><h2>Món bán chạy</h2><p class="muted" id="menuCount">Đang tải…</p></div></div>
+                <div class="food-grid" id="menuList"></div>
               </div>
-            </div>
-
-            <div class="usp-row">
-              <div><span>⚡</span><strong>Giao siêu tốc</strong><small>Trung bình 25 phút</small></div>
-              <div><span>🛡️</span><strong>Thanh toán an toàn</strong><small>COD, ví, thẻ, QR</small></div>
-              <div><span>📍</span><strong>Theo dõi thời gian thực</strong><small>Xem tài xế trên bản đồ</small></div>
-              <div><span>🎁</span><strong>Ưu đãi mỗi ngày</strong><small>Voucher từ nhà hàng</small></div>
-            </div>
-
-            <div class="section-block">
-              <div class="section-head"><h2>Bạn đang thèm gì?</h2></div>
-              <div class="category-strip" id="categoryStrip"></div>
-            </div>
-
-            <div class="section-block">
-              <div class="section-head">
-                <div><h2>Nhà hàng nổi bật</h2><p class="muted" id="restaurantCount">Đang tải…</p></div>
-                <button class="text-button" type="button" id="refreshCustomerButton">↻ Làm mới</button>
-              </div>
-              <div class="restaurant-grid" id="restaurantList"></div>
-            </div>
-
-            <div class="section-block">
-              <div class="section-head"><div><h2>Món được yêu thích</h2><p class="muted" id="menuCount">Đang tải…</p></div></div>
-              <div class="food-grid" id="menuList"></div>
-            </div>
+            </section>
           </div>
 
 <aside class="checkout-rail">
@@ -148,8 +171,8 @@
                   <label>Số điện thoại <input id="addressReceiverPhone" placeholder="0852076750"></label>
                   <label>Địa chỉ <input id="addressLine" placeholder="Số nhà, tên đường"></label>
                   <label>Phường/Xã <input id="addressWard" placeholder="Không bắt buộc"></label>
-                  <label>Quận/Huyện <input id="addressDistrict" placeholder="Quận/Huyện"></label>
-                  <label>Thành phố <input id="addressCity" value="TP.HCM"></label>
+                  <label>Phường/Xã <input id="addressDistrict" placeholder="Phường/Xã"></label>
+                  <label>Thành phố <input id="addressCity" value=""></label>
                   <button class="secondary-button" type="submit">Lưu địa chỉ</button>
                 </form>
               </details>
@@ -176,11 +199,32 @@
                 </label>
                 <button class="secondary-button" type="button" id="validatePromotionButton">Kiểm tra mã</button>
                 <label>
-                  Ghi chú
-                  <input id="customerNote" placeholder="Ít cay, gọi trước khi giao...">
+                  Ghi chú cho quán
+                  <input id="customerNote" maxlength="500" placeholder="Ví dụ: gói riêng, ít cay, in hoá đơn...">
                 </label>
+                <label>
+                  Ghi chú cho tài xế
+                  <input id="shipperNote" maxlength="500" placeholder="Ví dụ: tới cổng gọi trước, gửi bảo vệ, tầng 5 phòng 502...">
+                </label>
+                <div class="delivery-options">
+                  <label class="check-line"><input type="checkbox" id="needUtensils" checked> <span>Lấy dụng cụ ăn uống (đũa, muỗng, ống hút)</span></label>
+                  <label class="check-line"><input type="checkbox" id="contactlessDelivery"> <span>Giao không tiếp xúc (để trước cửa)</span></label>
+                </div>
                 <button class="primary-button" type="submit">Đặt hàng</button>
               </form>
+            </section>
+
+            <section class="panel stats-panel" data-view-panel="customer:stats">
+              <div class="panel-title inline-title"><div><p>Thống kê của tôi</p><h3>Chi tiêu & tiết kiệm</h3></div></div>
+              <div id="customerStats"></div>
+            </section>
+
+            <section class="panel offers-panel" data-view-panel="customer:offers">
+              <div class="panel-title inline-title">
+                <div><p>Ưu đãi của tôi</p><h3>Voucher & điểm thưởng</h3></div>
+                <button class="text-button" type="button" id="loadOffersButton">Tải</button>
+              </div>
+              <div id="offersContent" class="offers-content"></div>
             </section>
 
             <section class="panel" data-view-panel="customer:orders">
@@ -283,6 +327,7 @@
               <p>Thu nhập & rút tiền</p>
               <h3>Tổng kết thu nhập</h3>
             </div>
+            <div id="shipperAnalytics" class="an-embed"></div>
             <div id="shipperEarnings" class="card-list"></div>
             <form class="stacked-form compact-form" id="withdrawForm">
               <label>Số tiền <input id="withdrawAmount" type="number" min="1000"></label>
@@ -469,16 +514,30 @@
               <label>Tên chương trình <input id="promotionNameInput" placeholder="Giảm 20% món nước"></label>
               <label>Loại giảm
                 <select id="promotionTypeInput">
-                  <option value="PERCENT">Phần trăm</option>
-                  <option value="FIXED_AMOUNT">Số tiền</option>
-                  <option value="FREE_DELIVERY">Miễn phí giao</option>
+                  <option value="PERCENT">Giảm phần trăm (%)</option>
+                  <option value="FIXED_AMOUNT">Giảm trực tiếp (đ)</option>
                 </select>
               </label>
               <label>Giá trị giảm <input id="promotionValueInput" type="number" min="0" value="10"></label>
+              <label>Giảm tối đa (đ, cho voucher %) <input id="promotionMaxInput" type="number" min="0" value="30000"></label>
               <label>Đơn tối thiểu <input id="promotionMinimumInput" type="number" min="0" value="50000"></label>
+              <label>Hạn ngạch (số lượt dùng) <input id="promotionQuotaInput" type="number" min="1" max="100000" value="200" required></label>
+              <label>Hiệu lực (ngày, tối đa 90) <input id="promotionDaysInput" type="number" min="1" max="90" value="14" required></label>
+              <label>Số lượt mỗi khách <input id="promotionPerCustomerInput" type="number" min="1" value="1"></label>
+              <p class="muted wide-field">Voucher freeship do nền tảng cấp. Voucher của quán bắt buộc có hạn ngạch và hạn dùng; có thể gia hạn hoặc tăng hạn ngạch ngay trong danh sách.</p>
               <button class="primary-button" type="submit">Tạo voucher</button>
             </form>
             <div id="restaurantPromotions" class="card-list"></div>
+
+            <div class="panel-title"><p>Combo</p><h3>Bán trọn gói, rẻ hơn mua lẻ</h3></div>
+            <form class="stacked-form compact-form" id="comboForm">
+              <label>Tên combo <input id="comboNameInput" required maxlength="120" placeholder="Combo 2 người"></label>
+              <label>Giảm so với mua lẻ (%) <input id="comboDiscountInput" type="number" min="1" max="50" value="10"></label>
+              <div class="combo-components" id="comboComponents"></div>
+              <p class="muted" id="comboPreview"></p>
+              <button class="primary-button" type="submit">Tạo combo</button>
+            </form>
+            <div id="restaurantCombos" class="card-list"></div>
           </section>
         </div>
       </section>
@@ -561,19 +620,11 @@
             <img src="./assets/food-delivery-mark.svg" alt="" width="40" height="40">
             <span><strong>FoodGo</strong><small>Giao nhanh · Ăn ngon</small></span>
           </a>
-          <p>Nền tảng đặt món và giao đồ ăn kết nối hàng nghìn nhà hàng với khách hàng tại TP.HCM — nhanh, minh bạch, theo dõi từng bước.</p>
-          <div class="store-badges">
-            <a href="#" class="store-badge" data-stub>▶ Google Play</a>
-            <a href="#" class="store-badge" data-stub> App Store</a>
-          </div>
-        </div>
-        <div>
-          <h4>Về FoodGo</h4>
-          <a href="#" data-stub>Giới thiệu</a><a href="#" data-stub>Tuyển dụng</a><a href="#" data-stub>Tin tức</a><a href="#" data-stub>Blog ẩm thực</a>
+          <p id="footerAbout">Nền tảng đặt món và giao đồ ăn: theo dõi từng đơn từ lúc đặt đến khi giao.</p>
         </div>
         <div>
           <h4>Hỗ trợ</h4>
-          <a href="#" data-open-support>Trung tâm trợ giúp</a><a href="#" data-stub>Chính sách bảo mật</a><a href="#" data-stub>Điều khoản sử dụng</a><a href="#" data-stub>Chính sách hoàn tiền</a>
+          <a href="#" data-open-support>Trung tâm trợ giúp</a><a href="/docs/user-guide.md" target="_blank" rel="noreferrer">Hướng dẫn sử dụng</a>
         </div>
         <div>
           <h4>Hợp tác</h4>
@@ -581,10 +632,9 @@
         </div>
         <div class="footer-contact">
           <h4>Liên hệ</h4>
-          <span>📞 Hotline: <b>1900 6868</b></span>
-          <span>✉️ hotro@foodgo.vn</span>
-          <span>📍 Quận 1, TP. Hồ Chí Minh</span>
-          <div class="socials"><a href="#" data-stub aria-label="Facebook">f</a><a href="#" data-stub aria-label="Zalo">Z</a><a href="#" data-stub aria-label="YouTube">▶</a><a href="#" data-stub aria-label="TikTok">♪</a></div>
+          <span id="footerPhone"></span>
+          <span id="footerEmail"></span>
+          <span id="footerHours"></span>
         </div>
       </div>
       <div class="footer-bottom">
@@ -601,10 +651,8 @@
           <button type="button" class="widget-close" id="contactClose" aria-label="Đóng">×</button>
         </header>
         <div class="contact-body">
-          <a class="contact-row" href="tel:19006868"><span>📞</span><div><strong>Gọi hotline</strong><small>1900 6868 · 7:00 – 23:00</small></div></a>
-          <a class="contact-row" href="#" data-stub><span class="zalo">Z</span><div><strong>Chat Zalo</strong><small>Phản hồi trong vài phút</small></div></a>
-          <a class="contact-row" href="#" data-stub><span class="messenger">M</span><div><strong>Messenger</strong><small>facebook.com/foodgo.vn</small></div></a>
-          <a class="contact-row" href="mailto:hotro@foodgo.vn"><span>✉️</span><div><strong>Email</strong><small>hotro@foodgo.vn</small></div></a>
+          <a class="contact-row" id="contactPhoneRow" href="#" hidden><span>📞</span><div><strong>Gọi hotline</strong><small></small></div></a>
+          <a class="contact-row" id="contactEmailRow" href="#" hidden><span>✉️</span><div><strong>Email</strong><small></small></div></a>
           <form class="contact-form" id="contactForm">
             <strong>Gửi yêu cầu hỗ trợ</strong>
             <select id="contactTopic">
@@ -639,23 +687,29 @@
             <button type="button" data-auth-tab="register">Tạo tài khoản</button>
           </div>
           <form class="stacked-form" id="loginForm" data-auth-pane="login">
-            <h3 id="authTitle">Chào mừng quay lại</h3>
-            <label>Email hoặc tên đăng nhập
-              <input id="loginIdentifier" autocomplete="username" placeholder="vd: minh.anh">
+            <h3 id="authTitle">Đăng nhập</h3>
+            <label>Tên đăng nhập hoặc Email
+              <input id="loginIdentifier" autocomplete="username" placeholder="Tên đăng nhập hoặc Email">
             </label>
             <label>Mật khẩu
-              <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu">
+              <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Mật khẩu">
             </label>
-            <button class="primary-button" type="submit">Đăng nhập</button>
-            <div class="demo-accounts">
-              <small>Tài khoản demo (mật khẩu <b>duong2k5</b>)</small>
-              <div>
-                <button type="button" data-demo="minh.anh">Khách hàng</button>
-                <button type="button" data-demo="bep.annhien">Nhà hàng</button>
-                <button type="button" data-demo="bao.shipper">Tài xế</button>
-                <button type="button" data-demo="thaiduongpc7">Admin</button>
-              </div>
-            </div>
+            <div class="auth-row"><span></span><a href="#" id="forgotLink">Quên mật khẩu?</a></div>
+            <button class="primary-button" type="submit">ĐĂNG NHẬP</button>
+          </form>
+          <form class="stacked-form" id="forgotForm" data-auth-pane="forgot" hidden>
+            <h3>Quên mật khẩu</h3>
+            <p class="muted">Nhập email đã đăng ký. Nếu email tồn tại, hệ thống gửi mã đặt lại mật khẩu (có hiệu lực trong thời gian ngắn).</p>
+            <label>Email <input id="forgotEmail" type="email" required placeholder="ban@email.com"></label>
+            <button class="primary-button" type="submit">GỬI MÃ ĐẶT LẠI</button>
+            <div class="auth-row"><a href="#" data-auth-tab="login">← Quay lại đăng nhập</a><a href="#" id="haveTokenLink">Tôi đã có mã</a></div>
+          </form>
+          <form class="stacked-form" id="resetForm" data-auth-pane="reset" hidden>
+            <h3>Đặt lại mật khẩu</h3>
+            <label>Mã đặt lại <input id="resetToken" required autocomplete="one-time-code" placeholder="Dán mã nhận được qua email"></label>
+            <label>Mật khẩu mới <input id="resetPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự"></label>
+            <button class="primary-button" type="submit">ĐẶT LẠI MẬT KHẨU</button>
+            <div class="auth-row"><a href="#" data-auth-tab="login">← Quay lại đăng nhập</a></div>
           </form>
           <form class="stacked-form" id="registerForm" data-auth-pane="register" hidden>
             <h3>Tạo tài khoản khách hàng</h3>
@@ -681,6 +735,14 @@
       <div class="empty-state">Chưa có dữ liệu. Hãy đăng nhập đúng vai trò hoặc tự thêm dữ liệu nghiệp vụ.</div>
     </template>
 
+    <div class="modal-backdrop" id="voucherModal" hidden>
+      <section class="voucher-modal" role="dialog" aria-modal="true" aria-labelledby="voucherModalTitle">
+        <button class="modal-close" type="button" id="closeVoucherModal" aria-label="Đóng">×</button>
+        <h3 id="voucherModalTitle">Chọn voucher</h3>
+        <div id="voucherModalBody"></div>
+      </section>
+    </div>
+
     <div class="modal-backdrop" id="itemModal" hidden>
       <section class="item-modal" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle">
         <button class="modal-close" type="button" id="closeItemModal" aria-label="Đóng">×</button>
@@ -690,22 +752,29 @@
           <h2 id="itemModalTitle">Chi tiết món</h2>
           <p class="muted" id="itemModalDescription"></p>
           <div class="price-line" id="itemModalPrice"></div>
+          <div class="item-meta" id="itemModalMeta"></div>
+          <div class="combo-box" id="itemCombo" hidden></div>
           <div class="fake-gallery" id="itemModalGallery"></div>
-          <form class="stacked-form" id="itemOptionForm">
+          <form class="stacked-form item-option-form" id="itemOptionForm" novalidate>
             <div id="itemVariantOptions"></div>
             <div id="itemToppingOptions"></div>
-            <label>
-              Số lượng
-              <select id="itemQuantity">
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-              </select>
-            </label>
-            <button class="primary-button" type="submit">Thêm vào giỏ</button>
+            <section class="option-box note-box">
+              <strong>Ghi chú cho quán <small class="muted">Không bắt buộc</small></strong>
+              <div class="note-chips" id="itemNoteChips"></div>
+              <textarea id="itemNote" rows="2" maxlength="200" placeholder="Ví dụ: không hành, ít cay, để riêng nước chấm..."></textarea>
+              <small class="muted note-count" id="itemNoteCount">0/200</small>
+            </section>
+            <div class="item-form-error" id="itemFormError" role="alert" hidden></div>
+            <div class="item-submit-bar">
+              <div class="qty-stepper" role="group" aria-label="Số lượng">
+                <button type="button" class="icon-button" id="itemQtyMinus" aria-label="Giảm">−</button>
+                <input id="itemQuantity" type="number" min="1" max="20" value="1" inputmode="numeric" aria-label="Số lượng">
+                <button type="button" class="icon-button" id="itemQtyPlus" aria-label="Tăng">+</button>
+              </div>
+              <button class="primary-button" type="submit" id="itemSubmit">Thêm vào giỏ</button>
+            </div>
           </form>
+          <section class="item-reviews" id="itemReviews" aria-live="polite"></section>
         </div>
       </section>
     </div>

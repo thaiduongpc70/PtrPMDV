@@ -13,6 +13,11 @@
     ${field('email', 'Email', { type: 'email', placeholder: 'ban@email.com', attrs: 'autocomplete="email"' })}
     ${field('password', 'Mật khẩu', { type: 'password', placeholder: 'Tối thiểu 8 ký tự', attrs: 'minlength="8" autocomplete="new-password"' })}`;
 
+  const commitRow = `<div class="commit-row wide-field">
+      <button type="button" class="secondary-button" data-read-commit>📄 Đọc cam kết</button>
+      <label class="checkbox-field commit-agree"><input type="checkbox" name="agree" tabindex="-1" required> <span data-commit-status>Chưa đọc cam kết — bấm "Đọc cam kết", kéo xuống cuối rồi đồng ý.</span></label>
+    </div>`;
+
   const actions = label => `<div class="button-row m-actions wide-field"><button type="button" class="secondary-button" data-close>Hủy</button><button class="primary-button" type="submit">${label}</button></div>`;
 
   function shipperForm() {
@@ -22,7 +27,7 @@
         <h4 class="form-section wide-field">Thông tin cá nhân</h4>
         ${field('fullName', 'Họ và tên', { placeholder: 'Nguyễn Văn A' })}
         ${field('identityNumber', 'Số CCCD / CMND', { placeholder: '079xxxxxxxxx', attrs: 'pattern="[0-9A-Za-z]{9,15}" title="9–15 ký tự chữ hoặc số"' })}
-        ${field('city', 'Khu vực hoạt động', { value: 'TP.HCM', required: false })}
+        ${field('city', 'Khu vực hoạt động', { value: fd().state.city || '', required: false })}
         <h4 class="form-section wide-field">Phương tiện</h4>
         <label>Loại phương tiện
           <select name="vehicleType"><option value="MOTORBIKE">Xe máy</option><option value="BICYCLE">Xe đạp</option><option value="CAR">Ô tô</option></select>
@@ -31,7 +36,7 @@
         ${field('drivingLicense', 'Số GPLX', { placeholder: 'Số giấy phép lái xe', required: false, attrs: 'data-vehicle-field', wide: true })}
         <h4 class="form-section wide-field">Tài khoản đăng nhập</h4>
         ${accountFields}
-        <label class="checkbox-field wide-field"><input type="checkbox" name="agree" required> Tôi cam kết thông tin chính xác và đồng ý với điều khoản đối tác của FoodGo.</label>
+        ${commitRow}
         <p class="status-line wide-field" data-error role="alert"></p>
         ${actions('Gửi hồ sơ tài xế')}
       </form>`;
@@ -51,8 +56,8 @@
         ${field('restaurantPhone', 'Hotline quán', { type: 'tel', required: false, placeholder: 'Để trống nếu dùng SĐT bên dưới' })}
         ${field('address', 'Số nhà, tên đường', { placeholder: '25 Nguyễn Huệ', wide: true })}
         ${field('ward', 'Phường / Xã', { required: false })}
-        ${field('district', 'Quận / Huyện', { required: false })}
-        ${field('city', 'Tỉnh / Thành phố', { value: 'TP.HCM' })}
+        ${field('district', 'Phường / Xã', { required: false })}
+        ${field('city', 'Tỉnh / Thành phố', { value: fd().state.city || '' })}
         ${field('businessLicense', 'Mã số hộ kinh doanh / GPKD', { required: false })}
         ${field('openingTime', 'Giờ mở cửa', { type: 'time', value: '08:00', required: false })}
         ${field('closingTime', 'Giờ đóng cửa', { type: 'time', value: '22:00', required: false })}
@@ -61,7 +66,7 @@
         <h4 class="form-section wide-field">Chủ quán &amp; tài khoản</h4>
         ${field('ownerName', 'Họ tên chủ quán', { wide: true })}
         ${accountFields}
-        <label class="checkbox-field wide-field"><input type="checkbox" name="agree" required> Tôi đồng ý với điều khoản hợp tác và chính sách hoa hồng của FoodGo.</label>
+        ${commitRow}
         <p class="status-line wide-field" data-error role="alert"></p>
         ${actions('Gửi hồ sơ nhà hàng')}
       </form>`;
@@ -94,11 +99,32 @@
       sync();
     }
 
+    // Cam kết: hộp kiểm chỉ được tích sau khi đọc hết bản cam kết (không cho tích tay)
+    let commitment = null;
+    const agree = form.querySelector('[name="agree"]');
+    const status = form.querySelector('[data-commit-status]');
+    agree.addEventListener('click', event => event.preventDefault());
+    form.querySelector('[data-read-commit]').addEventListener('click', async () => {
+      const result = await window.FDCommit.read(kind);
+      if (!result) return;
+      commitment = result;
+      agree.checked = true;
+      status.textContent = `✔ Đã đọc và đồng ý bản cam kết (phiên bản ${result.version}).`;
+      error.textContent = '';
+    });
+
     form.addEventListener('submit', async event => {
       event.preventDefault();
       error.textContent = '';
+      if (!commitment) {
+        error.textContent = 'Vui lòng bấm "Đọc cam kết", kéo xuống cuối và đồng ý trước khi gửi hồ sơ.';
+        error.classList.add('is-error');
+        form.querySelector('[data-read-commit]').focus();
+        return;
+      }
       const body = Object.fromEntries([...new FormData(form)].filter(([key, value]) => key !== 'agree' && String(value).trim() !== ''));
       if (body.minimumOrder) body.minimumOrder = Number(body.minimumOrder);
+      body.commitment = commitment;
       const submit = form.querySelector('[type="submit"]');
       submit.disabled = true;
       try {

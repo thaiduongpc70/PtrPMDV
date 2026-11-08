@@ -177,6 +177,20 @@ export const menuService = {
     await menuRepository.deleteTopping(toppingId, groupId);
     return mutation(current, { ...current, status: 'INACTIVE' });
   },
+  async setCombo(userId, restaurantId, itemId, input) {
+    await getItem(userId, restaurantId, itemId);
+    const raw = Array.isArray(input?.components) ? input.components : [];
+    const components = raw.map(part => {
+      const quantity = Number(part?.quantity ?? 1);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) throw new HttpError(400, 'Component quantity must be between 1 and 20');
+      return { itemId: readId(part?.itemId, 'component item id'), quantity };
+    });
+    if (new Set(components.map(part => part.itemId)).size !== components.length) throw new HttpError(400, 'Component items must be unique');
+    const result = await menuRepository.setComboComponents(itemId, restaurantId, components);
+    if (result.error === 'NOT_FOUND') throw new HttpError(404, 'Menu item not found');
+    if (result.error === 'INVALID_COMPONENTS') throw new HttpError(400, 'Combo components must be regular dishes of the same restaurant');
+    return { itemId, components, audit: { oldValues: null, newValues: { itemId, components } } };
+  },
   async linkToppingGroups(userId, restaurantId, itemId, input) {
     await getItem(userId, restaurantId, itemId);
     const groupIds = Array.from(new Set((input?.groupIds ?? []).map(id => readId(id, 'topping group id'))));

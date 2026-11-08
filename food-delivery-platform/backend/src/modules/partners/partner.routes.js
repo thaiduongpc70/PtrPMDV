@@ -4,6 +4,7 @@ import { asyncHandler } from '../../shared/http/async-handler.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { requireAuth, requireRole } from '../../shared/middlewares/require-auth.middleware.js';
 import { hashPassword } from '../../shared/security/password.js';
+import { COMMITMENTS, COMMITMENT_VERSION, readCommitment } from './commitments.js';
 
 export const partnerPublicRoutes = Router();
 export const partnerAdminRoutes = Router();
@@ -23,6 +24,19 @@ function text(value, max, name, { required = false, pattern, message } = {}) {
   if (out && pattern && !pattern.test(out)) throw new HttpError(400, message || `${name} is invalid`);
   return out || null;
 }
+
+/** Hồ sơ đối tác bắt buộc kèm bằng chứng đã đọc hết và đồng ý bản cam kết hiện hành. */
+function requireCommitment(body, kind) {
+  const commitment = readCommitment(body?.commitment, kind);
+  if (!commitment) throw new HttpError(400, 'Bạn cần đọc hết bản cam kết (kéo xuống cuối) và đồng ý trước khi gửi hồ sơ');
+  return commitment;
+}
+
+partnerPublicRoutes.get('/commitments/:kind', (req, res) => {
+  const content = COMMITMENTS[req.params.kind];
+  if (!content) throw new HttpError(404, 'Commitment not found');
+  res.json({ kind: req.params.kind, version: COMMITMENT_VERSION, ...content });
+});
 
 function readAccount(body) {
   const password = String(body?.password ?? '');
@@ -70,6 +84,7 @@ partnerPublicRoutes.post('/register/shipper', asyncHandler(async (req, res) => {
   const drivingLicense = text(b.drivingLicense, 100, 'drivingLicense', { required: vehicleType !== 'BICYCLE' });
   const city = text(b.city, 100, 'city');
   const note = text(b.note, 500, 'note');
+  const commitment = requireCommitment(b, 'shipper');
 
   const application = await withTransaction(async connection => {
     const dupId = await connection.execute('SELECT id FROM shipper_profiles WHERE identity_number = ? LIMIT 1', [identityNumber]);
@@ -86,7 +101,7 @@ partnerPublicRoutes.post('/register/shipper', asyncHandler(async (req, res) => {
     }
     const app = await connection.execute(
       "INSERT INTO partner_applications (application_type, user_id, entity_id, applicant_name, payload) VALUES ('SHIPPER', ?, ?, ?, ?)",
-      [userId, shipperId, fullName, JSON.stringify({ fullName, email: account.email, phone: account.phone, identityNumber, vehicleType, vehiclePlate, drivingLicense, city, note })]
+      [userId, shipperId, fullName, JSON.stringify({ fullName, email: account.email, phone: account.phone, identityNumber, vehicleType, vehiclePlate, drivingLicense, city, note, commitment })]
     );
     return { id: Number(app.insertId), type: 'SHIPPER' };
   });
@@ -109,6 +124,7 @@ partnerPublicRoutes.post('/register/restaurant', asyncHandler(async (req, res) =
   const minimumOrder = Math.max(0, Number(b.minimumOrder) || 0);
   const categoryId = Number(b.categoryId) > 0 ? Number(b.categoryId) : null;
   const businessLicense = text(b.businessLicense, 50, 'businessLicense');
+  const commitment = requireCommitment(b, 'restaurant');
 
   const application = await withTransaction(async connection => {
     const userId = await createPendingUser(connection, 'RESTAURANT', account);
@@ -121,7 +137,7 @@ partnerPublicRoutes.post('/register/restaurant', asyncHandler(async (req, res) =
     const restaurantId = Number(row.insertId);
     const app = await connection.execute(
       "INSERT INTO partner_applications (application_type, user_id, entity_id, applicant_name, payload) VALUES ('RESTAURANT', ?, ?, ?, ?)",
-      [userId, restaurantId, name, JSON.stringify({ ownerName, restaurantName: name, email: account.email, phone: account.phone, address, ward, district, city, categoryId, businessLicense, minimumOrder })]
+      [userId, restaurantId, name, JSON.stringify({ ownerName, restaurantName: name, email: account.email, phone: account.phone, address, ward, district, city, categoryId, businessLicense, minimumOrder, commitment })]
     );
     return { id: Number(app.insertId), type: 'RESTAURANT' };
   });

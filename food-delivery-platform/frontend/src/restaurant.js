@@ -14,6 +14,7 @@
     { id: 'dashboard', ico: '📊', label: 'Tổng quan' },
     { id: 'orders', ico: '🔔', label: 'Đơn đang xử lý' },
     { id: 'history', ico: '🧾', label: 'Lịch sử đơn hàng' },
+    { id: 'reports', ico: '📈', label: 'Báo cáo & thống kê' },
     { group: 'Cửa hàng' },
     { id: 'menu', ico: '🍽️', label: 'Thực đơn' },
     { id: 'promotions', ico: '🎟️', label: 'Khuyến mãi' },
@@ -53,7 +54,7 @@
     nav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => fd().showSubView('restaurant', button.dataset.view)));
 
     const layout = screen.querySelector('.restaurant-layout');
-    ['dashboard', 'history', 'reviews'].forEach(id => layout.insertAdjacentHTML('afterbegin', `<section class="page-section" data-view-panel="restaurant:${id}"></section>`));
+    ['dashboard', 'history', 'reviews', 'reports'].forEach(id => layout.insertAdjacentHTML('afterbegin', `<section class="page-section" data-view-panel="restaurant:${id}"></section>`));
 
     // branches panel: hide legacy controls, add opening hours
     const branches = panel('branches');
@@ -156,7 +157,7 @@
     clearInterval(boardTimer);
     boardTimer = null;
     if (!rid()) return;
-    const fn = { dashboard, history, reviews, branches: hours, orders: boardAuto, menu: () => fd().loadOwnerMenu() }[view];
+    const fn = { dashboard, history, reviews, reports: el => window.FDAN.restaurant(el, rid()), branches: hours, orders: boardAuto, menu: () => fd().loadOwnerMenu() }[view];
     fn?.(panel(view));
   }
 

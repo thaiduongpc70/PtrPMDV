@@ -14,7 +14,7 @@ npm.cmd run dev
 ```
 
 When the backend is started from this directory, Express also serves the frontend.
-Open `http://localhost:3000` and no second frontend server is needed.
+Open `http://localhost:3001` and no second frontend server is needed.
 
 `seed:real` is repeatable. It creates operational sample data with realistic Vietnamese accounts, 20 restaurants, 20 restaurant owner accounts, menus, topping groups, promotions, banners, wallet, notifications, support ticket and at least 2,000 menu items. The default seeded password is `duong2k5`; set `SEED_PASSWORD` before running the script to change it.
 

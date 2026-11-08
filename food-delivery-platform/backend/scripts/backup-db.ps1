@@ -28,7 +28,9 @@ if (-not (Test-Path $mysqlDump)) {
   throw "mysqldump.exe was not found at $mysqlDump"
 }
 $env:MYSQL_PWD = $env:DB_PASSWORD
-& $mysqlDump --host=$dbHost --port=$dbPort --user=$dbUser --single-transaction --routines --triggers $dbName | Set-Content -Encoding utf8 $OutputPath
+# Ghi thẳng bằng --result-file: pipe qua PowerShell (Set-Content) làm hỏng tiếng Việt vì đổi bảng mã (UTF-8 -> OEM -> UTF-8).
+$resolved = Join-Path (Resolve-Path -LiteralPath $parent) (Split-Path -Leaf $OutputPath)
+& $mysqlDump --host=$dbHost --port=$dbPort --user=$dbUser --default-character-set=utf8mb4 --single-transaction --routines --triggers --result-file="$resolved" $dbName
 if ($LASTEXITCODE -ne 0) {
   throw "mysqldump failed with exit code $LASTEXITCODE"
 }
