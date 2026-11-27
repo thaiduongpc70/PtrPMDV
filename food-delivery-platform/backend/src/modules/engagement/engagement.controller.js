@@ -1,6 +1,7 @@
 import { asyncHandler } from '../../shared/http/async-handler.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { engagementService } from './engagement.service.js';
+import { M } from '../../shared/http/messages.js';
 
 export const listPromotions = asyncHandler(async (req, res) => { const items = await engagementService.listPromotions({ restaurantId: readOptionalId(req.query.restaurantId) }); res.json({ items, totalItems: items.length }); });
 export const listBanners = asyncHandler(async (req, res) => { const items = await engagementService.listBanners(); res.json({ items, totalItems: items.length }); });
@@ -19,5 +20,5 @@ export const toggleMenuFavorite = asyncHandler(async (req, res) => { const resul
 
 async function respond(req, res, result, status, action, type = 'PROMOTION') { audit(req, result, type, action); res.status(status).json(result.value); }
 function audit(req, result, type, action) { req.auditUserId = req.user?.id ?? null; req.auditAction = action; req.auditEntityType = type; req.auditEntityId = result.value?.id ?? null; req.auditOldValues = result.audit.oldValues; req.auditNewValues = result.audit.newValues; }
-function readId(value) { const id = Number(value); if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, 'Id must be a positive integer'); return id; }
+function readId(value) { const id = Number(value); if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, M.idPositive); return id; }
 function readOptionalId(value) { return value === undefined || value === '' ? null : readId(value); }

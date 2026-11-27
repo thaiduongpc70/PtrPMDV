@@ -4,6 +4,7 @@ import { asyncHandler } from '../../shared/http/async-handler.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { requireAuth, requireRole } from '../../shared/middlewares/require-auth.middleware.js';
 import { localizeDataset, toPdf, toXlsx } from './file-writers.js';
+import { M } from '../../shared/http/messages.js';
 
 /* Dataset exports. JSON by default ({title, columns, rows}) so the web client can render CSV / PDF itself;
    `?format=csv` streams a UTF-8 (BOM) CSV attachment that opens correctly in Excel. */
@@ -142,7 +143,7 @@ const ADMIN_DATASETS = {
     const range = withRange(req, 'o.created_at');
     const rows = await query(
       `SELECT DATE(o.created_at) AS day, COUNT(*) AS orders, SUM(o.order_status = 'DELIVERED') AS delivered, SUM(o.order_status = 'CANCELLED') AS cancelled,
-              COALESCE(SUM(o.total_amount), 0) AS gmv, COALESCE(SUM(CASE WHEN o.payment_status = 'PAID' THEN o.total_amount END), 0) AS paid
+              COALESCE(SUM(o.total_amount), 0) AS gmv, COALESCE(SUM(CASE WHEN o.payment_status IN ('PAID', 'PARTIALLY_REFUNDED') THEN o.total_amount - COALESCE((SELECT SUM(f.amount) FROM refunds f WHERE f.order_id = o.id AND f.status = 'COMPLETED'), 0) END), 0) AS paid
        FROM orders o WHERE o.deleted_at IS NULL${range.sql} GROUP BY DATE(o.created_at) ORDER BY day DESC LIMIT 366`,
       range.params
     );
@@ -297,19 +298,19 @@ function audit(req, action, name) {
 
 adminExportRoutes.get('/:dataset', asyncHandler(async (req, res) => {
   const builder = ADMIN_DATASETS[req.params.dataset];
-  if (!builder) throw new HttpError(404, `Unknown dataset. Available: ${Object.keys(ADMIN_DATASETS).join(', ')}`);
+  if (!builder) throw new HttpError(404, M.unknownDatasetA(Object.keys(ADMIN_DATASETS).join(', ')));
   audit(req, 'ADMIN_EXPORT', req.params.dataset);
   await send(req, res, req.params.dataset, await builder(req));
 }));
 
 restaurantExportRoutes.get('/:restaurantId/:dataset', asyncHandler(async (req, res) => {
   const restaurantId = Number(req.params.restaurantId);
-  if (!Number.isInteger(restaurantId) || restaurantId <= 0) throw new HttpError(400, 'restaurantId is invalid');
+  if (!Number.isInteger(restaurantId) || restaurantId <= 0) throw new HttpError(400, M.restaurantIdInvalid);
   const owned = await query('SELECT owner_user_id FROM restaurants WHERE id = ? AND deleted_at IS NULL LIMIT 1', [restaurantId]);
-  if (!owned[0]) throw new HttpError(404, 'Restaurant not found');
-  if (req.user.role !== 'ADMIN' && Number(owned[0].owner_user_id) !== Number(req.user.id)) throw new HttpError(403, 'Permission denied');
+  if (!owned[0]) throw new HttpError(404, M.restaurantNotFound);
+  if (req.user.role !== 'ADMIN' && Number(owned[0].owner_user_id) !== Number(req.user.id)) throw new HttpError(403, M.permissionDenied);
   const builder = RESTAURANT_DATASETS[req.params.dataset];
-  if (!builder) throw new HttpError(404, `Unknown dataset. Available: ${Object.keys(RESTAURANT_DATASETS).join(', ')}`);
+  if (!builder) throw new HttpError(404, M.unknownDatasetR(Object.keys(RESTAURANT_DATASETS).join(', ')));
   audit(req, 'RESTAURANT_EXPORT', `${restaurantId}:${req.params.dataset}`);
   await send(req, res, `restaurant-${restaurantId}-${req.params.dataset}`, await builder(req, restaurantId));
 }));

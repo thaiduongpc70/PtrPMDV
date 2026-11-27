@@ -75,26 +75,26 @@ const restaurantSeeds = [
 ];
 
 const restaurantOwnerPresets = [
-  ['bep.annhien', 'owner01@fooddelivery.local', '0902001001'],
-  ['pho.ganh36', 'owner02@fooddelivery.local', '0902001002'],
-  ['comtam.suonmoc', 'owner03@fooddelivery.local', '0902001003'],
-  ['gagion.bepdo', 'owner04@fooddelivery.local', '0902001004'],
-  ['pizza.logach', 'owner05@fooddelivery.local', '0902001005'],
-  ['trasua.lanon', 'owner06@fooddelivery.local', '0902001006'],
-  ['bunbo.cododo', 'owner07@fooddelivery.local', '0902001007'],
-  ['bepchay.senvang', 'owner08@fooddelivery.local', '0902001008'],
-  ['burger.phonuong', 'owner09@fooddelivery.local', '0902001009'],
-  ['quanvat.coba', 'owner10@fooddelivery.local', '0902001010'],
-  ['caphe.sommai', 'owner11@fooddelivery.local', '0902001011'],
-  ['banhmi.lothan', 'owner12@fooddelivery.local', '0902001012'],
-  ['hutieu.anlac', 'owner13@fooddelivery.local', '0902001013'],
-  ['comga.hoian', 'owner14@fooddelivery.local', '0902001014'],
-  ['miy.sotnha', 'owner15@fooddelivery.local', '0902001015'],
-  ['goicuon.tuoingay', 'owner16@fooddelivery.local', '0902001016'],
-  ['lauly.demsg', 'owner17@fooddelivery.local', '0902001017'],
-  ['nuocep.muaxanh', 'owner18@fooddelivery.local', '0902001018'],
-  ['bepbac.nho', 'owner19@fooddelivery.local', '0902001019'],
-  ['chao.dembung', 'owner20@fooddelivery.local', '0902001020']
+  ['bep.annhien', 'owner01@example.com', '0902001001'],
+  ['pho.ganh36', 'owner02@example.com', '0902001002'],
+  ['comtam.suonmoc', 'owner03@example.com', '0902001003'],
+  ['gagion.bepdo', 'owner04@example.com', '0902001004'],
+  ['pizza.logach', 'owner05@example.com', '0902001005'],
+  ['trasua.lanon', 'owner06@example.com', '0902001006'],
+  ['bunbo.cododo', 'owner07@example.com', '0902001007'],
+  ['bepchay.senvang', 'owner08@example.com', '0902001008'],
+  ['burger.phonuong', 'owner09@example.com', '0902001009'],
+  ['quanvat.coba', 'owner10@example.com', '0902001010'],
+  ['caphe.sommai', 'owner11@example.com', '0902001011'],
+  ['banhmi.lothan', 'owner12@example.com', '0902001012'],
+  ['hutieu.anlac', 'owner13@example.com', '0902001013'],
+  ['comga.hoian', 'owner14@example.com', '0902001014'],
+  ['miy.sotnha', 'owner15@example.com', '0902001015'],
+  ['goicuon.tuoingay', 'owner16@example.com', '0902001016'],
+  ['lauly.demsg', 'owner17@example.com', '0902001017'],
+  ['nuocep.muaxanh', 'owner18@example.com', '0902001018'],
+  ['bepbac.nho', 'owner19@example.com', '0902001019'],
+  ['chao.dembung', 'owner20@example.com', '0902001020']
 ];
 
 const dishCatalog = {
@@ -230,7 +230,7 @@ try {
 function buildRestaurantOwner(index, roleId) {
   const preset = restaurantOwnerPresets[index] ?? [
     `restaurant${String(index + 1).padStart(2, '0')}`,
-    `owner${String(index + 1).padStart(2, '0')}@fooddelivery.local`,
+    `owner${String(index + 1).padStart(2, '0')}@example.com`,
     `090200${String(index + 1).padStart(4, '0')}`
   ];
   return {
@@ -261,7 +261,7 @@ async function archiveLegacyDemoArtifacts() {
      WHERE deleted_at IS NULL
        AND (
          username IN ('demo.admin', 'demo.restaurant', 'demo.customer', 'demo.shipper', 'ops.admin', 'customer01', 'saigon.bites')
-         OR email LIKE '%.demo@fooddelivery.local'
+         OR email LIKE '%.demo@example.com'
        )`
   );
 }
@@ -385,7 +385,7 @@ async function ensureRestaurant(ownerId, categoryIds, seed, index) {
   const [name, description, categoryName, address, ward, district, latitude, longitude] = seed;
   const [rows] = await pool.execute('SELECT id FROM restaurants WHERE name = ? LIMIT 1', [name]);
   const phone = `028${String(39000000 + index).padStart(8, '0')}`;
-  const email = `branch${index}@fooddelivery.local`;
+  const email = `branch${index}@example.com`;
   const minimumOrder = 30000 + (index % 4) * 10000;
   const averagePrepareTime = 15 + (index % 5) * 3;
   if (rows[0]) {

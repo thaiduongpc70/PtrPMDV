@@ -5,6 +5,7 @@ import { HttpError } from '../../shared/http/http-error.js';
 import { requireAuth, requireRole } from '../../shared/middlewares/require-auth.middleware.js';
 import { hashPassword } from '../../shared/security/password.js';
 import { COMMITMENTS, COMMITMENT_VERSION, readCommitment } from './commitments.js';
+import { M } from '../../shared/http/messages.js';
 
 export const partnerPublicRoutes = Router();
 export const partnerAdminRoutes = Router();
@@ -19,9 +20,9 @@ function audit(req, action, entityType, entityId = null) {
 
 function text(value, max, name, { required = false, pattern, message } = {}) {
   const out = String(value ?? '').trim();
-  if (required && !out) throw new HttpError(400, `${name} is required`);
-  if (out.length > max) throw new HttpError(400, `${name} is too long`);
-  if (out && pattern && !pattern.test(out)) throw new HttpError(400, message || `${name} is invalid`);
+  if (required && !out) throw new HttpError(400, M.nameRequired(name));
+  if (out.length > max) throw new HttpError(400, M.nameTooLong(name));
+  if (out && pattern && !pattern.test(out)) throw new HttpError(400, message || M.nameInvalid(name));
   return out || null;
 }
 
@@ -34,29 +35,29 @@ function requireCommitment(body, kind) {
 
 partnerPublicRoutes.get('/commitments/:kind', (req, res) => {
   const content = COMMITMENTS[req.params.kind];
-  if (!content) throw new HttpError(404, 'Commitment not found');
+  if (!content) throw new HttpError(404, M.commitmentNotFound);
   res.json({ kind: req.params.kind, version: COMMITMENT_VERSION, ...content });
 });
 
 function readAccount(body) {
   const password = String(body?.password ?? '');
-  if (password.length < 8) throw new HttpError(400, 'Password must be at least 8 characters');
+  if (password.length < 8) throw new HttpError(400, M.passwordMin);
   return {
     username: text(body?.username, 100, 'username', { required: true, pattern: /^[a-zA-Z0-9_.-]{3,100}$/, message: 'Username must be 3-100 characters (letters, digits, . _ -)' }),
-    email: text(body?.email, 150, 'email', { required: true, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Valid email is required' }).toLowerCase(),
-    phone: text(body?.phone, 20, 'phone', { required: true, pattern: /^[0-9+().\-\s]{8,20}$/, message: 'Phone number is invalid' }),
+    email: text(body?.email, 150, 'email', { required: true, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: M.emailRequired }).toLowerCase(),
+    phone: text(body?.phone, 20, 'phone', { required: true, pattern: /^[0-9+().\-\s]{8,20}$/, message: M.phoneNumberInvalid }),
     password
   };
 }
 
 async function createPendingUser(connection, roleName, account) {
   const roles = await connection.execute('SELECT id FROM roles WHERE name = ? LIMIT 1', [roleName]);
-  if (!roles[0]) throw new HttpError(500, `${roleName} role is missing`);
+  if (!roles[0]) throw new HttpError(500, M.roleMissing(roleName));
   const duplicate = await connection.execute(
     'SELECT id FROM users WHERE (username = ? OR email = ? OR phone = ?) LIMIT 1',
     [account.username, account.email, account.phone]
   );
-  if (duplicate[0]) throw new HttpError(409, 'Username, email or phone already exists');
+  if (duplicate[0]) throw new HttpError(409, M.accountExists);
   const passwordHash = await hashPassword(account.password);
   const result = await connection.execute(
     "INSERT INTO users (role_id, username, email, phone, password_hash, status) VALUES (?, ?, ?, ?, ?, 'PENDING')",
@@ -119,7 +120,7 @@ partnerPublicRoutes.post('/register/restaurant', asyncHandler(async (req, res) =
   const ward = text(b.ward, 100, 'ward');
   const district = text(b.district, 100, 'district');
   const description = text(b.description, 2000, 'description');
-  const restaurantPhone = text(b.restaurantPhone, 20, 'restaurantPhone', { pattern: /^[0-9+().\-\s]{8,20}$/, message: 'Restaurant phone is invalid' }) || account.phone;
+  const restaurantPhone = text(b.restaurantPhone, 20, 'restaurantPhone', { pattern: /^[0-9+().\-\s]{8,20}$/, message: 'Số điện thoại nhà hàng không hợp lệ' }) || account.phone;
   const time = value => (/^\d{2}:\d{2}$/.test(String(value || '')) ? `${value}:00` : null);
   const minimumOrder = Math.max(0, Number(b.minimumOrder) || 0);
   const categoryId = Number(b.categoryId) > 0 ? Number(b.categoryId) : null;
@@ -169,10 +170,10 @@ partnerAdminRoutes.get('/applications', asyncHandler(async (req, res) => {
 
 async function loadPending(rawId) {
   const applicationId = Number(rawId);
-  if (!Number.isInteger(applicationId) || applicationId <= 0) throw new HttpError(400, 'applicationId is invalid');
+  if (!Number.isInteger(applicationId) || applicationId <= 0) throw new HttpError(400, M.applicationIdInvalid);
   const rows = await query(`${APPLICATION_SQL} WHERE a.id = ? LIMIT 1`, [applicationId]);
-  if (!rows[0]) throw new HttpError(404, 'Application not found');
-  if (rows[0].status !== 'PENDING') throw new HttpError(409, 'Application was already reviewed');
+  if (!rows[0]) throw new HttpError(404, M.applicationNotFound);
+  if (rows[0].status !== 'PENDING') throw new HttpError(409, M.applicationReviewed);
   return { app: rows[0], applicationId };
 }
 

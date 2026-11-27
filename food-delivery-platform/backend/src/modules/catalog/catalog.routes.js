@@ -7,6 +7,7 @@ import {
   searchRestaurants,
   listCities,
   getStorefront,
+  getDeliveryFees,
   listCollections,
   listDistricts,
   searchMenuItems,
@@ -17,6 +18,7 @@ import { requireAuth, requireRole } from '../../shared/middlewares/require-auth.
 export const catalogRoutes = Router();
 
 catalogRoutes.get('/storefront', getStorefront);
+catalogRoutes.get('/delivery-fees', getDeliveryFees);
 catalogRoutes.get('/collections', listCollections);
 catalogRoutes.get('/cities', listCities);
 catalogRoutes.get('/districts', listDistricts);

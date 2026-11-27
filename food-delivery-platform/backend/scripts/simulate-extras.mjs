@@ -33,7 +33,7 @@ const REPLIES = {
 };
 const reviews = await sql(`SELECT rr.id, rr.rating, rr.restaurant_id AS restaurantId, u.username AS owner
   FROM restaurant_reviews rr INNER JOIN restaurants r ON r.id = rr.restaurant_id INNER JOIN users u ON u.id = r.owner_user_id
-  WHERE rr.comment IS NOT NULL AND rr.restaurant_reply IS NULL`);
+  WHERE rr.comment IS NOT NULL AND rr.restaurant_reply IS NULL AND rr.deleted_at IS NULL`); // bỏ qua đánh giá đã gỡ mềm
 const toReply = reviews.filter(review => rnd() < (review.rating <= 2 ? 0.9 : review.rating === 3 ? 0.55 : 0.2));
 await pool(toReply, 6, async review => {
   const replies = review.rating <= 2 ? REPLIES.low : review.rating === 3 ? REPLIES.mid : REPLIES.high;

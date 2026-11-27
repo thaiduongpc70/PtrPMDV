@@ -57,18 +57,18 @@ test('restaurant profile requires opening and closing time together', () => {
       ...validProfile,
       closingTime: null
     }),
-    'provided together'
+    'cùng nhau'
   );
 });
 
 test('restaurant profile validates coordinates and money', () => {
   assertBadRequest(
     () => validateRestaurantProfile({ ...validProfile, latitude: 91 }),
-    'Latitude'
+    'Vĩ độ'
   );
   assertBadRequest(
     () => validateRestaurantProfile({ ...validProfile, minimumOrder: -1 }),
-    'Minimum order'
+    'Đơn tối thiểu'
   );
 });
 
@@ -85,7 +85,7 @@ test('restaurant patch rejects an empty body', () => {
   const current = validateRestaurantProfile(validProfile);
   assertBadRequest(
     () => validateRestaurantPatch(current, {}),
-    'At least one restaurant field'
+    'ít nhất một thông tin nhà hàng'
   );
 });
 
@@ -102,7 +102,7 @@ test('admin restaurant create requires a positive restaurant owner id', () => {
 
   assertBadRequest(
     () => validateAdminRestaurantCreate({ ...validProfile, ownerUserId: 0 }),
-    'Owner user id'
+    'Mã chủ nhà hàng'
   );
 });
 
@@ -120,7 +120,7 @@ test('admin state update validates commission range', () => {
       { status: 'ACTIVE', commissionRate: 10 },
       { commissionRate: 101 }
     ),
-    'Commission rate'
+    'Tỷ lệ hoa hồng'
   );
 });
 
@@ -141,14 +141,14 @@ test('operating hours reject duplicated days', () => {
   week[6] = { ...week[5] };
   assertBadRequest(
     () => validateOperatingHours({ operatingHours: week }),
-    'duplicated'
+    'trùng'
   );
 });
 
 test('operating hours reject an incomplete week', () => {
   assertBadRequest(
     () => validateOperatingHours({ operatingHours: createWeek().slice(0, 6) }),
-    'all 7 days'
+    '7 ngày'
   );
 });
 
@@ -157,7 +157,7 @@ test('open operating day requires valid times', () => {
   week[0] = { dayOfWeek: 1, isClosed: false, openTime: '25:00', closeTime: '22:00' };
   assertBadRequest(
     () => validateOperatingHours({ operatingHours: week }),
-    'Open time'
+    'Giờ mở'
   );
 });
 
@@ -179,11 +179,11 @@ test('image validation accepts HTTPS URLs and upload paths', () => {
 test('image validation rejects unsupported paths and types', () => {
   assertBadRequest(
     () => validateImageCreate({ imageUrl: 'images/a.jpg' }),
-    'HTTP\\(S\\) URL'
+    'http\\(s\\)'
   );
   assertBadRequest(
     () => validateImageCreate({ imageUrl: '/a.jpg', imageType: 'AVATAR' }),
-    'Image type'
+    'Loại ảnh'
   );
 });
 
@@ -221,7 +221,7 @@ test('category patch preserves values and rejects empty requests', () => {
   assert.equal(result.name, current.name);
   assert.equal(result.description, null);
 
-  assertBadRequest(() => validateCategoryPatch(current, {}), 'At least one category field');
+  assertBadRequest(() => validateCategoryPatch(current, {}), 'ít nhất một thông tin danh mục');
 });
 
 function createWeek() {

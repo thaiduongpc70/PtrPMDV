@@ -20,7 +20,7 @@ const isNumeric = type => type === 'money' || type === 'number' || type === 'per
 const STATUS_LABELS = {
   PENDING: 'Chờ xử lý', CONFIRMED: 'Đã xác nhận', PREPARING: 'Đang chuẩn bị', READY_FOR_PICKUP: 'Sẵn sàng giao', SHIPPER_ASSIGNED: 'Đã gán tài xế',
   PICKED_UP: 'Đã lấy hàng', DELIVERING: 'Đang giao', DELIVERED: 'Đã giao', CANCELLED: 'Đã huỷ', FAILED: 'Thất bại', PAID: 'Đã thanh toán',
-  REFUNDED: 'Đã hoàn tiền', PROCESSING: 'Đang xử lý', COMPLETED: 'Hoàn tất', REJECTED: 'Từ chối', APPROVED: 'Đã duyệt', ACTIVE: 'Hoạt động',
+  REFUNDED: 'Đã hoàn tiền', PARTIALLY_REFUNDED: 'Hoàn một phần', PROCESSING: 'Đang xử lý', COMPLETED: 'Hoàn tất', REJECTED: 'Từ chối', APPROVED: 'Đã duyệt', ACTIVE: 'Hoạt động',
   INACTIVE: 'Ngừng', SUSPENDED: 'Tạm khoá', EXPIRED: 'Hết hạn', SETTLED: 'Đã chi trả', COLLECTED: 'Đã thu', AVAILABLE: 'Sẵn sàng', BUSY: 'Đang bận',
   OFFLINE: 'Ngoại tuyến', OPEN: 'Đang mở', RESOLVED: 'Đã xử lý', CLOSED: 'Đã đóng', ASSIGNED: 'Đã gán', ACCEPTED: 'Đã nhận'
 };

@@ -1,4 +1,5 @@
 import { HttpError } from '../../shared/http/http-error.js';
+import { M } from '../../shared/http/messages.js';
 
 export const paymentMethods = new Set(['COD', 'BANK_TRANSFER', 'MOMO', 'VNPAY', 'ZALOPAY', 'CARD', 'WALLET']);
 export const restaurantOrderTransitions = {
@@ -18,7 +19,7 @@ export function validateCartItem(input) {
 }
 
 export function validateCartItemPatch(input) {
-  if (input?.quantity === undefined && input?.toppingIds === undefined && input?.note === undefined) throw new HttpError(400, 'Quantity is required');
+  if (input?.quantity === undefined && input?.toppingIds === undefined && input?.note === undefined) throw new HttpError(400, M.quantityRequired);
   const quantity = input?.quantity === undefined ? null : readInteger(input.quantity, 'Quantity', 1, 99, null);
   const toppingIds = input?.toppingIds === undefined ? undefined : Array.from(new Set(input.toppingIds.map(value => readId(value, 'Topping id'))));
   return { quantity, toppingIds, note: input?.note === undefined ? undefined : optionalText(input.note, 'Item note', 500) };
@@ -28,7 +29,7 @@ export function validateCheckout(input, headerIdempotencyKey) {
   const restaurantId = readId(input?.restaurantId, 'Restaurant id');
   const addressId = readId(input?.addressId, 'Address id');
   const paymentMethod = String(input?.paymentMethod ?? 'COD').trim().toUpperCase();
-  if (!paymentMethods.has(paymentMethod)) throw new HttpError(400, 'Payment method is invalid');
+  if (!paymentMethods.has(paymentMethod)) throw new HttpError(400, M.paymentMethodInvalid);
   const idempotencyKey = optionalText(headerIdempotencyKey ?? input?.idempotencyKey, 'Idempotency key', 100) ?? createIdempotencyKey();
   const promotionCode = optionalText(input?.promotionCode, 'Promotion code', 50)?.toUpperCase() ?? null;
   return {
@@ -36,27 +37,28 @@ export function validateCheckout(input, headerIdempotencyKey) {
     customerNote: optionalText(input?.customerNote, 'Customer note', 1000),
     shipperNote: optionalText(input?.shipperNote, 'Shipper note', 500),
     needUtensils: readBoolean(input?.needUtensils, 'needUtensils', true),
-    contactlessDelivery: readBoolean(input?.contactlessDelivery, 'contactlessDelivery', false)
+    contactlessDelivery: readBoolean(input?.contactlessDelivery, 'contactlessDelivery', false),
+    ageConfirmed: readBoolean(input?.ageConfirmed, 'ageConfirmed', false)
   };
 }
 
 function readBoolean(value, field, fallback) {
   if (value === undefined || value === null || value === '') return fallback;
-  if (typeof value !== 'boolean') throw new HttpError(400, `${field} must be true or false`);
+  if (typeof value !== 'boolean') throw new HttpError(400, M.boolField(field));
   return value;
 }
 
 export function readId(value, field) {
   const id = Number(value);
-  if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, `${field} must be a positive integer`);
+  if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, M.fieldPositiveInteger(field));
   return id;
 }
 
 function readInteger(value, field, minimum, maximum, fallback) {
-  if (value === undefined || value === null || value === '') { if (fallback !== null) return fallback; throw new HttpError(400, `${field} is required`); }
+  if (value === undefined || value === null || value === '') { if (fallback !== null) return fallback; throw new HttpError(400, M.fieldRequired2(field)); }
   const number = Number(value);
-  if (!Number.isInteger(number) || number < minimum || number > maximum) throw new HttpError(400, `${field} must be between ${minimum} and ${maximum}`);
+  if (!Number.isInteger(number) || number < minimum || number > maximum) throw new HttpError(400, M.fieldBetween(field, minimum, maximum));
   return number;
 }
-function optionalText(value, field, max) { if (value === undefined || value === null || String(value).trim() === '') return null; const text = String(value).trim(); if (text.length > max) throw new HttpError(400, `${field} must be at most ${max} characters`); return text; }
+function optionalText(value, field, max) { if (value === undefined || value === null || String(value).trim() === '') return null; const text = String(value).trim(); if (text.length > max) throw new HttpError(400, M.fieldMaxChars(field, max)); return text; }
 function createIdempotencyKey() { return `auto-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`; }

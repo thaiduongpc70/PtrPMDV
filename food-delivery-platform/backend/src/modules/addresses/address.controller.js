@@ -1,6 +1,7 @@
 import { asyncHandler } from '../../shared/http/async-handler.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { addressService } from './address.service.js';
+import { M } from '../../shared/http/messages.js';
 
 export const listAddresses = asyncHandler(async (req, res) => {
   const items = await addressService.list(req.user.id);
@@ -60,7 +61,7 @@ function readAddressId(value) {
   const addressId = Number(value);
 
   if (!Number.isInteger(addressId) || addressId <= 0) {
-    throw new HttpError(400, 'Invalid address id');
+    throw new HttpError(400, M.addressIdInvalid);
   }
 
   return addressId;

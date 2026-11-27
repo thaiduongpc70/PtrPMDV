@@ -20,8 +20,18 @@ bin/
 obj/
 build/
 dist/
-tools/
+# tools/ chứa script cục bộ; riêng hai script sinh tài liệu phải được commit (test và docs/dev tham chiếu tới)
+tools/*
+!tools/generate-dev-docs.mjs
+!tools/generate-openapi.mjs
 outputs/
 
 # Ảnh minh chứng quá trình làm bài (chụp màn hình, nặng)
 minh-chung/
+
+# Tệp tạm / gỡ lỗi của script dữ liệu
+food-delivery-platform/backend/scripts/tmp-*
+food-delivery-platform/backend/scripts/_*
+.sheets/
+*.log
+*.sql.bak

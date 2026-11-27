@@ -74,8 +74,8 @@ export function createApp() {
       }
     }
   }));
-  app.use(rateLimit(env.rateLimit));
   app.use(authContextMiddleware);
+  app.use(rateLimit({ ...env.rateLimit, max: req => (req.user?.role === 'ADMIN' ? env.rateLimit.adminMax : env.rateLimit.max) }));
   app.use(requestAuditMiddleware);
   app.use(express.json({ limit: '1mb' }));
   app.use('/uploads', express.static(resolve(process.cwd(), '..', '..', 'storage')));

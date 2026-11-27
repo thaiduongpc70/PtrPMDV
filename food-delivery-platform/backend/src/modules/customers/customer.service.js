@@ -1,5 +1,6 @@
 import { HttpError } from '../../shared/http/http-error.js';
 import { customerRepository } from './customer.repository.js';
+import { M } from '../../shared/http/messages.js';
 
 const profileFields = [
   'fullName',
@@ -15,7 +16,7 @@ export const customerService = {
     const profile = await customerRepository.findProfileByUserId(userId);
 
     if (!profile) {
-      throw new HttpError(404, 'Customer profile not found');
+      throw new HttpError(404, M.customerNotFound);
     }
 
     return profile;
@@ -30,13 +31,13 @@ export const customerService = {
       result = await customerRepository.updateProfileForUser(userId, data);
     } catch (error) {
       if (error?.code === 'ER_DUP_ENTRY') {
-        throw new HttpError(409, 'Phone number already exists');
+        throw new HttpError(409, M.phoneExists);
       }
       throw error;
     }
 
     if (!result?.after) {
-      throw new HttpError(404, 'Customer profile not found');
+      throw new HttpError(404, M.customerNotFound);
     }
 
     return {
@@ -51,11 +52,11 @@ export const customerService = {
 
 function validateProfilePatch(current, input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new HttpError(400, 'Request body must be an object');
+    throw new HttpError(400, M.bodyObject);
   }
 
   if (!profileFields.some(field => Object.hasOwn(input, field))) {
-    throw new HttpError(400, 'At least one profile field is required');
+    throw new HttpError(400, M.profileFieldRequired);
   }
 
   return {
@@ -80,7 +81,7 @@ function validateProfilePatch(current, input) {
 function readText(value, fieldName, maxLength, required) {
   if (value === undefined || value === null) {
     if (required) {
-      throw new HttpError(400, `${fieldName} is required`);
+      throw new HttpError(400, M.fieldRequired(fieldName));
     }
     return null;
   }
@@ -88,13 +89,13 @@ function readText(value, fieldName, maxLength, required) {
   const text = String(value).trim();
   if (!text) {
     if (required) {
-      throw new HttpError(400, `${fieldName} is required`);
+      throw new HttpError(400, M.fieldRequired(fieldName));
     }
     return null;
   }
 
   if (text.length > maxLength) {
-    throw new HttpError(400, `${fieldName} must be at most ${maxLength} characters`);
+    throw new HttpError(400, M.fieldTooLong(fieldName, maxLength));
   }
 
   return text;
@@ -107,7 +108,7 @@ function readDate(value) {
   }
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    throw new HttpError(400, 'Date of birth must use YYYY-MM-DD');
+    throw new HttpError(400, M.dobFormat);
   }
 
   const [year, month, day] = text.split('-').map(Number);
@@ -117,7 +118,7 @@ function readDate(value) {
     || date.getUTCMonth() !== month - 1
     || date.getUTCDate() !== day
   ) {
-    throw new HttpError(400, 'Date of birth must use YYYY-MM-DD');
+    throw new HttpError(400, M.dobFormat);
   }
 
   return text;
@@ -130,7 +131,7 @@ function readGender(value) {
   }
 
   if (!genders.has(gender)) {
-    throw new HttpError(400, 'Gender must be MALE, FEMALE or OTHER');
+    throw new HttpError(400, M.genderInvalid);
   }
 
   return gender;
@@ -139,7 +140,7 @@ function readGender(value) {
 function readPhone(value) {
   const phone = readText(value, 'Phone', 20, false);
   if (phone && !/^[0-9+().\-\s]{8,20}$/.test(phone)) {
-    throw new HttpError(400, 'Phone is invalid');
+    throw new HttpError(400, M.phoneInvalid);
   }
 
   return phone;
@@ -152,7 +153,7 @@ function readAvatarUrl(value) {
   }
 
   if (!/^(https?:\/\/|\/)/i.test(avatarUrl)) {
-    throw new HttpError(400, 'Avatar URL must be an HTTP(S) URL or an absolute path');
+    throw new HttpError(400, M.avatarUrl);
   }
 
   return avatarUrl;

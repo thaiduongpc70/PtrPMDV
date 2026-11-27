@@ -1,8 +1,8 @@
 # API routes
 
-> Sinh tự động bởi `tools/generate-dev-docs.mjs` lúc 2026-11-08T03:43:19.471Z bằng cách quét stack Express của `createApp()`. **Đừng sửa tay.** Mô tả chi tiết tham số/response nằm ở `docs/openapi.json` (Swagger tại `/api/docs`).
+> Sinh tự động bởi `tools/generate-dev-docs.mjs` lúc 2026-11-27T13:03:47.983Z bằng cách quét stack Express của `createApp()`. **Đừng sửa tay.** Mô tả chi tiết tham số/response nằm ở `docs/openapi.json` (Swagger tại `/api/docs`).
 
-Tổng cộng **219 route**. Xác thực: header `Authorization: Bearer <accessToken>` (JWT), lấy từ `POST /api/auth/login`. Phân quyền: middleware `requireRole`/`requirePermission` khai báo trong file `*.routes.js` của từng module — xem bảng module ↔ prefix trong `docs/dev/architecture.md`.
+Tổng cộng **226 route**. Xác thực: header `Authorization: Bearer <accessToken>` (JWT), lấy từ `POST /api/auth/login`. Phân quyền: middleware `requireRole`/`requirePermission` khai báo trong file `*.routes.js` của từng module — xem bảng module ↔ prefix trong `docs/dev/architecture.md`.
 
 ## /api/accounts
 
@@ -31,6 +31,7 @@ Tổng cộng **219 route**. Xác thực: header `Authorization: Bearer <accessT
 | Method | Đường dẫn |
 |---|---|
 | GET | `/api/admin/dashboard` |
+| GET | `/api/admin/dashboard/data-quality` |
 
 ## /api/admin/export
 
@@ -150,6 +151,7 @@ Tổng cộng **219 route**. Xác thực: header `Authorization: Bearer <accessT
 | GET | `/api/catalog/banners` |
 | GET | `/api/catalog/cities` |
 | GET | `/api/catalog/collections` |
+| GET | `/api/catalog/delivery-fees` |
 | GET | `/api/catalog/districts` |
 | GET | `/api/catalog/menu-items` |
 | GET | `/api/catalog/menu-items/:itemId/reviews` |
@@ -228,6 +230,7 @@ Tổng cộng **219 route**. Xác thực: header `Authorization: Bearer <accessT
 
 | Method | Đường dẫn |
 |---|---|
+| _ALL | `/api/customer/profile` |
 | GET | `/api/customer/profile` |
 | PATCH | `/api/customer/profile` |
 
@@ -253,6 +256,7 @@ Tổng cộng **219 route**. Xác thực: header `Authorization: Bearer <accessT
 | POST | `/api/deliveries/assign` |
 | GET | `/api/deliveries/available-shippers` |
 | GET | `/api/deliveries/order/:orderId` |
+| GET | `/api/deliveries/reviews` |
 
 ## /api/docs
 
@@ -286,6 +290,8 @@ Tổng cộng **219 route**. Xác thực: header `Authorization: Bearer <accessT
 |---|---|
 | GET | `/api/notifications` |
 | PATCH | `/api/notifications/:notificationId/read` |
+| PATCH | `/api/notifications/read-all` |
+| POST | `/api/notifications/read-all` |
 
 ## /api/openapi.json
 
@@ -297,6 +303,7 @@ Tổng cộng **219 route**. Xác thực: header `Authorization: Bearer <accessT
 
 | Method | Đường dẫn |
 |---|---|
+| GET | `/api/partners/commitments/:kind` |
 | POST | `/api/partners/register/restaurant` |
 | POST | `/api/partners/register/shipper` |
 

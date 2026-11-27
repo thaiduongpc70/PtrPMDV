@@ -21,7 +21,7 @@ test('đọc file .xlsx: tiêu đề viết thường, bỏ dòng trống, giữ
 
 test('file .xlsx chỉ có tiêu đề bị từ chối', async () => {
   const buffer = await workbookBuffer([['name', 'price']]);
-  await assert.rejects(() => parseXlsx(buffer), /header and at least one row/);
+  await assert.rejects(() => parseXlsx(buffer), /dòng tiêu đề và ít nhất một dòng/);
 });
 
 test('nội dung không phải .xlsx bị từ chối', async () => {

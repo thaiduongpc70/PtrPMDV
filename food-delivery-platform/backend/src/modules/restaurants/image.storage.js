@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { HttpError } from '../../shared/http/http-error.js';
+import { M } from '../../shared/http/messages.js';
 
 const mimeToExtension = new Map([
   ['image/jpeg', 'jpg'],
@@ -11,9 +12,9 @@ const mimeToExtension = new Map([
 
 export async function storeImageData(dataUrl, folder = 'restaurants') {
   const match = String(dataUrl ?? '').match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/);
-  if (!match) throw new HttpError(400, 'Image data must be a JPEG, PNG or WebP data URL');
+  if (!match) throw new HttpError(400, M.imageType);
   const buffer = Buffer.from(match[2].replace(/\s/g, ''), 'base64');
-  if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) throw new HttpError(400, 'Image must be between 1 byte and 5 MB');
+  if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) throw new HttpError(400, M.imageSize);
   const extension = mimeToExtension.get(match[1]);
   const root = join(process.cwd(), '..', '..', 'storage', folder);
   await mkdir(root, { recursive: true });

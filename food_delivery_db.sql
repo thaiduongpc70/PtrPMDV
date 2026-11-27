@@ -812,7 +812,8 @@ CREATE TABLE orders (
         'PAID',
         'FAILED',
         'REFUNDED',
-        'PARTIALLY_REFUNDED'
+        'PARTIALLY_REFUNDED',
+        'CANCELLED'
     ) NOT NULL DEFAULT 'PENDING',
 
     order_status ENUM(
@@ -3445,7 +3446,11 @@ BEGIN
             OLD.order_status,
             NEW.order_status,
             NULL,
-            'Status automatically recorded by trigger'
+            CASE NEW.order_status
+                WHEN 'PENDING' THEN 'Đơn hàng được tạo' WHEN 'CONFIRMED' THEN 'Quán đã xác nhận đơn' WHEN 'PREPARING' THEN 'Bếp bắt đầu chuẩn bị món'
+                WHEN 'READY_FOR_PICKUP' THEN 'Món đã sẵn sàng để tài xế lấy' WHEN 'SHIPPER_ASSIGNED' THEN 'Đã có tài xế nhận đơn' WHEN 'PICKED_UP' THEN 'Tài xế đã lấy món'
+                WHEN 'DELIVERING' THEN 'Đang giao hàng' WHEN 'DELIVERED' THEN 'Đã giao thành công' WHEN 'CANCELLED' THEN 'Đơn hàng đã bị huỷ' WHEN 'FAILED' THEN 'Giao hàng thất bại'
+                ELSE 'Hệ thống tự ghi nhận chuyển trạng thái' END
         );
 
     END IF;

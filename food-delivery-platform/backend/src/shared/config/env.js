@@ -65,10 +65,29 @@ export const env = Object.freeze({
     .filter(Boolean),
   rateLimit: {
     windowMs: readInteger('RATE_LIMIT_WINDOW_MS', 60000, 1000, 3600000),
-    max: readInteger('RATE_LIMIT_MAX', 240, 10, 10000)
+    max: readInteger('RATE_LIMIT_MAX', 240, 10, 10000),
+    // Trần cao hơn cho quản trị viên đã đăng nhập khi đọc danh sách/báo cáo; khách và khách ẩn danh giữ trần `max`
+    adminMax: readInteger('RATE_LIMIT_ADMIN_MAX', 2400, 10, 100000)
   },
   redis: {
     url: readString('REDIS_URL')
+  },
+  catalog: {
+    // Bộ lọc "chay": quán chỉ được tính là quán chay khi có danh mục/tên chay hoặc ≥ tỷ lệ này số món thường có chữ "chay" (0–1)
+    vegetarianMinShare: Math.min(1, Math.max(0, readNumber('VEGETARIAN_MIN_SHARE', 0.5)))
+  },
+  orders: {
+    // Đơn PENDING chưa thanh toán mà quán không xác nhận sau chừng này phút thì hệ thống tự huỷ (0 = tắt)
+    pendingTimeoutMinutes: readInteger('PENDING_ORDER_TIMEOUT_MINUTES', 30, 0, 10080),
+    // Đơn đang PREPARING/READY_FOR_PICKUP/SHIPPER_ASSIGNED không đổi trạng thái quá chừng này phút thì bị huỷ (0 = tắt)
+    staleKitchenMinutes: readInteger('STALE_ORDER_MINUTES', 180, 0, 10080),
+    // Đơn PICKED_UP/DELIVERING không đổi trạng thái quá chừng này phút thì đánh dấu giao thất bại (0 = tắt)
+    staleDeliveryMinutes: readInteger('STALE_DELIVERY_MINUTES', 240, 0, 10080),
+    // Yêu cầu hoàn tiền PENDING/PROCESSING của đơn huỷ/thất bại tồn quá chừng này phút thì job tự duyệt COMPLETED (0 = tắt)
+    refundAutoApproveMinutes: readInteger('REFUND_AUTO_APPROVE_MINUTES', 240, 0, 10080),
+    // Cảnh báo quản trị viên khi hoàn tiền PENDING tồn quá chừng này phút (0 = tắt); chỉ xét yêu cầu trong cửa sổ ngày gần đây
+    refundAlertMinutes: readInteger('REFUND_ALERT_MINUTES', 120, 0, 10080),
+    refundAlertWindowDays: readInteger('REFUND_ALERT_WINDOW_DAYS', 2, 1, 365)
   },
   auth: {
     jwtSecret,

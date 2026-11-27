@@ -1,4 +1,5 @@
 import { HttpError } from '../../shared/http/http-error.js';
+import { M } from '../../shared/http/messages.js';
 
 const restaurantStatuses = new Set([
   'PENDING',
@@ -32,11 +33,11 @@ export function validateRestaurantProfile(input) {
   const closingTime = readTime(data.closingTime, 'Closing time');
 
   if ((openingTime === null) !== (closingTime === null)) {
-    throw new HttpError(400, 'Opening time and closing time must be provided together');
+    throw new HttpError(400, M.hoursTogether);
   }
 
   if (openingTime !== null && openingTime === closingTime) {
-    throw new HttpError(400, 'Opening time and closing time must be different');
+    throw new HttpError(400, M.hoursDifferent);
   }
 
   return {
@@ -66,7 +67,7 @@ export function validateRestaurantProfile(input) {
 
 export function validateRestaurantPatch(current, input) {
   assertObject(input, 'Request body');
-  assertHasField(input, restaurantProfileFields, 'At least one restaurant field is required');
+  assertHasField(input, restaurantProfileFields, 'Cần ít nhất một thông tin nhà hàng để cập nhật');
 
   return validateRestaurantProfile(Object.fromEntries(
     restaurantProfileFields.map(field => [
@@ -98,7 +99,7 @@ export function validateAdminRestaurantState(current, input) {
   assertHasField(
     input,
     ['status', 'commissionRate'],
-    'Status or commission rate is required'
+    'Cần nhập trạng thái hoặc tỷ lệ hoa hồng'
   );
 
   return {
@@ -122,7 +123,7 @@ export function validateOperatingHours(input) {
   const hours = Array.isArray(input) ? input : input?.operatingHours;
 
   if (!Array.isArray(hours) || hours.length !== 7) {
-    throw new HttpError(400, 'Operating hours must contain all 7 days');
+    throw new HttpError(400, M.hours7Days);
   }
 
   const seenDays = new Set();
@@ -131,7 +132,7 @@ export function validateOperatingHours(input) {
     const dayOfWeek = readInteger(entry.dayOfWeek, 'Day of week', 1, 7);
 
     if (seenDays.has(dayOfWeek)) {
-      throw new HttpError(400, `Day of week ${dayOfWeek} is duplicated`);
+      throw new HttpError(400, M.dayDuplicated(dayOfWeek));
     }
     seenDays.add(dayOfWeek);
 
@@ -140,7 +141,7 @@ export function validateOperatingHours(input) {
     const closeTime = isClosed ? null : readTime(entry.closeTime, 'Close time', true);
 
     if (!isClosed && openTime === closeTime) {
-      throw new HttpError(400, `Open and close time must differ for day ${dayOfWeek}`);
+      throw new HttpError(400, M.hoursSame(dayOfWeek));
     }
 
     return { dayOfWeek, openTime, closeTime, isClosed };
@@ -161,7 +162,7 @@ export function validateImageCreate(input) {
 
 export function validateImagePatch(current, input) {
   assertObject(input, 'Request body');
-  assertHasField(input, ['imageUrl', 'imageType', 'sortOrder'], 'At least one image field is required');
+  assertHasField(input, ['imageUrl', 'imageType', 'sortOrder'], 'Cần ít nhất một thông tin ảnh để cập nhật');
 
   return validateImageCreate({
     imageUrl: Object.hasOwn(input, 'imageUrl') ? input.imageUrl : current.imageUrl,
@@ -186,7 +187,7 @@ export function validateCategoryPatch(current, input) {
   assertHasField(
     input,
     ['name', 'description', 'imageUrl', 'status'],
-    'At least one category field is required'
+    'Cần ít nhất một thông tin danh mục để cập nhật'
   );
 
   return validateCategoryCreate({
@@ -201,7 +202,7 @@ export function validateCategoryPatch(current, input) {
 
 function assertObject(value, fieldName) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new HttpError(400, `${fieldName} must be an object`);
+    throw new HttpError(400, M.fieldObject(fieldName));
   }
 }
 
@@ -214,7 +215,7 @@ function assertHasField(input, fields, message) {
 function readText(value, fieldName, maxLength, required) {
   if (value === undefined || value === null) {
     if (required) {
-      throw new HttpError(400, `${fieldName} is required`);
+      throw new HttpError(400, M.fieldRequired(fieldName));
     }
     return null;
   }
@@ -222,13 +223,13 @@ function readText(value, fieldName, maxLength, required) {
   const text = String(value).trim();
   if (!text) {
     if (required) {
-      throw new HttpError(400, `${fieldName} is required`);
+      throw new HttpError(400, M.fieldRequired(fieldName));
     }
     return null;
   }
 
   if (text.length > maxLength) {
-    throw new HttpError(400, `${fieldName} must be at most ${maxLength} characters`);
+    throw new HttpError(400, M.fieldTooLong(fieldName, maxLength));
   }
 
   return text;
@@ -237,7 +238,7 @@ function readText(value, fieldName, maxLength, required) {
 function readPhone(value) {
   const phone = readText(value, 'Phone', 20, false);
   if (phone && !/^[0-9+().\-\s]{8,20}$/.test(phone)) {
-    throw new HttpError(400, 'Phone is invalid');
+    throw new HttpError(400, M.phoneInvalid);
   }
   return phone;
 }
@@ -245,7 +246,7 @@ function readPhone(value) {
 function readEmail(value) {
   const email = readText(value, 'Email', 150, false)?.toLowerCase() ?? null;
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new HttpError(400, 'Email is invalid');
+    throw new HttpError(400, M.emailInvalid);
   }
   return email;
 }
@@ -253,7 +254,7 @@ function readEmail(value) {
 function readImageUrl(value) {
   const imageUrl = readText(value, 'Image URL', 500, true);
   if (!/^(https?:\/\/|\/)/i.test(imageUrl)) {
-    throw new HttpError(400, 'Image URL must be an HTTP(S) URL or an absolute path');
+    throw new HttpError(400, M.imageUrlFormat);
   }
   return imageUrl;
 }
@@ -277,12 +278,12 @@ function readDecimal(value, fieldName, minimum, maximum, fallback) {
     if (fallback !== undefined) {
       return fallback;
     }
-    throw new HttpError(400, `${fieldName} is required`);
+    throw new HttpError(400, M.fieldRequired(fieldName));
   }
 
   const number = Number(value);
   if (!Number.isFinite(number) || number < minimum || number > maximum) {
-    throw new HttpError(400, `${fieldName} must be between ${minimum} and ${maximum}`);
+    throw new HttpError(400, M.fieldBetween2(fieldName, minimum, maximum));
   }
   return number;
 }
@@ -292,12 +293,12 @@ function readInteger(value, fieldName, minimum, maximum, fallback) {
     if (fallback !== undefined) {
       return fallback;
     }
-    throw new HttpError(400, `${fieldName} is required`);
+    throw new HttpError(400, M.fieldRequired(fieldName));
   }
 
   const number = Number(value);
   if (!Number.isInteger(number) || number < minimum || number > maximum) {
-    throw new HttpError(400, `${fieldName} must be an integer from ${minimum} to ${maximum}`);
+    throw new HttpError(400, M.fieldIntRange(fieldName, minimum, maximum));
   }
   return number;
 }
@@ -316,14 +317,14 @@ function readNullablePositiveInteger(value, fieldName) {
 function readTime(value, fieldName, required = false) {
   if (value === undefined || value === null || value === '') {
     if (required) {
-      throw new HttpError(400, `${fieldName} is required`);
+      throw new HttpError(400, M.fieldRequired(fieldName));
     }
     return null;
   }
 
   const match = String(value).trim().match(/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
   if (!match) {
-    throw new HttpError(400, `${fieldName} must use HH:mm or HH:mm:ss`);
+    throw new HttpError(400, M.timeFormat2(fieldName));
   }
   return `${match[1]}:${match[2]}:${match[3] ?? '00'}`;
 }
@@ -333,12 +334,12 @@ function readEnum(value, fieldName, allowedValues, fallback) {
     if (fallback !== undefined) {
       return fallback;
     }
-    throw new HttpError(400, `${fieldName} is required`);
+    throw new HttpError(400, M.fieldRequired(fieldName));
   }
 
   const normalized = String(value).trim().toUpperCase();
   if (!allowedValues.has(normalized)) {
-    throw new HttpError(400, `${fieldName} is invalid`);
+    throw new HttpError(400, M.fieldNameInvalid(fieldName));
   }
   return normalized;
 }
@@ -356,5 +357,5 @@ function readBoolean(value, fallback, fieldName) {
   if (value === 0 || value === '0' || value === 'false') {
     return false;
   }
-  throw new HttpError(400, `${fieldName} must be true or false`);
+  throw new HttpError(400, M.boolField2(fieldName));
 }

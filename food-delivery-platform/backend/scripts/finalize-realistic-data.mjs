@@ -30,7 +30,9 @@ const dishes = await sql(`SELECT mi.id, mi.is_featured AS featured, COUNT(r.id) 
   FROM menu_items mi LEFT JOIN menu_item_reviews r ON r.menu_item_id = mi.id AND r.deleted_at IS NULL GROUP BY mi.id`);
 let trimmed = 0;
 let topUp = 0;
-for (const dish of dishes) {
+// --no-trim: thêm quán mới — không cắt đánh giá của các món đã được làm dày (enrich-reviews.mjs), chỉ tính lại điểm
+const NO_TRIM = process.argv.includes('--no-trim');
+for (const dish of NO_TRIM ? [] : dishes) {
   const quota = Math.min(MAX, MIN + Math.floor((MAX - MIN + 1) * Math.pow(rnd(), dish.featured ? 0.6 : 1.25)));
   const total = Number(dish.total);
   if (total > quota) {

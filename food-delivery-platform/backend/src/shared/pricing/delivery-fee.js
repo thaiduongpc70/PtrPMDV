@@ -22,3 +22,16 @@ export function feeSettings(map) {
   const number = (key, fallback) => (Number.isFinite(map[key]) ? map[key] : fallback);
   return { base: number('delivery_base_fee', 15000), perKm: number('delivery_price_per_km', 5000), maxKm: number('max_delivery_distance', DEFAULT_MAX_KM) };
 }
+
+/**
+ * Bảng phí giao theo khoảng cách, sinh từ chính `deliveryFeeFor` (không có số cứng riêng):
+ * [{ fromKm, toKm, fee }] — mốc đầu gồm `INCLUDED_KM` km đầu, các mốc sau mỗi km một bậc, dừng ở `maxKm`.
+ */
+export function deliveryFeeTable(options) {
+  const { maxKm } = { maxKm: DEFAULT_MAX_KM, ...options };
+  const rows = [{ fromKm: 0, toKm: Math.min(INCLUDED_KM, Math.floor(maxKm)), fee: deliveryFeeFor(options, 0).fee }];
+  for (let km = INCLUDED_KM + 1; km <= Math.floor(maxKm); km += 1) {
+    rows.push({ fromKm: km - 1, toKm: km, fee: deliveryFeeFor(options, km).fee });
+  }
+  return rows;
+}

@@ -1,7 +1,18 @@
 import { query, withTransaction } from '../../shared/database/mysql.js';
 import { listVouchers, priceOrder } from '../engagement/voucher.js';
+import { statusNote } from '../../shared/i18n/order-texts.js';
+import { checkAgeRule } from './alcohol-rules.js';
+import { cancelOrderInTransaction } from './order-cancellation.js';
 import { deliveryFeeFor, distanceKm, feeSettings } from '../../shared/pricing/delivery-fee.js';
 import { isOpenNow, ordersAllowedWhenClosed } from '../../shared/time/opening-hours.js';
+
+/** Tên các món THÀNH PHẦN của combo (exec = hàm (sql, params) => rows, dùng được với connection.execute hoặc query). Rỗng nếu không có combo. */
+export async function loadComboComponentNames(exec, menuItemIds) {
+  const ids = [...new Set((menuItemIds ?? []).map(Number).filter(value => Number.isInteger(value) && value > 0))];
+  if (!ids.length) return [];
+  const rows = await exec(`SELECT d.name FROM menu_item_combo_components c INNER JOIN menu_items d ON d.id = c.component_item_id WHERE c.combo_item_id IN (${ids.map(() => '?').join(',')})`, ids);
+  return rows.map(row => row.name);
+}
 
 export const orderRepository = {
   async getCartForUser(userId, restaurantId = null) {
@@ -135,7 +146,7 @@ export const orderRepository = {
       );
       if (existingRows[0]) return { existing: true, orderId: Number(existingRows[0].id), orderCode: existingRows[0].order_code };
       const profileRows = await connection.execute(
-        `SELECT cp.id, cp.full_name, u.phone, u.email FROM customer_profiles cp INNER JOIN users u ON u.id = cp.user_id WHERE u.id = ? AND u.status = 'ACTIVE' LIMIT 1 FOR UPDATE`, [userId]
+        `SELECT cp.id, cp.full_name, cp.date_of_birth, u.phone, u.email FROM customer_profiles cp INNER JOIN users u ON u.id = cp.user_id WHERE u.id = ? AND u.status = 'ACTIVE' LIMIT 1 FOR UPDATE`, [userId]
       );
       if (!profileRows[0]) return { error: 'CUSTOMER_NOT_FOUND' };
       const customer = profileRows[0];
@@ -155,7 +166,9 @@ export const orderRepository = {
       );
       if (!cartRows[0]) return { error: 'CART_EMPTY' };
       const cart = cartRows[0];
-      if (!ordersAllowedWhenClosed() && !isOpenNow(cart.opening_time, cart.closing_time)) return { error: 'RESTAURANT_CLOSED', openingTime: cart.opening_time, closingTime: cart.closing_time };
+      const hourRows = ordersAllowedWhenClosed() ? [] : await connection.execute("SELECT day_of_week, TIME_FORMAT(open_time, '%H:%i:%s') AS open_time, TIME_FORMAT(close_time, '%H:%i:%s') AS close_time, is_closed FROM restaurant_operating_hours WHERE restaurant_id = ?", [cart.restaurant_id]);
+      const operatingHours = hourRows.map(row => ({ dayOfWeek: Number(row.day_of_week), openTime: row.open_time ?? null, closeTime: row.close_time ?? null, isClosed: Boolean(row.is_closed) }));
+      if (!ordersAllowedWhenClosed() && !isOpenNow(cart.opening_time, cart.closing_time, new Date(), operatingHours)) return { error: 'RESTAURANT_CLOSED', openingTime: cart.opening_time, closingTime: cart.closing_time };
       const itemRows = await connection.execute(
         `SELECT ci.id, ci.menu_item_id, ci.variant_id, ci.quantity, ci.note,
                 mi.name, mi.base_price, mi.discount_price, COALESCE(mi.discount_price, mi.base_price) AS effective_price,
@@ -165,6 +178,9 @@ export const orderRepository = {
          WHERE ci.cart_id = ? AND mi.restaurant_id = ? AND mi.deleted_at IS NULL FOR UPDATE`, [cart.id, cart.restaurant_id]
       );
       if (itemRows.length === 0) return { error: 'CART_EMPTY' };
+      const componentNames = await loadComboComponentNames((sql, params) => connection.execute(sql, params), itemRows.map(row => row.menu_item_id));
+      const ageIssue = checkAgeRule({ itemNames: [...itemRows.map(row => row.name), ...componentNames], ageConfirmed: input.ageConfirmed, dateOfBirth: customer.date_of_birth });
+      if (ageIssue) return { error: ageIssue };
       if (itemRows.some(row => !row.is_available || (row.variant_id !== null && row.variant_name === null))) return { error: 'CART_ITEM_UNAVAILABLE' };
       const itemIds = itemRows.map(row => Number(row.id));
       const toppingRows = await connection.execute(
@@ -179,7 +195,7 @@ export const orderRepository = {
         return { sourceId: Number(row.id), menuItemId: Number(row.menu_item_id), variantId: row.variant_id == null ? null : Number(row.variant_id), name: row.name, variantName: row.variant_name ?? null, quantity: Number(row.quantity), unitPrice, totalPrice: roundMoney(unitPrice * Number(row.quantity)), note: row.note ?? null, toppings };
       });
       const subtotal = roundMoney(items.reduce((sum, item) => sum + item.totalPrice, 0));
-      if (subtotal < Number(cart.minimum_order ?? 0)) return { error: 'MINIMUM_ORDER_NOT_MET', minimumOrder: Number(cart.minimum_order) };
+      if (subtotal < Number(cart.minimum_order ?? 0)) return { error: 'MINIMUM_ORDER_NOT_MET', minimumOrder: Number(cart.minimum_order), subtotal };
       const settings = await connection.execute(`SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('delivery_base_fee', 'delivery_price_per_km', 'max_delivery_distance', 'tax_rate')`);
       const settingMap = Object.fromEntries(settings.map(row => [row.setting_key, Number(row.setting_value)]));
       const shipping = deliveryFeeFor(feeSettings(settingMap), distanceKm(cart.restaurant_latitude, cart.restaurant_longitude, address.latitude, address.longitude));
@@ -212,7 +228,7 @@ export const orderRepository = {
         const orderItemId = Number(itemResult.insertId);
         for (const topping of item.toppings) await connection.execute('INSERT INTO order_item_toppings (order_item_id, topping_id, topping_name, price, quantity) VALUES (?, ?, ?, ?, ?)', [orderItemId, topping.id, topping.name, topping.price, topping.quantity]);
       }
-      await connection.execute('INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, note) VALUES (?, NULL, \'PENDING\', ?, ?)', [orderId, userId, 'Order created']);
+      await connection.execute('INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, note) VALUES (?, NULL, \'PENDING\', ?, ?)', [orderId, userId, statusNote('PENDING')]);
       await connection.execute('INSERT INTO payments (order_id, payment_code, method, amount, status) VALUES (?, ?, ?, ?, \'PENDING\')', [orderId, `PAY-${orderCode}`, input.paymentMethod, totalAmount]);
       if (promotion) await promotionRepository.recordUsage(connection, promotion.id, customer.id, orderId, discountAmount);
       await connection.execute('DELETE FROM carts WHERE id = ?', [cart.id]);
@@ -224,14 +240,42 @@ export const orderRepository = {
     const params = [userId];
     const where = ['cp.user_id = ?', 'o.deleted_at IS NULL'];
     if (filters.status) { where.push('o.order_status = ?'); params.push(filters.status); }
-    const rows = await query(
-      `SELECT o.id, o.order_code, o.restaurant_id, r.name AS restaurant_name, o.subtotal, o.discount_amount,
-              o.delivery_fee, o.service_fee, o.tax_amount, o.total_amount, o.payment_method, o.payment_status,
-              o.order_status, o.ordered_at, o.confirmed_at, o.prepared_at, o.created_at
-       FROM orders o INNER JOIN customer_profiles cp ON cp.id = o.customer_id INNER JOIN restaurants r ON r.id = o.restaurant_id
-       WHERE ${where.join(' AND ')} ORDER BY o.created_at DESC, o.id DESC LIMIT 100`, params
+    const pageSize = Math.min(Math.max(Number(filters.pageSize) || 20, 1), 100);
+    const offset = Math.max(Number(filters.offset) || 0, 0);
+    const [{ total }] = await query(
+      `SELECT COUNT(*) AS total FROM orders o INNER JOIN customer_profiles cp ON cp.id = o.customer_id WHERE ${where.join(' AND ')}`, params
     );
-    return rows.map(mapOrderSummary);
+    const rows = await query(
+      `SELECT o.id, o.order_code, o.customer_id, o.restaurant_id, r.name AS restaurant_name, r.status AS restaurant_status, o.subtotal, o.discount_amount,
+              o.delivery_fee, o.service_fee, o.tax_amount, o.total_amount, o.payment_method, o.payment_status,
+              o.order_status, o.ordered_at, o.confirmed_at, o.prepared_at, o.created_at,
+              (SELECT ri.image_url FROM restaurant_images ri WHERE ri.restaurant_id = r.id AND ri.image_type = 'LOGO' ORDER BY ri.sort_order, ri.id LIMIT 1) AS restaurant_logo
+       FROM orders o INNER JOIN customer_profiles cp ON cp.id = o.customer_id INNER JOIN restaurants r ON r.id = o.restaurant_id
+       WHERE ${where.join(' AND ')} ORDER BY o.created_at DESC, o.id DESC LIMIT ${pageSize} OFFSET ${offset}`, params
+    );
+    // Món của từng đơn (kèm ảnh, biến thể, topping) để giao diện hiển thị và nút "Đặt lại" không cần gọi thêm
+    const orderIds = rows.map(row => Number(row.id));
+    const itemRows = orderIds.length === 0 ? [] : await query(
+      `SELECT oi.id, oi.order_id, oi.menu_item_id, oi.variant_id, oi.item_name, oi.variant_name, oi.quantity, oi.unit_price, oi.note,
+              mi.image_url, (mi.id IS NOT NULL AND mi.is_available = TRUE AND mi.deleted_at IS NULL) AS still_available
+       FROM order_items oi LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
+       WHERE oi.order_id IN (${orderIds.map(() => '?').join(',')}) ORDER BY oi.id ASC`, orderIds
+    );
+    const toppingRows = itemRows.length === 0 ? [] : await query(
+      `SELECT order_item_id, topping_id, topping_name, price, quantity FROM order_item_toppings WHERE order_item_id IN (${itemRows.map(() => '?').join(',')}) ORDER BY id ASC`, itemRows.map(row => Number(row.id))
+    );
+    const toppingsByItem = groupBy(toppingRows, row => Number(row.order_item_id));
+    const itemsByOrder = groupBy(itemRows, row => Number(row.order_id));
+    const items = rows.map(row => {
+      const orderItems = (itemsByOrder.get(Number(row.id)) ?? []).map(item => ({
+        menuItemId: item.menu_item_id == null ? null : Number(item.menu_item_id), variantId: item.variant_id == null ? null : Number(item.variant_id),
+        name: item.item_name, variantName: item.variant_name ?? null, imageUrl: item.image_url ?? null, quantity: Number(item.quantity),
+        unitPrice: Number(item.unit_price), note: item.note ?? null, available: Boolean(Number(item.still_available)),
+        toppings: (toppingsByItem.get(Number(item.id)) ?? []).map(topping => ({ toppingId: topping.topping_id == null ? null : Number(topping.topping_id), name: topping.topping_name, price: Number(topping.price), quantity: Number(topping.quantity) }))
+      }));
+      return { ...mapOrderSummary(row), restaurantLogoUrl: row.restaurant_logo ?? null, restaurantActive: row.restaurant_status === 'ACTIVE', items: orderItems, canReorder: row.restaurant_status === 'ACTIVE' && orderItems.length > 0 && orderItems.every(item => item.menuItemId != null && item.available) };
+    });
+    return { items, totalItems: Number(total) };
   },
 
   async findOrderForCustomer(userId, orderId) {
@@ -288,9 +332,14 @@ export const orderRepository = {
           : targetStatus === 'CANCELLED'
             ? 'cancelled_at = CURRENT_TIMESTAMP'
             : '';
-      await connection.execute(`UPDATE orders SET order_status = ?${updates ? `, ${updates}` : ''} WHERE id = ?`, [targetStatus, orderId]);
-      // Trigger trg_order_status_history đã ghi dòng chuyển trạng thái; bổ sung người thực hiện/ghi chú thay vì ghi thêm dòng trùng.
-      await connection.execute('UPDATE order_status_history SET changed_by = ?, note = ? WHERE order_id = ? AND new_status = ? ORDER BY id DESC LIMIT 1', [userId, note, orderId, targetStatus]);
+      if (targetStatus === 'CANCELLED') {
+        // Quán từ chối: dùng chung luồng huỷ (ghi lịch sử, order_cancellations, yêu cầu hoàn nếu đã trả, đóng giao dịch chưa thu)
+        await cancelOrderInTransaction(connection, current, { actorUserId: userId, reasonCode: reasonCode ?? 'RESTAURANT_REJECTED', reason: note, historyNote: note });
+      } else {
+        await connection.execute(`UPDATE orders SET order_status = ?${updates ? `, ${updates}` : ''} WHERE id = ?`, [targetStatus, orderId]);
+        // Trigger trg_order_status_history đã ghi dòng chuyển trạng thái; bổ sung người thực hiện/ghi chú thay vì ghi thêm dòng trùng.
+        await connection.execute('UPDATE order_status_history SET changed_by = ?, note = ? WHERE order_id = ? AND new_status = ? ORDER BY id DESC LIMIT 1', [userId, note, orderId, targetStatus]);
+      }
       if (targetStatus === 'CANCELLED') await connection.execute('INSERT INTO order_cancellations (order_id, cancelled_by, reason_code, reason, refund_amount) VALUES (?, ?, ?, ?, 0)', [orderId, userId, reasonCode ?? 'RESTAURANT_REJECTED', note]);
       const updatedRows = await connection.execute('SELECT o.*, r.name AS restaurant_name, r.owner_user_id, u.email AS customer_email FROM orders o INNER JOIN restaurants r ON r.id = o.restaurant_id INNER JOIN customer_profiles cp ON cp.id = o.customer_id INNER JOIN users u ON u.id = cp.user_id WHERE o.id = ? LIMIT 1', [orderId]);
       return { before: mapOrderSummary(current), after: mapOrderSummary(updatedRows[0]), customerUserId: Number(current.customer_user_id), customerEmail: current.customer_email, restaurantOwnerUserId: Number(current.owner_user_id), orderCode: current.order_code, orderId: Number(orderId), status: targetStatus };

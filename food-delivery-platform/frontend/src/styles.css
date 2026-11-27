@@ -497,7 +497,7 @@ body[data-role="restaurant"] .footer-bottom, body[data-role="admin"] .footer-bot
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
 .stat-card { position: relative; display: grid; gap: 4px; padding: 16px 18px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: #fff; box-shadow: var(--shadow-sm); }
 .stat-card > span { color: var(--muted); font-size: .82rem; font-weight: 500; }
-.stat-card > strong { font-size: 1.55rem; font-weight: 700; letter-spacing: -.02em; }
+.stat-card > strong { margin-top: 10px; font-size: clamp(1.15rem, 1.65vw, 1.55rem); font-weight: 700; letter-spacing: -.02em; overflow-wrap: anywhere; } /* số lớn nằm dưới biểu tượng, không bị đè */
 .stat-card > small { color: var(--muted); }
 .stat-card .stat-icon { position: absolute; top: 14px; right: 14px; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--brand-soft); font-size: 1.15rem; }
 .stat-card.is-green .stat-icon { background: var(--success-soft); }

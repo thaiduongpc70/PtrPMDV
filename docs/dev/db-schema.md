@@ -1,6 +1,6 @@
 # Database schema
 
-> Sinh tự động bởi `tools/generate-dev-docs.mjs` lúc 2026-11-08T03:43:18.678Z từ DB `food_delivery_db`. **Đừng sửa tay** — chạy lại script sau khi đổi schema.
+> Sinh tự động bởi `tools/generate-dev-docs.mjs` lúc 2026-11-27T13:03:47.120Z từ DB `food_delivery_db`. **Đừng sửa tay** — chạy lại script sau khi đổi schema.
 
 - 71 bảng, 20 trigger, 115 khoá ngoại. Nguồn sự thật của schema: `food_delivery_db.sql` (gốc) + `food-delivery-platform/backend/database/migrations/*.sql` (áp theo thứ tự tên file).
 - Kiểu tiền: `DECIMAL(15,2)` (VND). Thời gian: `DATETIME` naive theo giờ địa phương (UTC+7), mysql2 trả `Date`. Xoá mềm bằng cột `deleted_at`.
@@ -22,7 +22,7 @@
 
 ### users
 
-*154 dòng*
+*438 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -85,7 +85,7 @@ Chỉ mục: `fk_role_permissions_permission`(permission_id)
 
 ### refresh_tokens
 
-*2,523 dòng*
+*12,125 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -130,7 +130,7 @@ Chỉ mục: `fk_verification_token_user`(user_id), `token_hash`(token_hash) UNI
 
 ### login_history
 
-*2,434 dòng*
+*11,809 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -146,7 +146,7 @@ Chỉ mục: `idx_login_date`(logged_in_at), `idx_login_user`(user_id)
 
 ### audit_logs
 
-*576,015 dòng*
+*2,229,495 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -165,7 +165,7 @@ Chỉ mục: `idx_audit_created`(created_at), `idx_audit_entity`(entity_type,ent
 
 ### partner_applications
 
-*9 dòng*
+*63 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -205,7 +205,7 @@ Chỉ mục: `fk_setting_user`(updated_by), `setting_key`(setting_key) UNIQUE
 
 ### customer_profiles
 
-*117 dòng*
+*347 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -226,7 +226,7 @@ CHECK: `(`loyalty_points` >= 0)`; `(`total_spent` >= 0)`
 
 ### customer_addresses
 
-*139 dòng*
+*373 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -274,7 +274,7 @@ Chỉ mục: `fk_favorite_menu_item`(menu_item_id)
 
 ### search_history
 
-*16 dòng*
+*17 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -289,7 +289,7 @@ Chỉ mục: `idx_search_customer`(customer_id,searched_at)
 
 ### restaurant_categories
 
-*15 dòng*
+*20 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -305,7 +305,7 @@ Chỉ mục: `name`(name) UNIQUE
 
 ### restaurants
 
-*20 dòng*
+*58 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -342,7 +342,7 @@ CHECK: `(`commission_rate` between 0 and 100)`; `(`minimum_order` >= 0)`; `(`rat
 
 ### restaurant_images
 
-*0 dòng*
+*116 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -357,7 +357,7 @@ Chỉ mục: `fk_restaurant_image`(restaurant_id)
 
 ### restaurant_operating_hours
 
-*7 dòng*
+*406 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -376,7 +376,7 @@ CHECK: `(`day_of_week` between 1 and 7)`
 
 ### menus
 
-*20 dòng*
+*58 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -395,7 +395,7 @@ Chỉ mục: `idx_menu_restaurant`(restaurant_id)
 
 ### menu_categories
 
-*81 dòng*
+*233 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -413,7 +413,7 @@ Chỉ mục: `fk_menu_category_menu`(menu_id), `idx_menu_category_restaurant`(re
 
 ### menu_items
 
-*466 dòng*
+*1,134 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -442,7 +442,7 @@ CHECK: `(`base_price` >= 0)`; `((`discount_price` is null) or (`discount_price` 
 
 ### menu_item_variants
 
-*281 dòng*
+*583 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -458,7 +458,7 @@ Chỉ mục: `fk_variant_item`(menu_item_id)
 
 ### topping_groups
 
-*41 dòng*
+*301 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -477,7 +477,7 @@ CHECK: `(`max_select` >= `min_select`)`
 
 ### toppings
 
-*145 dòng*
+*1,133 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -495,7 +495,7 @@ CHECK: `(`price` >= 0)`
 
 ### menu_item_topping_groups
 
-*658 dòng*
+*1,724 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -506,7 +506,7 @@ Chỉ mục: `fk_mitg_group`(topping_group_id)
 
 ### menu_item_combo_components
 
-*160 dòng*
+*476 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -520,7 +520,7 @@ CHECK: `(`quantity` between 1 and 20)`
 
 ### delivery_zones
 
-*13 dòng*
+*5 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -542,7 +542,7 @@ CHECK: `(`base_fee` >= 0)`; `(`maximum_distance` > 0)`; `(`price_per_km` >= 0)`
 
 ### carts
 
-*1 dòng*
+*4 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -556,7 +556,7 @@ Chỉ mục: `fk_cart_restaurant`(restaurant_id), `idx_cart_customer`(customer_i
 
 ### cart_items
 
-*1 dòng*
+*10 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -576,7 +576,7 @@ CHECK: `(`unit_price` >= 0)`; `(`quantity` > 0)`
 
 ### cart_item_toppings
 
-*0 dòng*
+*6 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -591,7 +591,7 @@ CHECK: `(`price` >= 0)`; `(`quantity` > 0)`
 
 ### orders
 
-*18,125 dòng*
+*46,487 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -614,7 +614,7 @@ CHECK: `(`price` >= 0)`; `(`quantity` > 0)`
 | tax_amount | decimal(15,2) |  | 0.00 |  |
 | total_amount | decimal(15,2) |  | 0.00 |  |
 | payment_method | enum('COD','BANK_TRANSFER','MOMO','VNPAY','ZALOPAY','CARD','WALLET') |  | COD |  |
-| payment_status | enum('PENDING','PAID','FAILED','REFUNDED','PARTIALLY_REFUNDED') |  | PENDING |  |
+| payment_status | enum('PENDING','PAID','FAILED','REFUNDED','PARTIALLY_REFUNDED','CANCELLED') |  | PENDING |  |
 | order_status | enum('PENDING','CONFIRMED','PREPARING','READY_FOR_PICKUP','SHIPPER_ASSIGNED','PICKED_UP','DELIVERING','DELIVERED','CANCELLED','FAILED') |  | PENDING |  |
 | customer_note | varchar(1000) | ✓ |  |  |
 | shipper_note | varchar(500) | ✓ |  |  |
@@ -633,13 +633,13 @@ CHECK: `(`price` >= 0)`; `(`quantity` > 0)`
 
 Chỉ mục: `fk_order_address`(delivery_address_id), `idx_order_created`(created_at), `idx_order_customer`(customer_id), `idx_order_customer_created`(customer_id,created_at), `idx_order_payment_status`(payment_status), `idx_order_restaurant`(restaurant_id), `idx_order_restaurant_status`(restaurant_id,order_status), `idx_order_shipper`(shipper_id), `idx_order_status`(order_status), `order_code`(order_code) UNIQUE, `uk_order_customer_idempotency`(customer_id,idempotency_key) UNIQUE
 
-CHECK: `(`total_amount` >= 0)`; `(`delivery_fee` >= 0)`; `(`discount_amount` >= 0)`; `(`service_fee` >= 0)`; `(`subtotal` >= 0)`; `(`tax_amount` >= 0)`
+CHECK: `(`tax_amount` >= 0)`; `(`total_amount` >= 0)`; `(`delivery_fee` >= 0)`; `(`discount_amount` >= 0)`; `(`service_fee` >= 0)`; `(`subtotal` >= 0)`
 
 Trigger: `trg_create_restaurant_commission` (AFTER UPDATE), `trg_order_delivered_loyalty` (AFTER UPDATE), `trg_order_delivered_statistics` (AFTER UPDATE), `trg_order_status_history` (AFTER UPDATE)
 
 ### order_items
 
-*40,581 dòng*
+*103,935 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -663,7 +663,7 @@ Trigger: `trg_order_items_sold_count` (AFTER INSERT)
 
 ### order_item_toppings
 
-*15,000 dòng*
+*59,813 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -681,7 +681,7 @@ CHECK: `(`price` >= 0)`; `(`quantity` > 0)`
 
 ### order_status_history
 
-*137,091 dòng*
+*352,119 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -697,7 +697,7 @@ Chỉ mục: `fk_order_history_user`(changed_by), `idx_order_history`(order_id,c
 
 ### order_cancellations
 
-*1,306 dòng*
+*3,302 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -717,7 +717,7 @@ CHECK: `(`refund_amount` >= 0)`
 
 ### shipper_profiles
 
-*16 dòng*
+*32 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -746,7 +746,7 @@ CHECK: `(`rating` between 0 and 5)`
 
 ### shipper_documents
 
-*48 dòng*
+*96 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -764,7 +764,7 @@ Chỉ mục: `fk_shipper_document_shipper`(shipper_id), `fk_shipper_document_ver
 
 ### delivery_assignments
 
-*16,810 dòng*
+*43,190 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -785,7 +785,7 @@ Trigger: `trg_assignment_accept` (AFTER UPDATE)
 
 ### deliveries
 
-*16,810 dòng*
+*43,190 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -819,7 +819,7 @@ Trigger: `trg_delivery_status_sync` (AFTER UPDATE), `trg_shipper_available_after
 
 ### delivery_status_history
 
-*117,642 dòng*
+*302,288 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -835,7 +835,7 @@ Chỉ mục: `fk_delivery_history`(delivery_id)
 
 ### shipper_locations
 
-*33,610 dòng*
+*86,356 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -855,7 +855,7 @@ Trigger: `trg_shipper_location_update` (AFTER INSERT)
 
 ### shipper_earnings
 
-*16,546 dòng*
+*42,537 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -899,7 +899,7 @@ CHECK: `(`amount` > 0)`
 
 ### payments
 
-*18,125 dòng*
+*46,487 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -923,7 +923,7 @@ Trigger: `trg_payment_paid` (AFTER UPDATE)
 
 ### payment_transactions
 
-*9,794 dòng*
+*25,143 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -939,7 +939,7 @@ Chỉ mục: `fk_payment_transaction_payment`(payment_id)
 
 ### cod_transactions
 
-*7,924 dòng*
+*20,350 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -961,7 +961,7 @@ Trigger: `trg_cod_collected` (AFTER UPDATE)
 
 ### refunds
 
-*1,226 dòng*
+*3,087 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -982,7 +982,7 @@ CHECK: `(`amount` > 0)`
 
 ### invoices
 
-*3,356 dòng*
+*8,556 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1007,7 +1007,7 @@ CHECK: `(`total_amount` >= 0)`
 
 ### wallets
 
-*48 dòng*
+*102 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1045,7 +1045,7 @@ CHECK: `(`amount` >= 0)`
 
 ### restaurant_commissions
 
-*16,546 dòng*
+*42,537 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1063,7 +1063,7 @@ CHECK: `(`commission_rate` between 0 and 100)`; `(`commission_amount` >= 0)`
 
 ### restaurant_settlements
 
-*140 dòng*
+*531 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1088,7 +1088,7 @@ CHECK: `(`period_end` >= `period_start`)`
 
 ### promotions
 
-*129 dòng*
+*205 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1119,7 +1119,7 @@ CHECK: `(`end_at` > `start_at`)`; `(`discount_value` >= 0)`; `(`minimum_order` >
 
 ### promotion_usage
 
-*2,354 dòng*
+*5,530 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1158,7 +1158,7 @@ CHECK: `(`points_cost` > 0)`
 
 ### loyalty_transactions
 
-*16,631 dòng*
+*42,625 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1179,7 +1179,7 @@ Trigger: `trg_loyalty_transaction_balance` (AFTER INSERT), `trg_loyalty_transact
 
 ### banners
 
-*13 dòng*
+*23 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1198,7 +1198,7 @@ Trigger: `trg_loyalty_transaction_balance` (AFTER INSERT), `trg_loyalty_transact
 
 ### restaurant_reviews
 
-*13,095 dòng*
+*23,653 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1222,7 +1222,7 @@ Trigger: `trg_restaurant_review_insert` (AFTER INSERT), `trg_restaurant_review_u
 
 ### shipper_reviews
 
-*11,518 dòng*
+*20,412 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1244,7 +1244,7 @@ Trigger: `trg_shipper_review_insert` (AFTER INSERT), `trg_shipper_review_update`
 
 ### menu_item_reviews
 
-*15,920 dòng*
+*54,717 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1267,7 +1267,7 @@ Trigger: `trg_menu_item_review_insert` (AFTER INSERT), `trg_menu_item_review_upd
 
 ### support_tickets
 
-*590 dòng*
+*1,471 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1289,7 +1289,7 @@ Chỉ mục: `fk_ticket_order`(order_id), `idx_ticket_admin`(assigned_admin_id),
 
 ### support_messages
 
-*587 dòng*
+*1,468 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1304,7 +1304,7 @@ Chỉ mục: `fk_support_message_sender`(sender_id), `fk_support_message_ticket`
 
 ### chat_sessions
 
-*498 dòng*
+*1,287 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1321,7 +1321,7 @@ Chỉ mục: `fk_chat_customer`(customer_id), `fk_chat_restaurant`(restaurant_id
 
 ### chat_messages
 
-*990 dòng*
+*2,568 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1339,7 +1339,7 @@ Chỉ mục: `fk_chat_message_sender`(sender_id), `idx_chat_message_session`(ses
 
 ### notifications
 
-*138,108 dòng*
+*354,640 dòng*
 
 | Cột | Kiểu | Null | Mặc định | Ghi chú |
 |---|---|---|---|---|
@@ -1756,26 +1756,15 @@ END
 
 ```sql
 BEGIN
-
     IF OLD.order_status <> NEW.order_status THEN
-
-        INSERT INTO order_status_history (
-            order_id,
-            old_status,
-            new_status,
-            changed_by,
-            note
-        )
-        VALUES (
-            NEW.id,
-            OLD.order_status,
-            NEW.order_status,
-            NULL,
-            'Status automatically recorded by trigger'
-        );
-
+        INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, note)
+        VALUES (NEW.id, OLD.order_status, NEW.order_status, NULL,
+            CASE NEW.order_status
+                WHEN 'PENDING' THEN 'Đơn hàng được tạo' WHEN 'CONFIRMED' THEN 'Quán đã xác nhận đơn' WHEN 'PREPARING' THEN 'Bếp bắt đầu chuẩn bị món'
+                WHEN 'READY_FOR_PICKUP' THEN 'Món đã sẵn sàng để tài xế lấy' WHEN 'SHIPPER_ASSIGNED' THEN 'Đã có tài xế nhận đơn' WHEN 'PICKED_UP' THEN 'Tài xế đã lấy món'
+                WHEN 'DELIVERING' THEN 'Đang giao hàng' WHEN 'DELIVERED' THEN 'Đã giao thành công' WHEN 'CANCELLED' THEN 'Đơn hàng đã bị huỷ' WHEN 'FAILED' THEN 'Giao hàng thất bại'
+                ELSE 'Hệ thống tự ghi nhận chuyển trạng thái' END);
     END IF;
-
 END
 ```
 

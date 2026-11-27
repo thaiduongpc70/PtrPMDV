@@ -1,4 +1,5 @@
 import { HttpError } from '../../shared/http/http-error.js';
+import { M } from '../../shared/http/messages.js';
 
 const menuStatuses = new Set(['ACTIVE', 'INACTIVE']);
 const itemStatuses = new Set(['ACTIVE', 'INACTIVE']);
@@ -6,7 +7,7 @@ const itemStatuses = new Set(['ACTIVE', 'INACTIVE']);
 export function readId(value, field = 'id') {
   const id = Number(value);
   if (!Number.isInteger(id) || id <= 0) {
-    throw new HttpError(400, `${field} must be a positive integer`);
+    throw new HttpError(400, M.fieldPositiveInteger(field));
   }
   return id;
 }
@@ -82,7 +83,7 @@ export function validateItemCreate(input) {
     isFeatured: readBoolean(input?.isFeatured, false)
   };
   if (result.discountPrice !== null && result.discountPrice > result.basePrice) {
-    throw new HttpError(400, 'Discount price cannot exceed base price');
+    throw new HttpError(400, M.discountAboveBase);
   }
   return result;
 }
@@ -110,7 +111,7 @@ export function validateItemPatch(current, input) {
   };
 
   if (result.discountPrice !== null && result.discountPrice > result.basePrice) {
-    throw new HttpError(400, 'Discount price cannot exceed base price');
+    throw new HttpError(400, M.discountAboveBase);
   }
   return result;
 }
@@ -144,14 +145,14 @@ export function validateTopping(input) {
 
 function requiredText(value, field, maxLength) {
   const text = optionalText(value, field, maxLength);
-  if (!text) throw new HttpError(400, `${field} is required`);
+  if (!text) throw new HttpError(400, M.fieldRequired2(field));
   return text;
 }
 
 function optionalText(value, field, maxLength) {
   if (value === undefined || value === null || String(value).trim() === '') return null;
   const text = String(value).trim();
-  if (text.length > maxLength) throw new HttpError(400, `${field} must be at most ${maxLength} characters`);
+  if (text.length > maxLength) throw new HttpError(400, M.fieldMaxChars2(field, maxLength));
   return text;
 }
 
@@ -159,7 +160,7 @@ function optionalUrl(value, field, maxLength) {
   const text = optionalText(value, field, maxLength);
   if (!text) return null;
   if (!/^https?:\/\//i.test(text) && !text.startsWith('/')) {
-    throw new HttpError(400, `${field} must be an absolute URL or an upload path`);
+    throw new HttpError(400, M.urlOrPath(field));
   }
   return text;
 }
@@ -167,7 +168,7 @@ function optionalUrl(value, field, maxLength) {
 function readMoney(value, field) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0 || number > 9999999999999.99) {
-    throw new HttpError(400, `${field} is invalid`);
+    throw new HttpError(400, M.fieldInvalid(field));
   }
   return Math.round(number * 100) / 100;
 }
@@ -175,7 +176,7 @@ function readMoney(value, field) {
 function readSignedMoney(value, field) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < -9999999999999.99 || number > 9999999999999.99) {
-    throw new HttpError(400, `${field} is invalid`);
+    throw new HttpError(400, M.fieldInvalid(field));
   }
   return Math.round(number * 100) / 100;
 }
@@ -184,7 +185,7 @@ function readInteger(value, field, minimum, maximum, fallback) {
   if (value === undefined || value === null || value === '') return fallback;
   const number = Number(value);
   if (!Number.isInteger(number) || number < minimum || number > maximum) {
-    throw new HttpError(400, `${field} must be between ${minimum} and ${maximum}`);
+    throw new HttpError(400, M.fieldBetween(field, minimum, maximum));
   }
   return number;
 }
@@ -194,12 +195,12 @@ function readBoolean(value, fallback = false) {
   if (typeof value === 'boolean') return value;
   if (value === 1 || value === '1' || value === 'true') return true;
   if (value === 0 || value === '0' || value === 'false') return false;
-  throw new HttpError(400, 'Boolean value is invalid');
+  throw new HttpError(400, M.booleanInvalid);
 }
 
 function readStatus(value, allowed, field, fallback) {
   const status = String(value ?? fallback ?? '').trim().toUpperCase();
-  if (!allowed.has(status)) throw new HttpError(400, `${field} is invalid`);
+  if (!allowed.has(status)) throw new HttpError(400, M.fieldInvalid(field));
   return status;
 }
 
@@ -207,7 +208,7 @@ function optionalTime(value, field) {
   if (value === undefined || value === null || value === '') return null;
   const text = String(value).trim();
   if (!/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(text)) {
-    throw new HttpError(400, `${field} must use HH:mm or HH:mm:ss`);
+    throw new HttpError(400, M.timeFormat(field));
   }
   return text.length === 5 ? `${text}:00` : text;
 }

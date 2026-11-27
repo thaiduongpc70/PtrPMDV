@@ -75,6 +75,7 @@
     if (event.detail.screen === 'admin') render(event.detail.view);
   });
 
+  let refundPage = 1; let settlePage = 1; let promoPage = 1; // trang hiện tại của các danh sách phân trang phía máy chủ
   function bindClicks(container, handlers) {
     container.onclick = event => {
       const pg = event.target.closest('[data-page]');
@@ -112,7 +113,7 @@
     const [dash, rep, refunds, tickets, apps] = await Promise.allSettled([
       api('/api/admin/dashboard'),
       api('/api/admin/manage/reports?days=14'),
-      api('/api/admin/manage/refunds'),
+      api('/api/admin/manage/refunds?status=PENDING&pageSize=1'),
       api('/api/communications/support/tickets'),
       api('/api/admin/partners/applications?status=PENDING')
     ]);
@@ -126,7 +127,7 @@
     const sum = (arr, k) => arr.reduce((a, b) => a + b[k], 0);
     const trend = (cur, prev) => (prev ? `<span class="${cur >= prev ? 'trend-up' : 'trend-down'}">${cur >= prev ? '▲' : '▼'} ${Math.abs(Math.round(((cur - prev) / prev) * 100))}%</span> so với tuần trước` : 'Chưa có dữ liệu tuần trước');
     const openTickets = tickets.status === 'fulfilled' ? tickets.value.items.filter(t => !['RESOLVED', 'CLOSED'].includes(t.status)) : [];
-    const pendingRefunds = refunds.status === 'fulfilled' ? refunds.value.items.filter(x => x.status === 'PENDING') : [];
+    const pendingRefunds = refunds.status === 'fulfilled' ? { length: refunds.value.summary?.PENDING ?? refunds.value.items.filter(x => x.status === 'PENDING').length } : [];
     const todos = [
       { n: apps.status === 'fulfilled' ? apps.value.items.length : 0, text: 'hồ sơ đối tác chờ duyệt', go: 'applications', ico: '📝' },
       { n: o.pendingRestaurants, text: 'nhà hàng chờ duyệt', go: 'restaurants', ico: '🏪' },
@@ -184,7 +185,7 @@
         <form class="filter-bar" data-filters>
           <input type="search" name="q" placeholder="Mã đơn, tên/SĐT người nhận, nhà hàng…">
           <select name="status"><option value="">Mọi trạng thái đơn</option>${['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'SHIPPER_ASSIGNED', 'PICKED_UP', 'DELIVERING', 'DELIVERED', 'CANCELLED'].map(x => `<option value="${x}">${U.chip(x, 'order').replace(/<[^>]+>/g, '')}</option>`).join('')}</select>
-          <select name="paymentStatus"><option value="">Mọi trạng thái thanh toán</option>${['PENDING', 'PAID', 'FAILED', 'REFUNDED'].map(x => `<option value="${x}">${U.chip(x, 'payment').replace(/<[^>]+>/g, '')}</option>`).join('')}</select>
+          <select name="paymentStatus"><option value="">Mọi trạng thái thanh toán</option>${['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'].map(x => `<option value="${x}">${U.chip(x, 'payment').replace(/<[^>]+>/g, '')}</option>`).join('')}</select>
           <button class="primary-button compact-button" type="submit">Lọc</button>
         </form>
         <div data-list></div>`;
@@ -343,14 +344,15 @@
   async function shippers(el) {
     el.innerHTML = head('Quản lý tài xế', 'Theo dõi hiệu suất, trạng thái sẵn sàng và duyệt giấy tờ.') + loading;
     try {
-      const r = await api('/api/admin/manage/shippers');
+      const r = await api('/api/admin/manage/shippers?pageSize=100');
       const items = r.items;
+      const sm = r.summary ?? {};
       el.innerHTML = `${head('Quản lý tài xế', 'Theo dõi hiệu suất, trạng thái sẵn sàng và duyệt giấy tờ.')}
         <div class="stat-grid">
-          ${statCard({ label: 'Tổng tài xế', value: num(items.length), icon: '🛵' })}
-          ${statCard({ label: 'Đang sẵn sàng', value: num(items.filter(x => x.status === 'AVAILABLE').length), icon: '🟢', tone: 'is-green' })}
-          ${statCard({ label: 'Đang giao', value: num(items.reduce((s, x) => s + x.activeDeliveries, 0)), icon: '📦', tone: 'is-blue' })}
-          ${statCard({ label: 'Bị khóa', value: num(items.filter(x => x.status === 'SUSPENDED').length), icon: '⛔', tone: 'is-amber' })}
+          ${statCard({ label: 'Tổng tài xế', value: num(sm.total ?? items.length), icon: '🛵' })}
+          ${statCard({ label: 'Đang sẵn sàng', value: num(sm.available ?? items.filter(x => x.status === 'AVAILABLE').length), icon: '🟢', tone: 'is-green' })}
+          ${statCard({ label: 'Đang giao', value: num(sm.activeDeliveries ?? items.reduce((s, x) => s + x.activeDeliveries, 0)), icon: '📦', tone: 'is-blue' })}
+          ${statCard({ label: 'Bị khóa', value: num(sm.suspended ?? items.filter(x => x.status === 'SUSPENDED').length), icon: '⛔', tone: 'is-amber' })}
         </div>
         ${table([
     { h: 'Tài xế', f: x => cell(esc(x.fullName), esc(x.phone || x.email || '')) },
@@ -425,7 +427,7 @@
         <div data-summary></div>
         <div class="card"><div class="card-head"><h4>Yêu cầu hoàn tiền</h4></div><div data-refunds></div></div>
         <form class="filter-bar" data-filters>
-          <select name="status"><option value="">Mọi trạng thái</option>${['PENDING', 'PAID', 'FAILED', 'REFUNDED'].map(x => `<option value="${x}">${chip(x, 'payment').replace(/<[^>]+>/g, '')}</option>`).join('')}</select>
+          <select name="status"><option value="">Mọi trạng thái</option>${['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'].map(x => `<option value="${x}">${chip(x, 'payment').replace(/<[^>]+>/g, '')}</option>`).join('')}</select>
           <select name="method"><option value="">Mọi phương thức</option>${['COD', 'BANK_TRANSFER', 'MOMO', 'VNPAY', 'ZALOPAY', 'CARD', 'WALLET'].map(x => `<option value="${x}">${esc(fd().paymentLabel(x))}</option>`).join('')}</select>
           <button class="primary-button compact-button" type="submit">Lọc giao dịch</button>
         </form>
@@ -437,14 +439,14 @@
     if (s.status) params.set('status', s.status);
     if (s.method) params.set('method', s.method);
     try {
-      const [r, refunds] = await Promise.all([api(`/api/admin/manage/payments?${params}`), api('/api/admin/manage/refunds')]);
+      const [r, refunds] = await Promise.all([api(`/api/admin/manage/payments?${params}`), api(`/api/admin/manage/refunds?page=${refundPage}&pageSize=10`)]);
       const sumBy = status => r.summary.find(x => x.status === status) || { total: 0, amount: 0 };
       const cod = k => r.cod.find(x => x.status === k) || { total: 0, amount: 0 };
       el.querySelector('[data-summary]').innerHTML = `
         <div class="stat-grid">
           ${statCard({ label: 'Đã thanh toán', value: vnd(sumBy('PAID').amount), hint: `${num(sumBy('PAID').total)} giao dịch`, icon: '✅', tone: 'is-green' })}
           ${statCard({ label: 'Chờ thanh toán', value: vnd(sumBy('PENDING').amount), hint: `${num(sumBy('PENDING').total)} giao dịch`, icon: '⏳', tone: 'is-amber' })}
-          ${statCard({ label: 'Đã hoàn tiền', value: vnd(sumBy('REFUNDED').amount), hint: `${num(sumBy('REFUNDED').total)} giao dịch`, icon: '↩️' })}
+          ${statCard({ label: 'Đã hoàn tiền', value: vnd(r.refunded?.amount ?? sumBy('REFUNDED').amount), hint: `${num(r.refunded?.orders ?? sumBy('REFUNDED').total)} đơn đã hoàn`, icon: '↩️' })}
           ${statCard({ label: 'COD chưa đối soát', value: vnd(cod('COLLECTED').amount + cod('PENDING').amount), hint: `Đã thu ${vnd(cod('COLLECTED').amount)} · đã đối soát ${vnd(cod('SETTLED').amount)}`, icon: '💵', tone: 'is-blue' })}
         </div>
         <div class="card"><h4>Doanh thu theo phương thức</h4>${hbars(r.methods.map(m => ({ ...m, name: fd().paymentLabel(m.method) })), { valueKey: 'amount', format: vnd, sub: m => `${num(m.total)} giao dịch` })}</div>`;
@@ -455,7 +457,7 @@
         { h: 'Tạo lúc', f: x => dt(x.createdAt) },
         { h: 'Trạng thái', f: x => chip(x.status) },
         { h: '', f: x => x.status === 'PENDING' ? `<div class="row-actions"><button class="primary-button compact-button" data-act="refund" data-id="${x.id}" data-v="COMPLETED">Duyệt</button><button class="secondary-button" data-act="refund" data-id="${x.id}" data-v="REJECTED">Từ chối</button></div>` : '' }
-      ], refunds.items, 'Không có yêu cầu hoàn tiền nào.');
+      ], refunds.items, 'Không có yêu cầu hoàn tiền nào.') + pager(refunds).replace(/data-page="(\d+)"/g, 'data-act="refundPage" data-v="$1"');
       el.querySelector('[data-list]').innerHTML = table([
         { h: 'Mã GD', f: x => cell(esc(x.paymentCode), esc(x.orderCode)) },
         { h: 'Nhà hàng', f: x => esc(x.restaurantName) },
@@ -466,6 +468,7 @@
       ], r.items) + pager(r);
       bindClicks(el, {
         page: p => { s.page = p; payments(el); },
+        refundPage: data => { refundPage = Number(data.v); payments(el); },
         refund: async data => { if (await act(() => api(`/api/admin/manage/refunds/${data.id}`, { method: 'PATCH', ...json({ status: data.v }) }), data.v === 'COMPLETED' ? 'Đã duyệt hoàn tiền.' : 'Đã từ chối yêu cầu.')) payments(el); }
       });
     } catch (error) { el.querySelector('[data-list]').innerHTML = `<div class="error-box">${esc(error.message)}</div>`; }
@@ -475,15 +478,16 @@
   async function settlements(el) {
     el.innerHTML = loading;
     try {
-      const r = await api('/api/admin/manage/settlements');
-      const total = k => r.items.reduce((s, x) => s + x[k], 0);
+      const r = await api(`/api/admin/manage/settlements?page=${settlePage}&pageSize=50`);
+      const sm = r.summary ?? {};
+      const total = k => sm[k] ?? r.items.reduce((s, x) => s + x[k], 0);
       el.innerHTML = `
         ${head('Đối soát nhà hàng', 'Tổng hợp doanh số, hoa hồng và chi trả cho đối tác theo kỳ.', '<button class="primary-button" data-act="generate">＋ Tạo kỳ đối soát</button>')}
         <div class="stat-grid">
-          ${statCard({ label: 'Doanh số kỳ', value: vnd(total('grossSales')), icon: '📦' })}
+          ${statCard({ label: 'Tổng doanh số (mọi kỳ)', value: vnd(total('grossSales')), icon: '📦' })}
           ${statCard({ label: 'Hoa hồng nền tảng', value: vnd(total('commissionAmount')), icon: '🏦', tone: 'is-green' })}
-          ${statCard({ label: 'Cần chi trả', value: vnd(r.items.filter(x => x.status !== 'SETTLED').reduce((s, x) => s + x.netAmount, 0)), icon: '💸', tone: 'is-amber' })}
-          ${statCard({ label: 'Đã chi trả', value: vnd(r.items.filter(x => x.status === 'SETTLED').reduce((s, x) => s + x.netAmount, 0)), icon: '✅', tone: 'is-blue' })}
+          ${statCard({ label: 'Cần chi trả', value: vnd(sm.pendingNet ?? r.items.filter(x => x.status !== 'SETTLED').reduce((s, x) => s + x.netAmount, 0)), icon: '💸', tone: 'is-amber' })}
+          ${statCard({ label: 'Đã chi trả', value: vnd(sm.settledNet ?? r.items.filter(x => x.status === 'SETTLED').reduce((s, x) => s + x.netAmount, 0)), icon: '✅', tone: 'is-blue' })}
         </div>
         ${table([
     { h: 'Nhà hàng', f: x => esc(x.restaurantName) },
@@ -494,8 +498,9 @@
     { h: 'Thực nhận', num: true, f: x => `<b>${vnd(x.netAmount)}</b>` },
     { h: 'Trạng thái', f: x => chip(x.status) },
     { h: '', f: x => x.status !== 'SETTLED' ? `<button class="primary-button compact-button" data-act="settle" data-id="${x.id}">Đã chi trả</button>` : '' }
-  ], r.items, 'Chưa có kỳ đối soát. Bấm "Tạo kỳ đối soát" để tổng hợp.')}`;
+  ], r.items, 'Chưa có kỳ đối soát. Bấm "Tạo kỳ đối soát" để tổng hợp.')}${pager(r)}`;
       bindClicks(el, {
+        page: p => { settlePage = p; settlements(el); },
         generate: () => {
           const end = U.localDate(new Date());
           const start = U.localDate(Date.now() - 7 * 86400000);
@@ -516,7 +521,7 @@
   async function promotions(el) {
     el.innerHTML = loading;
     try {
-      const r = await api('/api/admin/manage/promotions');
+      const r = await api(`/api/admin/manage/promotions?page=${promoPage}&pageSize=50`);
       el.innerHTML = `
         ${head('Khuyến mãi', 'Voucher toàn hệ thống do admin quản; voucher từng quán do chủ quán tự cấp (admin chỉ theo dõi, bật/tắt khi cần). Mã giảm giá chung không giới hạn lượt; riêng mã freeship phải có hạn ngạch và ngày kết thúc.', '<button class="secondary-button" data-act="rewards">🎁 Quà đổi điểm</button><button class="primary-button" data-act="create">＋ Tạo mã toàn hệ thống</button>')}
         ${table([
@@ -528,8 +533,9 @@
     { h: 'Đã dùng', num: true, f: x => `${num(x.usedCount)}${x.usageLimit ? `/${num(x.usageLimit)}` : ' · không giới hạn'}${x.firstOrderOnly ? ' · khách mới' : ''}` },
     { h: 'Trạng thái', f: x => chip(x.status) },
     { h: '', f: x => `<div class="row-actions">${x.restaurantName ? '' : `<button class="secondary-button" data-act="extend" data-id="${x.id}">Gia hạn</button>`}<button class="secondary-button" data-act="toggle" data-id="${x.id}" data-v="${x.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}">${x.status === 'ACTIVE' ? 'Tắt' : 'Bật'}</button><button class="text-button danger-text" data-act="remove" data-id="${x.id}">Xóa</button></div>` }
-  ], r.items)}`;
+  ], r.items)}${pager(r)}`;
       bindClicks(el, {
+        page: p => { promoPage = p; promotions(el); },
         toggle: async data => { if (await act(() => api(`/api/admin/manage/promotions/${data.id}`, { method: 'PATCH', ...json({ status: data.v }) }), 'Đã cập nhật.')) promotions(el); },
         extend: data => {
           const m = modal('Gia hạn voucher', `<form class="stacked-form compact-form">

@@ -8,10 +8,11 @@ Mục đích: giúp người/AI vào làm tiếp **không phải khám phá lạ
 | 2 | [features.md](features.md) | Chức năng theo vai trò, đối chiếu Master Plan (xong/thiếu), nơi nằm trong code | viết tay |
 | 3 | [business-rules.md](business-rules.md) | Công thức tiền, máy trạng thái, voucher/điểm/combo, trigger | viết tay |
 | 4 | [db-schema.md](db-schema.md) | 71 bảng: cột, FK, chỉ mục, trigger, số dòng | **sinh tự động** |
-| 5 | [api-routes.md](api-routes.md) | 219 route Express theo nhóm | **sinh tự động** |
+| 5 | [api-routes.md](api-routes.md) | 221 route Express theo nhóm | **sinh tự động** |
 | 6 | [frontend-map.md](frontend-map.md) | Frontend: file, màn hình/sub-view, state, quy ước CSS/JS | viết tay |
 | 7 | [data-pipeline.md](data-pipeline.md) | Dữ liệu "chạy thật" qua API: lệnh, thứ tự, khôi phục | viết tay |
 | 8 | [gotchas.md](gotchas.md) | Bẫy đã gặp, quy ước sửa file, những gì chưa làm | viết tay |
+| 9 | [run-server.md](run-server.md) | Bật/dừng máy chủ nhanh, kiểm tra /health, biến môi trường chỉ dùng cho script dữ liệu | viết tay |
 
 Tài liệu liên quan có sẵn: `docs/openapi.json` (Swagger `/api/docs`), `docs/user-guide.md` (hướng dẫn dùng), `docs/deployment.md`, `docs/handover-checklist.md`, `outputs/master-plan/Master Plan.xlsx` (kế hoạch gốc), `Food_Delivery_Phan_1_Quy_trinh_nghiep_vu.docx` (quy trình nghiệp vụ), `postman/` (bộ test).
 

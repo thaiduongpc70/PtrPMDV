@@ -31,7 +31,7 @@ test('permission middleware denies authenticated users missing a permission', as
   await middleware({ user: { id: 7 } }, {}, next);
 
   assert.equal(next.error.statusCode, 403);
-  assert.equal(next.error.message, 'Permission denied');
+  assert.equal(next.error.message, 'Bạn không có quyền thực hiện thao tác này');
 });
 
 test('permission middleware requires authentication before querying permissions', async () => {

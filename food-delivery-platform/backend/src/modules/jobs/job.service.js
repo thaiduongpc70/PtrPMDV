@@ -5,12 +5,13 @@ import { join } from 'node:path';
 import { query } from '../../shared/database/mysql.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { logger } from '../../shared/observability/logger.js';
+import { M } from '../../shared/http/messages.js';
 
 const storageRoot = join(process.cwd(), '..', '..', 'storage');
 const exportRoot = join(storageRoot, 'exports');
 
 export async function importData({ userId, jobType = 'MENU_ITEMS', fileName = 'import.csv', content, format = null, encoding = null }) {
-  if (!content || typeof content !== 'string') throw new HttpError(400, 'Import content is required');
+  if (!content || typeof content !== 'string') throw new HttpError(400, M.importContentRequired);
   const normalizedFormat = inferImportFormat(fileName, format);
   const rows = normalizedFormat === 'XLSX' ? await parseXlsx(Buffer.from(content, encoding === 'base64' ? 'base64' : 'utf8'))
     : normalizedFormat === 'CSV' ? parseCsv(content) : parseSpreadsheetXml(content);
@@ -27,7 +28,7 @@ export async function importData({ userId, jobType = 'MENU_ITEMS', fileName = 'i
     try {
       if (jobType === 'MENU_ITEMS') await importMenuItem(rows[index], userId);
       else if (jobType === 'RESTAURANTS') await importRestaurant(rows[index], userId);
-      else throw new Error(`Unsupported import job type: ${jobType}`);
+      else throw new Error(`Loại nhập dữ liệu không được hỗ trợ: ${jobType}`);
       successRows += 1;
     } catch (error) {
       errors.push({ row: index + 2, message: error.message, values: rows[index] });
@@ -50,7 +51,7 @@ export async function importCsv(input) {
 
 export async function createExport({ userId, exportType = 'ORDERS', format = 'CSV', filters = {} }) {
   const normalizedFormat = String(format).toUpperCase();
-  if (!['CSV', 'EXCEL', 'PDF'].includes(normalizedFormat)) throw new HttpError(400, 'format must be CSV, EXCEL or PDF');
+  if (!['CSV', 'EXCEL', 'PDF'].includes(normalizedFormat)) throw new HttpError(400, M.formatCsvExcelPdf);
   const result = await query(
     `INSERT INTO export_jobs (user_id, export_type, format, status)
      VALUES (?, ?, ?, 'PROCESSING')`,
@@ -128,7 +129,7 @@ export async function getImportJob(id, userId = null) {
     `SELECT * FROM import_jobs WHERE id = ? ${userId ? 'AND user_id = ?' : ''} LIMIT 1`,
     userId ? [id, userId] : [id]
   );
-  if (!rows[0]) throw new HttpError(404, 'Import job not found');
+  if (!rows[0]) throw new HttpError(404, M.importJobNotFound);
   return mapImportJob(rows[0]);
 }
 
@@ -145,7 +146,7 @@ export async function getExportJob(id, userId = null) {
     `SELECT * FROM export_jobs WHERE id = ? ${userId ? 'AND user_id = ?' : ''} LIMIT 1`,
     userId ? [id, userId] : [id]
   );
-  if (!rows[0]) throw new HttpError(404, 'Export job not found');
+  if (!rows[0]) throw new HttpError(404, M.exportJobNotFound);
   return mapExportJob(rows[0]);
 }
 
@@ -164,13 +165,13 @@ export async function listBackgroundJobs() {
 
 async function getBackgroundJob(id) {
   const rows = await query('SELECT * FROM background_jobs WHERE id = ? LIMIT 1', [id]);
-  if (!rows[0]) throw new HttpError(404, 'Background job not found');
+  if (!rows[0]) throw new HttpError(404, M.jobNotFound);
   return mapBackgroundJob(rows[0]);
 }
 
 export function parseCsv(content) {
   const lines = String(content).replace(/^\uFEFF/, '').split(/\r?\n/).filter(line => line.trim() !== '');
-  if (lines.length < 2) throw new HttpError(400, 'CSV must contain a header and at least one row');
+  if (lines.length < 2) throw new HttpError(400, M.csvNoRows);
   const headers = parseCsvLine(lines[0]).map(value => value.trim().toLowerCase());
   return lines.slice(1).map(line => {
     const values = parseCsvLine(line);
@@ -183,7 +184,7 @@ export async function parseXlsx(buffer) {
   const workbook = new ExcelJS.Workbook();
   try { await workbook.xlsx.load(buffer); } catch { throw new HttpError(400, 'File .xlsx không đọc được'); }
   const sheet = workbook.worksheets[0];
-  if (!sheet || sheet.rowCount < 2) throw new HttpError(400, 'Excel sheet must contain a header and at least one row');
+  if (!sheet || sheet.rowCount < 2) throw new HttpError(400, M.excelNoRows);
   const cellText = cell => {
     const value = cell?.value;
     if (value === null || value === undefined) return '';
@@ -191,7 +192,7 @@ export async function parseXlsx(buffer) {
     return String(value).trim();
   };
   const headers = sheet.getRow(1).values.slice(1).map(value => cellText({ value }).toLowerCase());
-  if (!headers.some(Boolean)) throw new HttpError(400, 'Excel header row is empty');
+  if (!headers.some(Boolean)) throw new HttpError(400, M.excelHeaderEmpty);
   const rows = [];
   sheet.eachRow({ includeEmpty: false }, (row, number) => {
     if (number === 1) return;
@@ -204,10 +205,10 @@ export async function parseXlsx(buffer) {
 export function parseSpreadsheetXml(content) {
   const xml = String(content).replace(/^\uFEFF/, '');
   if (!/<Workbook[\s>]/i.test(xml) && !/<ss:Workbook[\s>]/i.test(xml)) {
-    throw new HttpError(400, 'Excel import currently supports SpreadsheetML .xls/.xml content');
+    throw new HttpError(400, M.excelUnsupported);
   }
   const rowMatches = [...xml.matchAll(/<Row\b[^>]*>([\s\S]*?)<\/Row>/gi)];
-  if (rowMatches.length < 2) throw new HttpError(400, 'Excel sheet must contain a header and at least one row');
+  if (rowMatches.length < 2) throw new HttpError(400, M.excelNoRows);
   const table = rowMatches.map(match => {
     const cellMatches = [...match[1].matchAll(/<Cell\b[^>]*>([\s\S]*?)<\/Cell>/gi)];
     return cellMatches.map(cell => {
@@ -216,7 +217,7 @@ export function parseSpreadsheetXml(content) {
     });
   });
   const headers = table[0].map(value => value.trim().toLowerCase()).filter(Boolean);
-  if (!headers.length) throw new HttpError(400, 'Excel header row is empty');
+  if (!headers.length) throw new HttpError(400, M.excelHeaderEmpty);
   return table.slice(1)
     .filter(values => values.some(value => String(value).trim() !== ''))
     .map(values => Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ''])));
@@ -228,7 +229,7 @@ function inferImportFormat(fileName, format) {
     if (requested === 'CSV') return 'CSV';
     if (requested === 'XLSX') return 'XLSX';
     if (requested === 'EXCEL' || requested === 'XLS' || requested === 'XML') return 'EXCEL';
-    throw new HttpError(400, 'format must be CSV or EXCEL');
+    throw new HttpError(400, M.formatCsvExcel);
   }
   const lower = String(fileName || '').toLowerCase();
   if (lower.endsWith('.xls') || lower.endsWith('.xml')) return 'EXCEL';
@@ -257,7 +258,7 @@ function parseCsvLine(line) {
 async function importMenuItem(row, userId) {
   const restaurantId = positiveId(row.restaurant_id, 'restaurant_id');
   const restaurantRows = await query('SELECT id FROM restaurants WHERE id = ? AND owner_user_id = ? AND deleted_at IS NULL LIMIT 1', [restaurantId, userId]);
-  if (!restaurantRows[0]) throw new Error('Restaurant is not owned by the current user');
+  if (!restaurantRows[0]) throw new Error('Nhà hàng không thuộc tài khoản hiện tại');
   const menuRows = await query('SELECT id FROM menus WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY id LIMIT 1', [restaurantId]);
   let menuId = menuRows[0]?.id;
   if (!menuId) {
@@ -275,7 +276,7 @@ async function importMenuItem(row, userId) {
   const discountPrice = row.discount_price === undefined || row.discount_price === null || row.discount_price === ''
     ? null
     : positiveNumber(row.discount_price, 'discount_price');
-  if (discountPrice !== null && discountPrice > basePrice) throw new Error('discount_price cannot exceed base_price');
+  if (discountPrice !== null && discountPrice > basePrice) throw new Error('discount_price không được lớn hơn base_price');
   await query(
     `INSERT INTO menu_items (restaurant_id, category_id, name, description, base_price, discount_price, preparation_time, is_available)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -286,7 +287,7 @@ async function importMenuItem(row, userId) {
 async function importRestaurant(row, userId) {
   const name = required(row.name, 'name');
   const existing = await query('SELECT id FROM restaurants WHERE owner_user_id = ? AND name = ? AND deleted_at IS NULL LIMIT 1', [userId, name]);
-  if (existing[0]) throw new Error('Restaurant with this name already exists');
+  if (existing[0]) throw new Error('Đã có nhà hàng trùng tên');
   await query(
     `INSERT INTO restaurants (owner_user_id, name, description, phone, address, district, city, opening_time, closing_time, minimum_order, average_prepare_time, commission_rate, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, '07:00:00', '22:00:00', ?, ?, 15, 'PENDING')`,
@@ -310,7 +311,7 @@ async function exportRows(exportType, filters) {
   if (exportType === 'SETTLEMENT') {
     return query(`SELECT rs.period_start, rs.period_end, r.name AS restaurant_name, rs.gross_sales, rs.commission_amount, rs.refund_amount, rs.net_amount, rs.status FROM restaurant_settlements rs INNER JOIN restaurants r ON r.id = rs.restaurant_id ORDER BY rs.created_at DESC LIMIT 5000`);
   }
-  throw new HttpError(400, 'Unsupported export type');
+  throw new HttpError(400, M.exportTypeUnsupported);
 }
 
 function rowsToCsv(rows) {
@@ -350,19 +351,19 @@ function decodeXml(value) {
 }
 
 function required(value, field) {
-  if (value === undefined || value === null || String(value).trim() === '') throw new Error(`${field} is required`);
+  if (value === undefined || value === null || String(value).trim() === '') throw new Error(M.fieldRequired2(field));
   return String(value).trim();
 }
 
 function positiveNumber(value, field) {
   const number = Number(value);
-  if (!Number.isFinite(number) || number < 0) throw new Error(`${field} must be a non-negative number`);
+  if (!Number.isFinite(number) || number < 0) throw new Error(`${field} phải là số không âm`);
   return number;
 }
 
 function positiveId(value, field) {
   const number = Number(value);
-  if (!Number.isInteger(number) || number <= 0) throw new Error(`${field} must be a positive integer`);
+  if (!Number.isInteger(number) || number <= 0) throw new Error(M.fieldPositiveInteger(field));
   return number;
 }
 

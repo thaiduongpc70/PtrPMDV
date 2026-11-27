@@ -121,11 +121,14 @@
                         <button type="button" role="tab" data-sort="top_rated">Đánh giá</button>
                         <button type="button" role="tab" data-sort="fastest">Giao nhanh</button>
                         <button type="button" role="tab" data-sort="promo">Ưu đãi</button>
+                        <button type="button" role="tab" data-sort="price_asc">Giá thấp</button>
+                        <button type="button" role="tab" data-sort="price_desc">Giá cao</button>
                       </nav>
                     </div>
                     <div class="sf-list-tools">
                       <select id="districtFilter" aria-label="Phường/xã"><option value="">Tất cả phường/xã</option></select>
                       <label class="check-line"><input type="checkbox" id="openNowFilter"> <span>Đang mở cửa</span></label>
+                      <label class="check-line" title="Cần có vị trí để tính khoảng cách"><input type="checkbox" id="hideFarFilter"> <span>Ẩn quán ngoài vùng giao</span></label>
                       <button class="sf-link" type="button" id="useGpsButton">🎯 Vị trí hiện tại</button>
                       <button class="sf-link" type="button" id="refreshCustomerButton" title="Làm mới">↻</button>
                       <span class="muted" id="geoNote"></span>
@@ -192,6 +195,7 @@
                     <option value="CARD">Thẻ</option>
                     <option value="WALLET">Ví</option>
                   </select>
+                  <small class="muted payment-note" id="paymentSandboxNote" hidden>Thanh toán thử nghiệm (sandbox), không trừ tiền thật. Đơn được ghi nhận là đã thanh toán để bạn trải nghiệm quy trình.</small>
                 </label>
                 <label>
                   Mã khuyến mãi

@@ -7,11 +7,15 @@
      node scripts/simulate-activity.mjs [--max-orders 8000] [--concurrency 8] [--accounts-only] [--min 20 --max 50] */
 import 'dotenv/config';
 import mysql from 'mysql2/promise';
+import { existsSync, readFileSync } from 'node:fs';
 import { api, ApiError, tokenFor, pool, DEFAULT_PASSWORD } from './lib/api-client.mjs';
+import { usablePlaces, buildAddress } from './lib/address-gen.mjs';
 import {
   SURNAMES, MALE_MIDDLE, FEMALE_MIDDLE, MALE_GIVEN, FEMALE_GIVEN, DISTRICTS, STREETS, BUILDINGS,
   DISH_COMMENTS, RESTAURANT_COMMENTS, SHIPPER_COMMENTS, CANCEL_REASONS, REJECT_REASONS, TICKET_SUBJECTS, CHAT_LINES
 } from './data/vietnamese-people.mjs';
+import { createRegistry, makeUniqueComment } from './data/review-phrases.mjs';
+import { dishProfile } from './data/review-comments.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -22,8 +26,25 @@ const MAX_ORDERS = flag('max-orders', 9000);
 const CONCURRENCY = flag('concurrency', 8);
 const QUOTA_MIN = flag('min', 20);
 const QUOTA_MAX = flag('max', 50);
-const NEW_CUSTOMERS = flag('customers', 90);
-const NEW_SHIPPERS = flag('shippers', 10);
+const NEW_CUSTOMERS = flag('customers', 0); // khách kiểu cũ (địa chỉ TP.HCM) — không còn dùng sau khi chuyển vùng
+const NEW_SHIPPERS = flag('shippers', 0);
+const CUSTOMERS_AFTER = flag('customers-after', 0); // chỉ cho khách có customer_profiles.id > số này đặt đơn (vd chỉ khách vừa tạo bằng bộ sinh địa chỉ mới)
+const RESTAURANTS_FROM = flag('restaurants-from', 0); // chỉ mô phỏng quán có id >= số này (khi thêm quán mới)
+const NEW_CUSTOMERS_HN = flag('customers-hn', 0);      // khách mới ở Hà Nội (địa chỉ = đường thật quanh các quán Hà Nội)
+const NEW_SHIPPERS_HN = flag('shippers-hn', 0);        // tài xế mới ở Hà Nội (biển số 29)
+// Đánh giá thực tế (đợt 2): chỉ ~REVIEW_RATE số đơn giao xong có đánh giá, mỗi đơn tối đa 1 đánh giá quán, mỗi khách tối đa MAX_REVIEWS_PER_SHOP đánh giá/quán
+const REVIEW_RATE = flag('review-rate', 0.2);
+const MAX_REVIEWS_PER_SHOP = flag('max-reviews-per-shop', 2);
+const PER_SHOP = flag('orders-per-restaurant', 0); // >0: mỗi quán được mô phỏng đúng chừng này đơn (thay cho "hạn ngạch đánh giá món")
+const MAX_KM = 14;                                     // dưới giới hạn giao 15 km của hệ thống
+const PLACES_URL = new URL('./data/new-places.json', import.meta.url);
+const PLACES = existsSync(PLACES_URL) ? JSON.parse(readFileSync(PLACES_URL, 'utf8')) : [];
+const regionOf = lat => (Number(lat) > 20.85 ? 'HN' : 'HY');
+const distanceKm = (aLat, aLng, bLat, bLng) => {
+  const rad = deg => (deg * Math.PI) / 180;
+  const h = Math.sin(rad(bLat - aLat) / 2) ** 2 + Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(rad(bLng - aLng) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
 const ACCOUNTS_ONLY = argv.includes('--accounts-only');
 const EXTRA_ORDERS = flag('extra-orders', 0); // thêm đơn bất kể hạn mức đánh giá (vd. để dùng mã khuyến mãi)
 const PROMO_RATE = flag('promo-rate', 0.14);
@@ -107,6 +128,72 @@ async function ensureCustomers() {
   console.log(`Khách hàng: đăng ký mới ${created}`);
 }
 
+async function ensureCustomersHN() {
+  const places = usablePlaces(PLACES); // HN + HY, chỉ đường thật (lib/address-gen.mjs)
+  if (!NEW_CUSTOMERS_HN || !places.length) return;
+  const have = Number((await sql('SELECT COUNT(*) AS n FROM customer_addresses WHERE latitude > 20.85'))[0].n);
+  const need = Math.max(0, NEW_CUSTOMERS_HN - have);
+  const existingNames = new Set((await sql('SELECT full_name FROM customer_profiles')).map(row => row.full_name));
+  const usedPhones = new Set((await sql('SELECT phone FROM users WHERE phone IS NOT NULL')).map(row => row.phone));
+  let created = 0;
+  for (let i = 0; i < need; i += 1) {
+    const female = rnd() < 0.52;
+    let fullName;
+    do { fullName = `${pick(SURNAMES)} ${pick(female ? FEMALE_MIDDLE : MALE_MIDDLE)} ${pick(female ? FEMALE_GIVEN : MALE_GIVEN)}`; } while (existingNames.has(fullName));
+    existingNames.add(fullName);
+    let phone;
+    do { phone = `${pick(['090', '091', '093', '094', '097', '098', '032', '033', '035', '070', '076', '078', '081', '083'])}${between(1000000, 9999999)}`; } while (usedPhones.has(phone));
+    usedPhones.add(phone);
+    const username = `kh.${slug(fullName)}`;
+    const place = places[i % places.length];
+    const generated = buildAddress(rnd, place, BUILDINGS);
+    try {
+      const registered = await api('POST', '/api/auth/register/customer', { body: { username, email: `${username}@example.vn`, phone, password: DEFAULT_PASSWORD, fullName, gender: female ? 'FEMALE' : 'MALE' } });
+      await api('POST', '/api/customer/addresses', {
+        token: registered.accessToken,
+        body: {
+          label: pick(['Nhà riêng', 'Nhà riêng', 'Văn phòng', 'Căn hộ']), receiverName: fullName, receiverPhone: phone,
+          addressLine: generated.addressLine, ward: '', district: generated.district, city: generated.city,
+          latitude: generated.latitude, longitude: generated.longitude, isDefault: true
+        }
+      });
+      created += 1;
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 409)) throw error;
+    }
+  }
+  console.log(`Khách Hà Nội: đăng ký mới ${created}`);
+}
+
+async function ensureShippersHN() {
+  if (!NEW_SHIPPERS_HN) return;
+  const have = Number((await sql("SELECT COUNT(*) AS n FROM shipper_profiles WHERE vehicle_plate LIKE '29%' AND deleted_at IS NULL"))[0].n);
+  const need = Math.max(0, NEW_SHIPPERS_HN - have);
+  const names = new Set((await sql('SELECT full_name FROM shipper_profiles')).map(row => row.full_name));
+  const usedPhones = new Set((await sql('SELECT phone FROM users WHERE phone IS NOT NULL')).map(row => row.phone));
+  const token = await adminToken();
+  const commitmentVersion = need ? (await api('GET', '/api/partners/commitments/shipper')).version : null;
+  for (let i = 0; i < need; i += 1) {
+    let fullName;
+    do { fullName = `${pick(SURNAMES)} ${pick(MALE_MIDDLE)} ${pick(MALE_GIVEN)}`; } while (names.has(fullName));
+    names.add(fullName);
+    let phone;
+    do { phone = `08${between(30000000, 99999999)}`; } while (usedPhones.has(phone));
+    usedPhones.add(phone);
+    const username = `ship.${slug(fullName)}`;
+    const application = await api('POST', '/api/partners/register/shipper', {
+      body: {
+        username, email: `${username}@example.vn`, phone, password: DEFAULT_PASSWORD, fullName,
+        identityNumber: `001${between(100000000, 999999999)}`.slice(0, 12), vehicleType: 'MOTORBIKE', vehiclePlate: `29${pick(['X1', 'X2', 'X3', 'Y1', 'Y2', 'H1'])}-${between(100, 999)}.${between(10, 99)}`,
+        drivingLicense: `B1-${between(10000000, 99999999)}`, city: 'Hà Nội', note: 'Có kinh nghiệm giao hàng, rành đường nội thành Hà Nội.',
+        commitment: { kind: 'shipper', version: commitmentVersion, accepted: true, readToEnd: true }
+      }
+    });
+    await api('POST', `/api/admin/partners/applications/${application.applicationId}/approve`, { token, body: { note: 'Hồ sơ hợp lệ, đã đối chiếu giấy tờ.' } });
+  }
+  console.log(`Tài xế Hà Nội: đăng ký và duyệt mới ${need}`);
+}
+
 /* ================= 2. Tài xế: đăng ký công khai -> admin duyệt ================= */
 async function ensureShippers() {
   const have = Number((await sql("SELECT COUNT(*) AS n FROM shipper_profiles sp INNER JOIN users u ON u.id = sp.user_id WHERE u.status = 'ACTIVE'"))[0].n);
@@ -144,8 +231,9 @@ async function ensureShippers() {
 async function loadWorld() {
   const promotions = await sql("SELECT code, restaurant_id AS restaurantId, minimum_order AS minimumOrder FROM promotions WHERE status = 'ACTIVE' AND (start_at IS NULL OR start_at <= NOW()) AND (end_at IS NULL OR end_at >= NOW())");
   const restaurants = await sql(`SELECT r.id, r.name, r.minimum_order AS minOrder, r.latitude, r.longitude, u.username AS owner
-    FROM restaurants r INNER JOIN users u ON u.id = r.owner_user_id WHERE r.status = 'ACTIVE' AND r.deleted_at IS NULL`);
-  const listing = await api('GET', '/api/catalog/restaurants?pageSize=50');
+    FROM restaurants r INNER JOIN users u ON u.id = r.owner_user_id WHERE r.status = 'ACTIVE' AND r.deleted_at IS NULL AND r.id >= ?`, [RESTAURANTS_FROM]);
+  const listing = await api('GET', '/api/catalog/restaurants?pageSize=100');
+  for (const restaurant of restaurants) restaurant.region = regionOf(restaurant.latitude);
   for (const restaurant of restaurants) restaurant.open = listing.items.find(item => item.id === restaurant.id)?.isOpen !== false;
   for (const restaurant of restaurants) {
     const menus = await api('GET', `/api/catalog/restaurants/${restaurant.id}/menu`);
@@ -162,19 +250,23 @@ async function loadWorld() {
       dish.quality = clamp(4.15 + gauss() * 0.55, 2.4, 4.95);
       dish.popularity = Math.exp(gauss() * 0.5) * (dish.featured ? 1.8 : 1);
     }
+    restaurant.runOrders = 0;
     restaurant.bias = gauss() * 0.22;
     restaurant.popularity = Math.exp(gauss() * 0.45);
   }
-  const customers = await sql(`SELECT u.username, cp.id AS profileId, cp.full_name AS name FROM users u
-    INNER JOIN customer_profiles cp ON cp.user_id = u.id WHERE u.status = 'ACTIVE' AND u.role_id = 4`);
+  const customers = await sql(`SELECT u.username, cp.id AS profileId, cp.full_name AS name, ca.latitude AS lat, ca.longitude AS lng FROM users u
+    INNER JOIN customer_profiles cp ON cp.user_id = u.id
+    INNER JOIN customer_addresses ca ON ca.id = (SELECT MIN(a.id) FROM customer_addresses a WHERE a.customer_id = cp.id AND a.is_default = 1)
+    WHERE u.status = 'ACTIVE' AND u.role_id = 4 AND cp.id > ${Number(CUSTOMERS_AFTER) || 0}`);
+  for (const customer of customers) { customer.lat = Number(customer.lat); customer.lng = Number(customer.lng); customer.region = regionOf(customer.lat); }
   for (const customer of customers) {
     customer.harsh = gauss() * 0.3;
     customer.weight = Math.exp(gauss() * 0.7);
-    customer.reviewRate = clamp(0.8 + gauss() * 0.12, 0.45, 0.97);
     customer.busy = false;
   }
-  const shippers = await sql(`SELECT u.username, sp.id AS profileId, sp.full_name AS name FROM users u
+  const shippers = await sql(`SELECT u.username, sp.id AS profileId, sp.full_name AS name, sp.vehicle_plate AS plate FROM users u
     INNER JOIN shipper_profiles sp ON sp.user_id = u.id WHERE u.status = 'ACTIVE' AND sp.deleted_at IS NULL`);
+  for (const shipper of shippers) shipper.region = String(shipper.plate ?? '').startsWith('29') ? 'HN' : 'HY';
   for (const shipper of shippers) shipper.quality = clamp(4.55 + gauss() * 0.35, 3.3, 4.95);
   for (const restaurant of restaurants) {
     restaurant.promoCodes = promotions.filter(p => p.restaurantId === null || Number(p.restaurantId) === Number(restaurant.id)).map(p => p.code);
@@ -194,14 +286,14 @@ const PAYMENT_MIX = [['COD', 48], ['MOMO', 20], ['VNPAY', 12], ['ZALOPAY', 8], [
 const freeShippers = [];
 const waiters = [];
 
-async function acquireShipper() {
-  const shipper = freeShippers.shift();
-  if (shipper) return shipper;
-  return new Promise(resolve => waiters.push(resolve));
+async function acquireShipper(region) {
+  const index = freeShippers.findIndex(item => item.region === region);
+  if (index >= 0) return freeShippers.splice(index, 1)[0];
+  return new Promise(resolve => waiters.push({ region, resolve }));
 }
 function releaseShipper(shipper) {
-  const next = waiters.shift();
-  if (next) next(shipper);
+  const index = waiters.findIndex(item => item.region === shipper.region);
+  if (index >= 0) waiters.splice(index, 1)[0].resolve(shipper);
   else freeShippers.push(shipper);
 }
 
@@ -243,11 +335,16 @@ function drawRating(line, restaurant, customer, shipperQuality) {
 const commentFor = (pool, rating, dishName) => (pool[rating] ? pick(pool[rating]).replace('{dish}', dishName) : null);
 
 async function runOrder(world) {
-  const customer = weightedPick(world.customers.filter(c => !c.busy), c => c.weight);
+  const restaurant = PER_SHOP > 0
+    ? weightedPick(world.restaurants.filter(r => (IGNORE_HOURS || r.open !== false) && r.runOrders < PER_SHOP), r => r.popularity * (PER_SHOP - r.runOrders))
+    : weightedPick(world.restaurants.filter(r => (IGNORE_HOURS || r.open !== false) && (EXTRA_ORDERS > 0 || r.dishes.some(d => d.have < d.quota))), r => r.popularity * (1 + r.dishes.reduce((sum, d) => sum + Math.max(0, d.quota - d.have), 0) / 50));
+  const nearby = world.customers.filter(c => !c.busy && c.region === restaurant.region && distanceKm(c.lat, c.lng, Number(restaurant.latitude), Number(restaurant.longitude)) <= MAX_KM);
+  if (!nearby.length) { await new Promise(resolve => setTimeout(resolve, 50)); return; }
+  const customer = weightedPick(nearby, c => c.weight);
   customer.busy = true;
+  restaurant.runOrders += 1;
   stats.orders += 1;
   try {
-    const restaurant = weightedPick(world.restaurants.filter(r => IGNORE_HOURS || r.open !== false), r => r.popularity * (1 + r.dishes.reduce((sum, d) => sum + Math.max(0, d.quota - d.have), 0) / 50));
     const customerToken = await tokenFor(customer.username);
     const restaurantToken = await tokenFor(restaurant.owner);
     const addresses = await api('GET', '/api/customer/addresses', { token: customerToken });
@@ -263,6 +360,7 @@ async function runOrder(world) {
     }
     const paymentMethod = weightedPick(PAYMENT_MIX, entry => entry[1])[0];
     const checkoutBody = {
+      ageConfirmed: true, // khách mô phỏng là người lớn đã xác nhận 18 tuổi (cần khi giỏ có bia/rượu hoặc combo chứa bia)
       restaurantId: restaurant.id, addressId: address.id, paymentMethod,
       customerNote: rnd() < 0.25 ? pick(['Gói riêng giúp mình', 'Ít cay giúp mình', 'In hoá đơn giúp mình']) : undefined,
       shipperNote: rnd() < 0.3 ? pick(SHIPPER_NOTES) : undefined,
@@ -293,17 +391,13 @@ async function runOrder(world) {
     const fate = rnd();
     if (fate < 0.045) {
       await api('POST', `/api/payments/orders/${order.id}/cancel`, { token: customerToken, body: { reason: pick(CANCEL_REASONS) } });
-      if (paymentMethod !== 'COD') {
-        await api('POST', `/api/payments/orders/${order.id}/refund`, { token: await adminToken(), body: { reason: 'Hoàn tiền đơn khách huỷ' } });
-      }
+      // luồng huỷ đơn đã tự tạo yêu cầu hoàn tiền cho đơn đã trả: KHÔNG gọi thêm (trước đây gây hoàn trùng)
       stats.cancelled += 1;
       return;
     }
     if (fate < 0.07) {
       await api('POST', `/api/restaurant/orders/${order.id}/reject`, { token: restaurantToken, body: { reason: pick(REJECT_REASONS) } });
-      if (paymentMethod !== 'COD') {
-        await api('POST', `/api/payments/orders/${order.id}/refund`, { token: await adminToken(), body: { reason: 'Hoàn tiền đơn quán từ chối' } });
-      }
+      // quán từ chối cũng tạo yêu cầu hoàn trong cùng luồng huỷ
       stats.rejected += 1;
       return;
     }
@@ -312,7 +406,7 @@ async function runOrder(world) {
       await api('POST', `/api/restaurant/orders/${order.id}/${step}`, { token: restaurantToken, body: {} });
     }
 
-    const shipper = await acquireShipper();
+    const shipper = await acquireShipper(restaurant.region);
     let delivered = false;
     shipperUsed = shipper;
     try {
@@ -347,35 +441,40 @@ async function runOrder(world) {
     if (!delivered) return;
     stats.delivered += 1;
 
-    /* đánh giá sau khi nhận hàng */
-    const detail = await api('GET', `/api/customer/orders/${order.id}`, { token: customerToken });
-    const itemReviews = [];
-    const ratings = [];
-    for (const line of basket) {
-      const orderLine = detail.items.find(item => Number(item.menuItemId) === line.dish.id);
-      if (!orderLine) continue;
-      if (rnd() > customer.reviewRate) continue;
-      const rating = drawRating(line, restaurant, customer, (shipperUsed?.quality ?? 4.5));
-      ratings.push(rating);
-      itemReviews.push({ orderItemId: orderLine.id, rating, comment: rnd() < 0.62 ? commentFor(DISH_COMMENTS, rating, line.dish.name) : null });
-      line.dish.have += 1;
-    }
-    if (itemReviews.length) {
-      await api('POST', `/api/communications/orders/${order.id}/item-reviews`, { token: customerToken, body: { items: itemReviews } });
-      stats.reviews += itemReviews.length;
-    }
-    if (ratings.length && rnd() < 0.85) {
-      const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-      const rating = clamp(Math.round(avg + gauss() * 0.4), 1, 5);
-      await api('POST', `/api/communications/orders/${order.id}/restaurant-review`, {
-        token: customerToken, body: { rating, comment: rnd() < 0.5 ? pick(RESTAURANT_COMMENTS[rating]) : null }
-      });
-    }
-    if (rnd() < 0.7) {
-      const rating = clamp(Math.round((shipperUsed?.quality ?? 4.5) + gauss() * 0.7), 1, 5);
-      await api('POST', `/api/communications/orders/${order.id}/shipper-review`, {
-        token: customerToken, body: { rating, comment: rnd() < 0.45 ? pick(SHIPPER_COMMENTS[rating]) : null }
-      });
+    /* đánh giá sau khi nhận hàng: chỉ ~REVIEW_RATE số đơn, 1 đánh giá quán/đơn, mỗi khách tối đa MAX_REVIEWS_PER_SHOP đánh giá/quán */
+    const reviewKey = `${customer.profileId}:${restaurant.id}`;
+    if (rnd() < REVIEW_RATE && (reviewCounts.get(reviewKey) ?? 0) < MAX_REVIEWS_PER_SHOP) {
+      reviewCounts.set(reviewKey, (reviewCounts.get(reviewKey) ?? 0) + 1);
+      const detail = await api('GET', `/api/customer/orders/${order.id}`, { token: customerToken });
+      const itemReviews = [];
+      const ratings = [];
+      for (const line of basket) {
+        const orderLine = detail.items.find(item => Number(item.menuItemId) === line.dish.id);
+        if (!orderLine) continue;
+        if (rnd() > 0.7 && !(ratings.length === 0 && line === basket[basket.length - 1])) continue;
+        const rating = drawRating(line, restaurant, customer, (shipperUsed?.quality ?? 4.5));
+        ratings.push(rating);
+        const drink = dishProfile(line.dish.name, '').verb === 'uống';
+        itemReviews.push({ orderItemId: orderLine.id, rating, comment: rnd() < 0.9 ? makeUniqueComment(rnd, { kind: 'dish', stars: rating, dishName: line.dish.name, drink }, commentRegistry) : null });
+        line.dish.have += 1;
+      }
+      if (itemReviews.length) {
+        await api('POST', `/api/communications/orders/${order.id}/item-reviews`, { token: customerToken, body: { items: itemReviews } });
+        stats.reviews += itemReviews.length;
+      }
+      if (ratings.length) {
+        const avg = ratings.reduce((x, y) => x + y, 0) / ratings.length;
+        const rating = clamp(Math.round(avg + gauss() * 0.4), 1, 5);
+        await api('POST', `/api/communications/orders/${order.id}/restaurant-review`, {
+          token: customerToken, body: { rating, comment: rnd() < 0.9 ? makeUniqueComment(rnd, { kind: 'shop', stars: rating, shopName: restaurant.name }, commentRegistry) : null }
+        });
+        if (rnd() < 0.7) {
+          const shipRating = clamp(Math.round((shipperUsed?.quality ?? 4.5) + gauss() * 0.7), 1, 5);
+          await api('POST', `/api/communications/orders/${order.id}/shipper-review`, {
+            token: customerToken, body: { rating: shipRating, comment: rnd() < 0.85 ? makeUniqueComment(rnd, { kind: 'ship', stars: shipRating }, commentRegistry) : null }
+          });
+        }
+      }
     }
 
     /* các hành vi phụ của khách */
@@ -405,12 +504,19 @@ const remaining = world => world.restaurants.reduce((sum, r) => sum + r.dishes.f
 
 /* ================= chạy ================= */
 await ensureCustomers();
+await ensureCustomersHN();
 await ensureShippers();
+await ensureShippersHN();
 if (ACCOUNTS_ONLY) {
   await db.end();
   process.exit(0);
 }
 
+// Chống lặp: nạp số lần mỗi câu bình luận đã dùng + số đánh giá sẵn có của từng cặp khách/quán
+const commentRegistry = createRegistry(3);
+for (const row of await sql("SELECT comment, COUNT(*) AS n FROM (SELECT comment FROM restaurant_reviews WHERE deleted_at IS NULL UNION ALL SELECT comment FROM menu_item_reviews WHERE deleted_at IS NULL UNION ALL SELECT comment FROM shipper_reviews) x WHERE comment IS NOT NULL GROUP BY comment")) commentRegistry.counts.set(row.comment, Number(row.n));
+const reviewCounts = new Map();
+for (const row of await sql('SELECT customer_id, restaurant_id, COUNT(*) AS n FROM restaurant_reviews WHERE deleted_at IS NULL GROUP BY customer_id, restaurant_id')) reviewCounts.set(`${row.customer_id}:${row.restaurant_id}`, Number(row.n));
 const world = await loadWorld();
 await putShippersOnline(world.shippers);
 freeShippers.push(...world.shippers);
@@ -421,7 +527,7 @@ const started = Date.now();
 let launched = 0;
 let lastLog = 0;
 await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
-  while (launched < MAX_ORDERS && (remaining(world) > 0 || launched < EXTRA_ORDERS)) {
+  while (launched < MAX_ORDERS && (PER_SHOP > 0 ? world.restaurants.some(r => r.runOrders < PER_SHOP) : (remaining(world) > 0 || launched < EXTRA_ORDERS))) {
     launched += 1;
     await runOrder(world);
     if (stats.orders - lastLog >= 100) {

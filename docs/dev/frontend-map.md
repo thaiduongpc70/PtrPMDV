@@ -54,3 +54,9 @@ Quyền hiển thị: `body[data-role]` (`guest|customer|restaurant|shipper|admi
 ## Kiểm tra giao diện bằng headless Edge
 
 `puppeteer-core` + `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`; đăng nhập nhanh bằng cách `fetch('/api/auth/login')` trong trang rồi ghi `localStorage` (`fd_access_token`, `fd_refresh_token`) và `reload`. Gọi `FD.showScreen/showSubView` để mở màn. Ô bản đồ OSM không tải được khi không có Internet (điểm/đường vẫn hiện).
+
+## Bổ sung ngày 08/11/2026
+
+- `src/commitment.js` (`window.FDCommit.read(kind)`): hộp thoại cam kết, chỉ bật nút đồng ý khi cuộn tới cuối; dùng trong `partner.js`.
+- `app.js`: `mountReviews` (khối đánh giá dùng chung món/quán: dòng sao bấm được, khung cuộn riêng, tải thêm), `syncStoreNav` (gạch chân menu Combo/Đồ ăn), `refreshSession` (tự làm mới token khi 401), xác minh email trong hồ sơ (`#emailVerifyRequest`), `tooFar`/`maxDeliveryKm` (giới hạn 15 km lấy từ storefront).
+- `admin.js` → trang Dữ liệu: nhập file `.xlsx/.csv/.xls` (`/api/jobs/imports`, `encoding: base64` cho .xlsx).

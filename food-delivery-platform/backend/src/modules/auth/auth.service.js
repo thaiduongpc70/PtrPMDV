@@ -8,6 +8,7 @@ import {
   hashRefreshToken
 } from '../../shared/security/token.js';
 import { authRepository } from './auth.repository.js';
+import { M } from '../../shared/http/messages.js';
 
 const validGenders = new Set(['MALE', 'FEMALE', 'OTHER']);
 
@@ -22,7 +23,7 @@ export const authService = {
 
     const role = await authRepository.findRoleByName('CUSTOMER');
     if (!role) {
-      throw new HttpError(500, 'Customer role is missing');
+      throw new HttpError(500, M.customerRoleMissing);
     }
 
     const passwordHash = await hashPassword(data.password);
@@ -36,7 +37,7 @@ export const authService = {
       });
     } catch (error) {
       if (error.code === 'ER_DUP_ENTRY') {
-        throw new HttpError(409, 'Username, email or phone already exists');
+        throw new HttpError(409, M.accountExists);
       }
 
       throw error;
@@ -44,7 +45,7 @@ export const authService = {
 
     const user = await authRepository.findUserById(created.userId);
     if (!user) {
-      throw new HttpError(500, 'Customer account was not created correctly');
+      throw new HttpError(500, M.customerNotCreated);
     }
 
     const tokens = await issueTokens(user);
@@ -60,7 +61,7 @@ export const authService = {
     const password = String(input.password ?? '');
 
     if (!identifier || !password) {
-      throw new HttpError(400, 'Email/username and password are required');
+      throw new HttpError(400, M.loginRequired);
     }
 
     const user = await authRepository.findUserByEmailOrUsername(identifier);
@@ -78,11 +79,11 @@ export const authService = {
     });
 
     if (!user || !isValidPassword) {
-      throw new HttpError(401, 'Invalid email/username or password');
+      throw new HttpError(401, M.loginInvalid);
     }
 
     if (user.status !== 'ACTIVE') {
-      throw new HttpError(403, `Account is ${user.status}`);
+      throw new HttpError(403, M.accountStatus(user.status));
     }
 
     await authRepository.updateLastLogin(user.id);
@@ -97,23 +98,23 @@ export const authService = {
 
   async refreshToken(refreshToken) {
     if (!refreshToken) {
-      throw new HttpError(400, 'Refresh token is required');
+      throw new HttpError(400, M.refreshRequired);
     }
 
     const tokenHash = hashRefreshToken(refreshToken);
     const storedToken = await authRepository.findRefreshToken(tokenHash);
 
     if (!storedToken || storedToken.revoked_at) {
-      throw new HttpError(401, 'Invalid refresh token');
+      throw new HttpError(401, M.refreshInvalid);
     }
 
     if (new Date(storedToken.expires_at).getTime() <= Date.now()) {
-      throw new HttpError(401, 'Refresh token expired');
+      throw new HttpError(401, M.refreshExpired);
     }
 
     const user = await authRepository.findUserById(Number(storedToken.user_id));
     if (!user || user.status !== 'ACTIVE') {
-      throw new HttpError(401, 'Invalid refresh token');
+      throw new HttpError(401, M.refreshInvalid);
     }
 
     await authRepository.revokeRefreshToken(tokenHash);
@@ -137,7 +138,7 @@ export const authService = {
     const user = await authRepository.findUserById(userId);
 
     if (!user || user.status !== 'ACTIVE') {
-      throw new HttpError(401, 'User is no longer active');
+      throw new HttpError(401, M.userInactive);
     }
 
     return toPublicUser(user);
@@ -146,7 +147,7 @@ export const authService = {
   async requestPasswordReset(input) {
     const email = readEmail(input?.email);
     const response = {
-      message: 'If the email exists, a password reset token has been created'
+      message: 'Nếu email tồn tại, mã đặt lại mật khẩu đã được tạo'
     };
     const user = await authRepository.findUserByEmail(email);
 
@@ -177,39 +178,39 @@ export const authService = {
     const password = readPassword(input?.password);
 
     if (!token) {
-      throw new HttpError(400, 'Password reset token is required');
+      throw new HttpError(400, M.resetRequired);
     }
 
     const tokenHash = hashRefreshToken(token);
     const storedToken = await authRepository.findPasswordResetToken(tokenHash);
 
     if (!storedToken || storedToken.used_at) {
-      throw new HttpError(401, 'Invalid password reset token');
+      throw new HttpError(401, M.resetTokenInvalid);
     }
 
     if (new Date(storedToken.expires_at).getTime() <= Date.now()) {
-      throw new HttpError(401, 'Password reset token expired');
+      throw new HttpError(401, M.resetExpired);
     }
 
     const user = await authRepository.findUserById(Number(storedToken.user_id));
     if (!user || user.status === 'LOCKED') {
-      throw new HttpError(401, 'Invalid password reset token');
+      throw new HttpError(401, M.resetTokenInvalid);
     }
 
     if (!await authRepository.markPasswordResetTokenUsed(tokenHash)) {
-      throw new HttpError(401, 'Invalid password reset token');
+      throw new HttpError(401, M.resetTokenInvalid);
     }
 
     await authRepository.updatePasswordHash(user.id, await hashPassword(password));
     await authRepository.revokeRefreshTokensForUser(user.id);
 
-    return { message: 'Password has been reset' };
+    return { message: 'Đã đặt lại mật khẩu' };
   },
 
   async requestEmailVerification(input) {
     const email = readEmail(input?.email);
     const response = {
-      message: 'If the email exists, a verification token has been created'
+      message: 'Nếu email tồn tại, mã xác minh đã được tạo'
     };
     const user = await authRepository.findUserByEmail(email);
 
@@ -239,33 +240,33 @@ export const authService = {
     const rawToken = trim(token, 500);
 
     if (!rawToken) {
-      throw new HttpError(400, 'Email verification token is required');
+      throw new HttpError(400, M.verifyRequired);
     }
 
     const tokenHash = hashRefreshToken(rawToken);
     const storedToken = await authRepository.findEmailVerificationToken(tokenHash);
 
     if (!storedToken || storedToken.verified_at) {
-      throw new HttpError(401, 'Invalid email verification token');
+      throw new HttpError(401, M.verifyTokenInvalid);
     }
 
     if (new Date(storedToken.expires_at).getTime() <= Date.now()) {
-      throw new HttpError(401, 'Email verification token expired');
+      throw new HttpError(401, M.verifyExpired);
     }
 
     if (!await authRepository.markEmailVerificationTokenVerified(tokenHash)) {
-      throw new HttpError(401, 'Invalid email verification token');
+      throw new HttpError(401, M.verifyTokenInvalid);
     }
 
     await authRepository.markUserEmailVerified(Number(storedToken.user_id));
 
     const user = await authRepository.findUserById(Number(storedToken.user_id));
     if (!user) {
-      throw new HttpError(401, 'Invalid email verification token');
+      throw new HttpError(401, M.verifyTokenInvalid);
     }
 
     return {
-      message: 'Email has been verified',
+      message: 'Đã xác minh email',
       user: toPublicUser(user)
     };
   }
@@ -273,7 +274,7 @@ export const authService = {
 
 async function issueTokens(user) {
   if (!user) {
-    throw new HttpError(500, 'Could not create authentication token');
+    throw new HttpError(500, M.tokenNotCreated);
   }
 
   const accessToken = createAccessToken({
@@ -309,21 +310,21 @@ function validateRegisterCustomer(input) {
   const gender = normalizeGender(input?.gender);
 
   if (!username || !/^[a-zA-Z0-9_.-]{3,100}$/.test(username)) {
-    throw new HttpError(400, 'Username must be 3-100 characters');
+    throw new HttpError(400, M.usernameLength);
   }
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new HttpError(400, 'Valid email is required');
+    throw new HttpError(400, M.emailRequired);
   }
 
   if (phone && !/^[0-9+().\-\s]{8,20}$/.test(phone)) {
-    throw new HttpError(400, 'Phone number is invalid');
+    throw new HttpError(400, M.phoneNumberInvalid);
   }
 
   readPassword(password);
 
   if (!fullName) {
-    throw new HttpError(400, 'Full name is required');
+    throw new HttpError(400, M.fullNameRequired);
   }
 
   return {
@@ -341,7 +342,7 @@ function readEmail(value) {
   const email = trim(value, 150)?.toLowerCase();
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new HttpError(400, 'Valid email is required');
+    throw new HttpError(400, M.emailRequired);
   }
 
   return email;
@@ -351,7 +352,7 @@ function readPassword(value) {
   const password = String(value ?? '');
 
   if (password.length < 8 || password.length > 72) {
-    throw new HttpError(400, 'Password must be 8-72 characters');
+    throw new HttpError(400, M.passwordRange);
   }
 
   return password;
@@ -359,14 +360,14 @@ function readPassword(value) {
 
 function getDuplicateMessage(existing, data) {
   if (existing.username === data.username) {
-    return 'Username already exists';
+    return 'Tên đăng nhập đã tồn tại';
   }
 
   if (existing.email === data.email) {
-    return 'Email already exists';
+    return 'Email đã tồn tại';
   }
 
-  return 'Phone already exists';
+  return 'Số điện thoại đã tồn tại';
 }
 
 function trim(value, maxLength) {
@@ -389,7 +390,7 @@ function normalizeDate(value) {
   }
 
   if (!isValidDateOnly(text)) {
-    throw new HttpError(400, 'Date of birth must use YYYY-MM-DD');
+    throw new HttpError(400, M.dobFormat);
   }
 
   return text;
@@ -416,7 +417,7 @@ function normalizeGender(value) {
   }
 
   if (!validGenders.has(text)) {
-    throw new HttpError(400, 'Gender must be MALE, FEMALE or OTHER');
+    throw new HttpError(400, M.genderInvalid);
   }
 
   return text;

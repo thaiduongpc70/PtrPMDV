@@ -254,11 +254,15 @@
   /* ---------- thanh toán (sandbox, chưa nối cổng thật) & hoá đơn ---------- */
   function paymentMarkup(order) {
     const online = order.paymentMethod !== 'COD';
-    const unpaid = online && ['PENDING', 'FAILED', 'PROCESSING'].includes(order.paymentStatus);
+    const closed = ['CANCELLED', 'FAILED'].includes(order.status); // đơn đã đóng thì không còn thu tiền
+    const unpaid = online && !closed && ['PENDING', 'FAILED', 'PROCESSING'].includes(order.paymentStatus);
+    const note = !online ? (closed ? 'Đơn không hoàn thành nên không thu tiền mặt.' : 'Thanh toán tiền mặt khi nhận hàng (COD).')
+      : order.paymentStatus === 'PAID' ? 'Đã thanh toán qua cổng thanh toán thử nghiệm.'
+        : ['REFUNDED', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus) ? 'Tiền đã được hoàn qua cổng thanh toán thử nghiệm.' : 'Đơn không hoàn thành nên giao dịch đã đóng, không thu tiền.';
     if (!unpaid) {
       return `<section class="fd-block"><div class="fd-block-head"><strong>Thanh toán</strong>
         <span class="status-chip">${esc(fd().statusLabel(order.paymentStatus))}</span></div>
-        <p class="muted">${online ? 'Đã thanh toán qua cổng thanh toán thử nghiệm.' : 'Thanh toán tiền mặt khi nhận hàng (COD).'}</p></section>`;
+        <p class="muted">${note}</p></section>`;
     }
     return `
       <section class="fd-block fd-gateway">

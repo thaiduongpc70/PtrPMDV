@@ -1,0 +1,363 @@
+[
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Hồng Hà",
+  "anchor": [
+   21.0338,
+   105.8505
+  ],
+  "streets": [
+   {
+    "name": "Đường Hồng Hà",
+    "lat": 21.033775,
+    "lng": 105.8557374
+   },
+   {
+    "name": "Đường Trần Nhật Duật",
+    "lat": 21.0351869,
+    "lng": 105.8546739
+   }
+  ]
+ },
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Ngọc Hà",
+  "anchor": [
+   21.036,
+   105.819
+  ],
+  "streets": [
+   {
+    "name": "Đường Văn Cao",
+    "lat": 21.0401126,
+    "lng": 105.8160251
+   }
+  ]
+ },
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Bạch Mai",
+  "anchor": [
+   21.01,
+   105.85
+  ],
+  "streets": [
+   {
+    "name": "Đường Trần Khát Chân",
+    "lat": 21.0085743,
+    "lng": 105.8515988
+   },
+   {
+    "name": "Đường Đê Tô Hoàng",
+    "lat": 21.007242,
+    "lng": 105.8496767
+   },
+   {
+    "name": "Đường Đại Cồ Việt",
+    "lat": 21.0088171,
+    "lng": 105.8510425
+   }
+  ]
+ },
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Ô Chợ Dừa",
+  "anchor": [
+   21.017,
+   105.826
+  ],
+  "streets": [
+   {
+    "name": "Đường La Thành",
+    "lat": 21.022746,
+    "lng": 105.8222234
+   }
+  ]
+ },
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Nghĩa Đô",
+  "anchor": [
+   21.0335,
+   105.794
+  ],
+  "streets": [
+   {
+    "name": "Đường Nguyễn Văn Huyên",
+    "lat": 21.0365886,
+    "lng": 105.7978704
+   },
+   {
+    "name": "Đường Nguyễn Khánh Toàn",
+    "lat": 21.037912,
+    "lng": 105.7951389
+   },
+   {
+    "name": "Đường Cầu Giấy",
+    "lat": 21.0359151,
+    "lng": 105.7915927
+   }
+  ]
+ },
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Khương Đình",
+  "anchor": [
+   20.993,
+   105.81
+  ],
+  "streets": [
+   {
+    "name": "Đường Khương Đình",
+    "lat": 20.9898029,
+    "lng": 105.8130827
+   },
+   {
+    "name": "Đường Nguyễn Trãi",
+    "lat": 20.9975768,
+    "lng": 105.8118026
+   },
+   {
+    "name": "Đường chung cư",
+    "lat": 20.990877,
+    "lng": 105.809713
+   },
+   {
+    "name": "Đường Nguyễn Tuân",
+    "lat": 20.9962452,
+    "lng": 105.8050301
+   },
+   {
+    "name": "Đường Vũ Trọng Phụng",
+    "lat": 20.997507,
+    "lng": 105.8096892
+   }
+  ]
+ },
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Tây Hồ",
+  "anchor": [
+   21.069,
+   105.819
+  ],
+  "streets": [
+   {
+    "name": "Đường Tô Ngọc Vân",
+    "lat": 21.0674435,
+    "lng": 105.8213878
+   }
+  ]
+ },
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Định Công",
+  "anchor": [
+   20.976,
+   105.845
+  ],
+  "streets": [
+   {
+    "name": "Đường Giải Phóng",
+    "lat": 20.9752458,
+    "lng": 105.8407971
+   },
+   {
+    "name": "Đường Sông Sét",
+    "lat": 20.9792661,
+    "lng": 105.8454279
+   },
+   {
+    "name": "Đường Trương Định",
+    "lat": 20.9766239,
+    "lng": 105.8411815
+   }
+  ]
+ },
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Long Biên",
+  "anchor": [
+   21.039,
+   105.88
+  ],
+  "streets": [
+   {
+    "name": "Đường Bát Khối",
+    "lat": 21.0282261,
+    "lng": 105.8822083
+   }
+  ]
+ },
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Từ Liêm",
+  "anchor": [
+   21.03,
+   105.765
+  ],
+  "streets": [
+   {
+    "name": "Đường Lê Đức Thọ",
+    "lat": 21.0274401,
+    "lng": 105.7682948
+   },
+   {
+    "name": "Đường Phú Mỹ",
+    "lat": 21.0303978,
+    "lng": 105.7716848
+   }
+  ]
+ },
+ {
+  "region": "HN",
+  "city": "Hà Nội",
+  "ward": "Phường Hà Đông",
+  "anchor": [
+   20.969,
+   105.777
+  ],
+  "streets": [
+   {
+    "name": "Đường Tô Hiệu",
+    "lat": 20.9662667,
+    "lng": 105.7769119
+   }
+  ]
+ },
+ {
+  "region": "HY",
+  "city": "Hưng Yên",
+  "ward": "Phường Phố Hiến",
+  "anchor": [
+   20.656,
+   106.087
+  ],
+  "streets": [
+   {
+    "name": "Đường Võ Nguyên Giáp",
+    "lat": 20.6698913,
+    "lng": 106.0799292
+   }
+  ]
+ },
+ {
+  "region": "HY",
+  "city": "Hưng Yên",
+  "ward": "Phường Hồng Châu",
+  "anchor": [
+   20.62,
+   106.06
+  ],
+  "streets": [
+   {
+    "name": "Đường Dương Hữu Miên",
+    "lat": 20.63528,
+    "lng": 106.0562513
+   }
+  ]
+ },
+ {
+  "region": "HY",
+  "city": "Hưng Yên",
+  "ward": "Phường Phố Hiến",
+  "anchor": [
+   20.685,
+   106.09
+  ],
+  "streets": [
+   {
+    "name": "Đường Võ Nguyên Giáp",
+    "lat": 20.6753364,
+    "lng": 106.0794192
+   },
+   {
+    "name": "Đường trục phía Bắc",
+    "lat": 20.6738315,
+    "lng": 106.0794429
+   }
+  ]
+ },
+ {
+  "region": "HY",
+  "city": "Hưng Yên",
+  "ward": "Phường Duy Tân",
+  "anchor": [
+   20.67,
+   106.03
+  ],
+  "streets": [
+   {
+    "name": "Đê Hữu Hồng",
+    "lat": 20.6920553,
+    "lng": 106.0081423
+   },
+   {
+    "name": "Đường Lạc Long Quân",
+    "lat": 20.6662583,
+    "lng": 106.0419004
+   }
+  ]
+ },
+ {
+  "region": "HY",
+  "city": "Hưng Yên",
+  "ward": "Phường Phố Hiến",
+  "anchor": [
+   20.64,
+   106.07
+  ],
+  "streets": [
+   {
+    "name": "Đường Phạm Ngũ Lão",
+    "lat": 20.6453819,
+    "lng": 106.0619007
+   },
+   {
+    "name": "Phố Hiến",
+    "lat": 20.6324729,
+    "lng": 106.0782788
+   },
+   {
+    "name": "Đường Nguyễn Du",
+    "lat": 20.6441422,
+    "lng": 106.0557156
+   },
+   {
+    "name": "Đường Điện Biên",
+    "lat": 20.6488527,
+    "lng": 106.0572771
+   },
+   {
+    "name": "Nguyễn Đình Nghị",
+    "lat": 20.6449575,
+    "lng": 106.0629053
+   },
+   {
+    "name": "Đường Phương Độ",
+    "lat": 20.639558,
+    "lng": 106.0642911
+   },
+   {
+    "name": "Mậu Dương",
+    "lat": 20.6417187,
+    "lng": 106.0590167
+   },
+   {
+    "name": "Hàn Lâm",
+    "lat": 20.6435367,
+    "lng": 106.0598297
+   }
+  ]
+ }
+]

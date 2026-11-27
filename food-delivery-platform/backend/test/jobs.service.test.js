@@ -11,7 +11,7 @@ test('CSV parser handles quoted commas and escaped quotes', () => {
 });
 
 test('CSV parser rejects a header without data rows', () => {
-  assert.throws(() => parseCsv('name,base_price'), /header and at least one row/);
+  assert.throws(() => parseCsv('name,base_price'), /dòng tiêu đề và ít nhất một dòng/);
 });
 
 test('SpreadsheetML parser imports Excel-compatible rows', () => {

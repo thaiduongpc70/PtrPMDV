@@ -7,6 +7,10 @@ import { requirePermission } from '../../shared/middlewares/require-permission.m
 import { orderRepository } from '../orders/order.repository.js';
 import { listVouchers, priceOrder } from './voucher.js';
 import { deliveryFeeFor, distanceKm, feeSettings } from '../../shared/pricing/delivery-fee.js';
+import { formatVnd } from '../../shared/pricing/format-money.js';
+import { M } from '../../shared/http/messages.js';
+import { alcoholicNames } from '../orders/alcohol-rules.js';
+import { loadComboComponentNames } from '../orders/order.repository.js';
 
 /* Ưu đãi phía khách: ví voucher, báo giá giỏ hàng, điểm thưởng và đổi quà. Gắn tại /api/customer. */
 export const rewardsCustomerRoutes = Router();
@@ -16,7 +20,7 @@ const POINTS_PER_VND = 1000; // 1 điểm cho mỗi 1.000đ tiền món (khớp 
 
 async function customerOf(userId) {
   const rows = await query('SELECT id, loyalty_points FROM customer_profiles WHERE user_id = ? LIMIT 1', [userId]);
-  if (!rows[0]) throw new HttpError(404, 'Customer profile not found');
+  if (!rows[0]) throw new HttpError(404, M.customerNotFound);
   return { id: Number(rows[0].id), points: Number(rows[0].loyalty_points) };
 }
 
@@ -34,10 +38,17 @@ async function shippingFor(customerId, restaurantId, addressId = null) {
   return { ...deliveryFeeFor(options, row ? distanceKm(row.r_lat, row.r_lng, row.a_lat, row.a_lng) : null), options };
 }
 
+/** addressId do khách gửi lên phải là địa chỉ của chính họ; không thì 404 (không ngầm dùng phí mặc định). */
+async function assertAddressOwned(customerId, addressId) {
+  if (addressId == null) return;
+  const rows = await query('SELECT id FROM customer_addresses WHERE id = ? AND customer_id = ? AND deleted_at IS NULL LIMIT 1', [addressId, customerId]);
+  if (!rows[0]) throw new HttpError(404, M.deliveryAddressNotFound);
+}
+
 function readRestaurantId(value) {
   if (value === undefined || value === '' || value === null) return null;
   const id = Number(value);
-  if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, 'restaurantId must be a positive integer');
+  if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, M.restaurantIdPositive);
   return id;
 }
 
@@ -47,7 +58,9 @@ rewardsCustomerRoutes.get('/vouchers', asyncHandler(async (req, res) => {
   const restaurantId = readRestaurantId(req.query.restaurantId);
   const cart = restaurantId ? await orderRepository.getCartForUser(req.user.id, restaurantId) : null;
   const subtotal = Number(cart?.subtotal ?? 0);
-  const shipping = await shippingFor(customer.id, restaurantId, req.query.addressId ? Number(req.query.addressId) : null);
+  const voucherAddressId = req.query.addressId ? Number(req.query.addressId) : null;
+  await assertAddressOwned(customer.id, voucherAddressId);
+  const shipping = await shippingFor(customer.id, restaurantId, voucherAddressId);
   const items = await listVouchers(query, { customerId: customer.id, restaurantId, subtotal, deliveryFee: shipping.fee });
   items.sort((a, b) => Number(b.eligible) - Number(a.eligible) || b.discountAmount - a.discountAmount || a.shortfall - b.shortfall);
   res.json({ items, totalItems: items.length, subtotal });
@@ -57,15 +70,17 @@ rewardsCustomerRoutes.get('/vouchers', asyncHandler(async (req, res) => {
 rewardsCustomerRoutes.post('/orders/quote', asyncHandler(async (req, res) => {
   const customer = await customerOf(req.user.id);
   const restaurantId = readRestaurantId(req.body?.restaurantId);
-  if (!restaurantId) throw new HttpError(400, 'restaurantId is required');
+  if (!restaurantId) throw new HttpError(400, M.restaurantIdRequired);
   const cart = await orderRepository.getCartForUser(req.user.id, restaurantId);
-  if (!cart || cart.items.length === 0) throw new HttpError(404, 'Cart is empty');
-  const shipping = await shippingFor(customer.id, restaurantId, req.body?.addressId ? Number(req.body.addressId) : null);
-  const fee = shipping.fee;
+  if (!cart || cart.items.length === 0) throw new HttpError(409, 'Giỏ hàng đang trống, hãy thêm món trước khi xem báo giá');
+  const quoteAddressId = req.body?.addressId ? Number(req.body.addressId) : null;
+  await assertAddressOwned(customer.id, quoteAddressId);
+  const shipping = await shippingFor(customer.id, restaurantId, quoteAddressId);
+  const fee = shipping.tooFar ? 0 : shipping.fee; // ngoài vùng giao: không báo phí giả
   const vouchers = await listVouchers(query, { customerId: customer.id, restaurantId, subtotal: cart.subtotal, deliveryFee: fee });
   const code = typeof req.body?.promotionCode === 'string' ? req.body.promotionCode.trim().toUpperCase() : '';
   const chosen = code ? vouchers.find(item => item.code.toUpperCase() === code) : null;
-  const promotionError = code && !chosen ? 'Mã không tồn tại hoặc bạn không còn lượt dùng' : code && !chosen.eligible ? `Cần mua thêm ${chosen.shortfall} để dùng mã này` : null;
+  const promotionError = code && !chosen ? 'Mã không tồn tại hoặc bạn không còn lượt dùng' : code && !chosen.eligible ? `Cần mua thêm ${formatVnd(chosen.shortfall)} để dùng mã này` : null;
   const promotion = chosen?.eligible ? chosen : null;
   const taxRow = await query("SELECT setting_value FROM system_settings WHERE setting_key = 'tax_rate' LIMIT 1");
   const price = priceOrder({ subtotal: cart.subtotal, deliveryFee: fee, taxRate: Number(taxRow[0]?.setting_value ?? 0), promotion });
@@ -74,7 +89,7 @@ rewardsCustomerRoutes.post('/orders/quote', asyncHandler(async (req, res) => {
   const nextFreeship = vouchers.filter(item => item.discountType === 'FREE_DELIVERY' && !item.eligible).sort((a, b) => a.shortfall - b.shortfall)[0] ?? null;
   const nextDiscount = vouchers.filter(item => item.discountType !== 'FREE_DELIVERY' && !item.eligible).sort((a, b) => a.shortfall - b.shortfall)[0] ?? null;
   res.json({
-    restaurantId, ...price, distanceKm: shipping.km, outOfRange: shipping.tooFar, maxDeliveryKm: shipping.options.maxKm, minimumOrder: cart.minimumOrder, meetsMinimum: cart.subtotal >= cart.minimumOrder,
+    restaurantId, ...price, requiresAgeConfirmation: alcoholicNames([...cart.items.map(item => item.name), ...await loadComboComponentNames(query, cart.items.map(item => item.menuItemId))]).length > 0, distanceKm: shipping.km, outOfRange: shipping.tooFar, outOfRangeMessage: shipping.tooFar ? `Địa chỉ cách quán khoảng ${shipping.km} km, vượt phạm vi giao tối đa ${shipping.options.maxKm} km nên quán không giao tới.` : null, maxDeliveryKm: shipping.options.maxKm, minimumOrder: cart.minimumOrder, meetsMinimum: cart.subtotal >= cart.minimumOrder,
     promotion: promotion ? { id: promotion.id, code: promotion.code, name: promotion.name, discountType: promotion.discountType } : null,
     promotionError,
     bestVoucher: best && best.id !== promotion?.id ? { code: best.code, name: best.name, discountAmount: best.discountAmount } : null,
@@ -109,13 +124,13 @@ rewardsCustomerRoutes.get('/loyalty', asyncHandler(async (req, res) => {
 /** Đổi điểm lấy voucher cá nhân (dùng 1 lần, có hạn). */
 rewardsCustomerRoutes.post('/loyalty/rewards/:rewardId/redeem', asyncHandler(async (req, res) => {
   const rewardId = Number(req.params.rewardId);
-  if (!Number.isInteger(rewardId) || rewardId <= 0) throw new HttpError(400, 'rewardId must be a positive integer');
+  if (!Number.isInteger(rewardId) || rewardId <= 0) throw new HttpError(400, M.rewardIdPositive);
   const result = await withTransaction(async connection => {
     const profiles = await connection.execute('SELECT id, loyalty_points FROM customer_profiles WHERE user_id = ? LIMIT 1 FOR UPDATE', [req.user.id]);
-    if (!profiles[0]) throw new HttpError(404, 'Customer profile not found');
+    if (!profiles[0]) throw new HttpError(404, M.customerNotFound);
     const rewards = await connection.execute("SELECT * FROM loyalty_rewards WHERE id = ? AND status = 'ACTIVE' LIMIT 1 FOR UPDATE", [rewardId]);
     const reward = rewards[0];
-    if (!reward) throw new HttpError(404, 'Reward not found');
+    if (!reward) throw new HttpError(404, M.rewardNotFound);
     if (reward.stock != null && Number(reward.stock) <= 0) throw new HttpError(409, 'Quà này đã hết lượt đổi');
     const points = Number(profiles[0].loyalty_points);
     const cost = Number(reward.points_cost);

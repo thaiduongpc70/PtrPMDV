@@ -35,7 +35,7 @@ test('password reset response stays generic when email is unknown', async t => {
   const result = await authService.requestPasswordReset({ email: 'none@example.com' });
 
   assert.deepEqual(result, {
-    message: 'If the email exists, a password reset token has been created'
+    message: 'Nếu email tồn tại, mã đặt lại mật khẩu đã được tạo'
   });
 });
 
@@ -74,7 +74,7 @@ test('password reset updates hash, marks token used, and revokes sessions', asyn
     password: 'new-secure-password'
   });
 
-  assert.equal(result.message, 'Password has been reset');
+  assert.equal(result.message, 'Đã đặt lại mật khẩu');
   assert.equal(usedTokenHash, hashRefreshToken(token));
   assert.equal(revokedUserId, 7);
   assert.equal(await verifyPassword('new-secure-password', passwordHash), true);
@@ -106,7 +106,7 @@ test('password reset rejects when token consumption loses a race', async t => {
     () => authService.resetPassword({ token, password: 'new-secure-password' }),
     error => {
       assert.equal(error.statusCode, 401);
-      assert.equal(error.message, 'Invalid password reset token');
+      assert.equal(error.message, 'Mã đặt lại mật khẩu không hợp lệ');
       return true;
     }
   );
@@ -125,7 +125,7 @@ test('email verification request skips already verified accounts', async t => {
   });
 
   assert.deepEqual(result, {
-    message: 'If the email exists, a verification token has been created'
+    message: 'Nếu email tồn tại, mã xác minh đã được tạo'
   });
 });
 
@@ -161,7 +161,7 @@ test('email verification confirms token and returns the public user', async t =>
 
   assert.equal(verifiedTokenHash, hashRefreshToken(token));
   assert.equal(verifiedUserId, 7);
-  assert.equal(result.message, 'Email has been verified');
+  assert.equal(result.message, 'Đã xác minh email');
   assert.equal(result.user.id, 7);
   assert.ok(result.user.emailVerifiedAt);
 });
@@ -189,7 +189,7 @@ test('email verification rejects when token consumption loses a race', async t =
     () => authService.verifyEmail(token),
     error => {
       assert.equal(error.statusCode, 401);
-      assert.equal(error.message, 'Invalid email verification token');
+      assert.equal(error.message, 'Mã xác minh email không hợp lệ');
       return true;
     }
   );

@@ -39,14 +39,18 @@
 
   Object.assign(state, {
     city: (() => { try { return localStorage.getItem('fd_city') || ''; } catch { return ''; } })(), // rỗng → lấy tỉnh có nhiều quán nhất từ DB
-    cities: [], sort: 'featured', district: '', openNow: false, page: 1, totalRestaurants: 0, geo: null,
+    cities: [], sort: 'featured', district: '', openNow: false, hideFar: false, suggestions: [], maxDeliveryKm: null, page: 1, totalRestaurants: 0, geo: null,
     collection: null, collections: [], showAllCollections: false
   });
 
   const $ = selector => document.querySelector(selector);
 
+  /** Định dạng số kiểu Việt Nam (1.134) và tiền thống nhất "đ" cho mọi màn khách. */
+  function formatNumber(value) {
+    return money.format(Number(value) || 0);
+  }
   function formatMoney(value) {
-    return `${money.format(Number(value) || 0)} VND`;
+    return `${formatNumber(Math.round(Number(value) || 0))}đ`;
   }
 
   function renderStars(value) {
@@ -97,8 +101,11 @@
     return total > 0 ? `<span class="rating-line" title="${total} đánh giá"><b>★ ${Number(item.rating).toFixed(1)}</b> (${total})</span>` : '';
   }
 
+  /** Tên dùng để chọn biểu tượng khi chưa có ảnh: combo lấy thêm phần mô tả ("Gồm: 2 trà sữa…") để ra đúng loại món. */
+  const emojiLabel = item => (item.isCombo || item.itemType === 'COMBO' ? `${item.name} ${item.description || ''}` : item.name);
+
   function photo(name, imageUrl, cls = '', inner = '') {
-    return `<div class="food-photo ${cls}" ${imageForFood(name)}><span class="food-emoji">${foodEmoji(name)}</span>${imageUrl ? `<img class="photo-img" src="${escapeHtml(imageUrl)}" alt="" loading="lazy">` : ''}${inner}</div>`;
+    return `<div class="food-photo ${cls}" ${imageForFood(name)}><span class="food-emoji">${foodEmoji(name)}</span>${imageUrl ? `<img class="photo-img" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(String(name).slice(0, 80))}" loading="lazy">` : ''}${inner}</div>`;
   }
 
   document.addEventListener('error', event => {
@@ -148,6 +155,7 @@
       PAID: 'Đã thanh toán',
       PROCESSING: 'Đang xử lý',
       REFUNDED: 'Đã hoàn tiền',
+      PARTIALLY_REFUNDED: 'Hoàn một phần',
       OPEN: 'Mới mở',
       IN_PROGRESS: 'Đang xử lý',
       RESOLVED: 'Đã giải quyết',
@@ -470,15 +478,15 @@
   }
 
   async function loadPublicData() {
-    await loadStorefront();
     await loadCities();
+    await loadStorefront(); // số liệu trang chủ theo vùng đang chọn
     await Promise.allSettled([loadCollections(), loadCategories(), loadDistricts(), searchCatalog()]);
   }
 
   /* ===== Trang chủ lấy toàn bộ số liệu từ DB: /api/catalog/storefront ===== */
   async function loadStorefront() {
     try {
-      state.storefront = await api('/api/catalog/storefront');
+      state.storefront = await api(`/api/catalog/storefront${state.city ? `?city=${encodeURIComponent(state.city)}` : ''}`);
     } catch {
       state.storefront = null;
       return;
@@ -491,14 +499,17 @@
     $('#footerPhone').innerHTML = contact.phone ? `📞 Hotline: <b>${escapeHtml(contact.phone)}</b>${contact.name ? ` (${escapeHtml(contact.name)})` : ''}` : '';
     $('#footerEmail').textContent = contact.email ? `✉️ ${contact.email}` : '';
     $('#footerHours').textContent = contact.opens && contact.closes ? `🕒 Quán mở cửa từ ${contact.opens} đến ${contact.closes}` : '';
-    $('#footerAbout').textContent = `Nền tảng đặt món và giao đồ ăn: ${stats.restaurants} nhà hàng, ${stats.dishes} món và ${stats.combos} combo, đã giao thành công ${stats.deliveredOrders.toLocaleString('vi-VN')} đơn.`;
+    // Số liệu "đã giao" là tích luỹ từ đơn đầu tiên trong hệ thống (ngày lấy từ API), không phải số trong 30 ngày hay hôm nay
+    const sinceLabel = stats.since ? ` (tích luỹ từ ${new Date(stats.since).toLocaleDateString('vi-VN')})` : '';
+    $('#footerAbout').textContent = `Nền tảng đặt món và giao đồ ăn: ${formatNumber(stats.restaurants)} nhà hàng, ${formatNumber(stats.dishes)} món và ${formatNumber(stats.combos)} combo, đã giao thành công ${formatNumber(stats.deliveredOrders)} đơn${sinceLabel}.`;
     const phoneRow = $('#contactPhoneRow');
     if (contact.phone) { phoneRow.hidden = false; phoneRow.href = `tel:${contact.phone}`; phoneRow.querySelector('small').textContent = `${contact.phone}${contact.opens ? ` · ${contact.opens} – ${contact.closes}` : ''}`; }
     const emailRow = $('#contactEmailRow');
     if (contact.email) { emailRow.hidden = false; emailRow.href = `mailto:${contact.email}`; emailRow.querySelector('small').textContent = contact.email; }
     const minutes = stats.avgDeliveryMinutes;
     $('#sfHeadline').textContent = minutes ? `Đặt đồ ăn, giao hàng trung bình ${minutes} phút` : 'Đặt đồ ăn, giao hàng nhanh';
-    $('#sfSub').textContent = `Có ${stats.restaurants} địa điểm, ${stats.dishes} món và ${stats.combos} combo${contact.opens && contact.closes ? ` · mở cửa từ ${contact.opens} đến ${contact.closes}` : ''} · đã giao ${stats.deliveredOrders.toLocaleString('vi-VN')} đơn`;
+    $('#sfSub').textContent = `Có ${formatNumber(stats.restaurants)} địa điểm, ${formatNumber(stats.dishes)} món và ${formatNumber(stats.combos)} combo${contact.opens && contact.closes ? ` · mở cửa từ ${contact.opens} đến ${contact.closes}` : ''} · đã giao ${formatNumber(stats.deliveredOrders)} đơn${sinceLabel}`;
+    $('#sfSub').title = 'Số liệu tổng hợp từ cơ sở dữ liệu: số đơn là tích luỹ từ đơn giao thành công đầu tiên; thời gian giao trung bình tính trong 30 ngày gần nhất.';
     const promoLines = vouchers.slice(0, 2).map(item => `<b>${escapeHtml(item.code)}</b>: ${escapeHtml(item.name)}`);
     if (loyalty.cheapestReward) promoLines.push(`Tích điểm: ${loyalty.cheapestReward.pointsCost} điểm đổi ${escapeHtml(loyalty.cheapestReward.name)}`);
     $('#sfPromoLine').innerHTML = promoLines.join('<br>');
@@ -607,7 +618,7 @@
       const result = await api('/api/catalog/restaurant-categories');
       const items = result.items || [];
       $('#categoryStrip').innerHTML = items.length
-        ? `<button type="button" class="sf-chip ${state.catalogCategoryId ? '' : 'is-active'}" data-category-filter="">All</button>`
+        ? `<button type="button" class="sf-chip ${state.catalogCategoryId ? '' : 'is-active'}" data-category-filter="">Tất cả</button>`
           + items.map(item => `<button type="button" class="sf-chip ${Number(item.id) === Number(state.catalogCategoryId) ? 'is-active' : ''}" data-category-filter="${item.id}" data-category-name="${escapeHtml(item.name)}">${escapeHtml(item.name)}</button>`).join('')
         : '';
       document.querySelectorAll('[data-category-filter]').forEach(button => {
@@ -627,7 +638,7 @@
   const HOME_PAGE_SIZE = 12;
   const SORT_TITLES = {
     featured: 'Quán nổi bật', nearest: 'Quán gần bạn', popular: 'Quán được đặt nhiều', top_rated: 'Quán đánh giá cao',
-    fastest: 'Quán giao nhanh', promo: 'Quán đang có ưu đãi'
+    fastest: 'Quán giao nhanh', promo: 'Quán đang có ưu đãi', price_asc: 'Quán giá mềm', price_desc: 'Quán giá cao'
   };
 
   /* Vị trí dùng để tính khoảng cách: GPS (khi khách cho phép) > địa chỉ giao hàng > trung tâm tỉnh/thành. */
@@ -689,7 +700,7 @@
     $('#cityPanel').hidden = true;
     $('#cityPill').setAttribute('aria-expanded', 'false');
     renderCityList();
-    await Promise.all([loadDistricts(), searchCatalog()]);
+    await Promise.all([loadDistricts(), searchCatalog(), loadStorefront()]);
   }
 
   function renderSortTabs() {
@@ -718,6 +729,7 @@
     if (state.catalogCategoryId) params.set('categoryId', String(state.catalogCategoryId));
     if (state.district) params.set('district', state.district);
     if (state.openNow) params.set('openNow', '1');
+    if (state.hideFar) params.set('hideOutOfRange', '1');
     if (state.sort === 'promo') params.set('promo', '1');
     for (const [key, value] of Object.entries(state.collection?.filter ?? {})) if (!['sort', 'categoryId'].includes(key)) params.set(key, value);
     geo = currentGeo();
@@ -732,6 +744,9 @@
       ]);
       state.restaurants = append ? [...state.restaurants, ...(restaurants.items || [])] : (restaurants.items || []);
       state.totalRestaurants = restaurants.totalItems ?? state.restaurants.length;
+      state.suggestions = restaurants.suggestions || [];
+      state.maxDeliveryKm = restaurants.maxDeliveryKm ?? null;
+      if (menu) state.menuSuggestions = menu.suggestions || [];
       renderRestaurants();
       renderActiveCollection();
       if (menu) renderMenuList(menu.items || []);
@@ -747,26 +762,49 @@
   }
 
   /** Giới hạn km giao hàng lấy từ cấu hình hệ thống (API storefront), không ghi cứng. */
-  const maxDeliveryKm = () => state.storefront?.delivery?.maxKm ?? null;
-  const tooFar = km => km != null && maxDeliveryKm() != null && Number(km) > maxDeliveryKm();
+  const maxDeliveryKm = () => state.maxDeliveryKm ?? state.storefront?.delivery?.maxKm ?? null;
+  /** Ngoài vùng giao: ưu tiên cờ outOfDeliveryRange do API tính (so với giới hạn thật), dự phòng theo khoảng cách. */
+  const tooFar = item => (item.outOfDeliveryRange != null ? Boolean(item.outOfDeliveryRange) : item.distanceKm != null && maxDeliveryKm() != null && Number(item.distanceKm) > maxDeliveryKm());
+
+  /** Gợi ý khi không có kết quả: bấm để đổi từ khoá hoặc chọn danh mục. */
+  function suggestionsHtml(list) {
+    if (!list || !list.length) return '';
+    const label = { keyword: 'Thử tìm', category: 'Danh mục', dish: 'Món gần giống', popular: 'Danh mục nhiều quán' };
+    return `<div class="search-suggest"><b>Bạn có thể thử:</b><div class="sf-chips">${list.map(item => `<button type="button" class="sf-chip" data-suggest-type="${escapeHtml(item.type)}" data-suggest-text="${escapeHtml(item.text)}" data-suggest-category="${item.categoryId ?? ''}" title="${escapeHtml(label[item.type] || '')}">${escapeHtml(item.text)}</button>`).join('')}</div></div>`;
+  }
+
+  function applySuggestion(button) {
+    const categoryId = button.dataset.suggestCategory;
+    if (categoryId) {
+      state.catalogCategoryId = Number(categoryId);
+      state.catalogCategoryName = button.dataset.suggestText;
+      state.collection = null;
+      $('#catalogKeyword').value = '';
+      loadCategories();
+    } else {
+      $('#catalogKeyword').value = button.dataset.suggestText;
+    }
+    searchCatalog();
+  }
 
   function renderRestaurants() {
     const geo = currentGeo();
     $('#restaurantHeading').textContent = `${SORT_TITLES[state.sort] || 'Nhà hàng'} · ${state.city}`;
     $('#restaurantCount').textContent = `${state.totalRestaurants} địa điểm${state.catalogCategoryId ? ` · ${state.catalogCategoryName}` : ''}${state.district ? ` · ${state.district}` : ''}`;
-    $('#geoNote').textContent = geo ? `Khoảng cách tính từ ${geo.label}` : '';
+    const farCount = state.restaurants.filter(tooFar).length;
+    $('#geoNote').textContent = geo ? `Khoảng cách tính từ ${geo.label}${farCount ? ` · ${farCount} quán ngoài vùng giao (> ${maxDeliveryKm()} km) được xếp cuối` : ''}` : '';
     $('#loadMoreRestaurants').hidden = state.restaurants.length >= state.totalRestaurants;
     if (!state.restaurants.length) {
       const hasPartners = state.cities.find(item => item.name === state.city)?.restaurantCount > 0;
       const fallbackCity = state.cities.find(item => item.restaurantCount && item.name !== state.city)?.name || '';
       $('#restaurantList').innerHTML = hasPartners
-        ? empty()
+        ? `${empty()}${suggestionsHtml(state.suggestions)}`
         : `<div class="empty-state coming-soon"><strong>FoodGo chưa có quán tại ${escapeHtml(state.city)}</strong><span>Chúng tôi sẽ sớm có mặt.${fallbackCity ? ` Hiện bạn có thể đặt món tại ${escapeHtml(fallbackCity)}.` : ''}</span>${fallbackCity ? `<button class="primary-button" type="button" data-city="${escapeHtml(fallbackCity)}">Xem quán tại ${escapeHtml(fallbackCity)}</button>` : ''}</div>`;
       return;
     }
     $('#restaurantList').innerHTML = state.restaurants.map(item => `
-      <article class="sf-row ${item.isOpen === false ? 'is-closed' : ''} ${tooFar(item.distanceKm) ? 'is-far' : ''}" data-view-restaurant="${item.id}" tabindex="0">
-        ${photo(item.name, item.coverUrl || item.logoUrl, 'sf-thumb')}
+      <article class="sf-row ${item.isOpen === false ? 'is-closed' : ''} ${tooFar(item) ? 'is-far' : ''}" data-view-restaurant="${item.id}" tabindex="0">
+        ${photo(item.name, item.logoUrl || item.coverUrl, 'sf-thumb')}
         <div class="sf-row-body">
           <strong class="sf-name">${Number(item.rating) >= 4 ? '<i class="sf-verified" title="Quán được đánh giá từ 4★">✔</i>' : ''}${escapeHtml(item.name)}</strong>
           <span class="sf-addr">${escapeHtml([item.address, item.district].filter(Boolean).join(', '))}</span>
@@ -775,7 +813,8 @@
             <span>Tối thiểu ${Math.round(Number(item.minimumOrder || 0) / 1000)}k</span>
             <span>⏱ ${item.averagePrepareTime || 20} phút</span>
             ${item.distanceKm != null ? `<span>📍 ${item.distanceKm} km</span>` : ''}
-            ${tooFar(item.distanceKm) ? `<span class="sf-far-tag" title="Đơn có quãng đường trên ${maxDeliveryKm()} km không được giao">⛔ Ngoài phạm vi giao (&gt; ${maxDeliveryKm()} km)</span>` : ''}
+            ${tooFar(item) ? `<span class="sf-far-tag" title="Đơn có quãng đường trên ${maxDeliveryKm()} km không được giao">⛔ Ngoài vùng giao (&gt; ${maxDeliveryKm()} km)</span>` : ''}
+            ${item.averagePrice ? `<span title="Giá trung bình của các món đang bán">~${Math.round(item.averagePrice / 1000)}k/món</span>` : ''}
           </div>
           <div class="sf-tags">
             ${(item.promotions || []).map(promo => `<span class="sf-tag" title="Mã ${escapeHtml(promo.code)}">${escapeHtml(promo.label)}${promo.minimumOrder ? ` · đơn từ ${Math.round(promo.minimumOrder / 1000)}K` : ''}</span>`).join('')}
@@ -812,6 +851,10 @@
     });
     $('#districtFilter').addEventListener('change', event => { state.district = event.target.value; searchCatalog(); });
     $('#openNowFilter').addEventListener('change', event => { state.openNow = event.target.checked; searchCatalog(); });
+    $('#hideFarFilter')?.addEventListener('change', event => { state.hideFar = event.target.checked; searchCatalog(); });
+    $('#paymentMethod')?.addEventListener('change', syncPaymentNote);
+    syncPaymentNote();
+    document.addEventListener('click', event => { const suggestion = event.target.closest('[data-suggest-text]'); if (suggestion) applySuggestion(suggestion); });
     $('#loadMoreRestaurants').addEventListener('click', () => { state.page += 1; searchCatalog({ append: true }); });
     $('#useGpsButton').addEventListener('click', async () => {
       const gps = await requestGps();
@@ -821,11 +864,25 @@
     });
   }
 
+  /** Thanh toán online đi qua cổng giả lập (sandbox): nói rõ để khách không hiểu nhầm là bị trừ tiền thật. */
+  function syncPaymentNote() {
+    const note = $('#paymentSandboxNote');
+    if (note) note.hidden = ($('#paymentMethod')?.value || 'COD') === 'COD';
+  }
+
+  /** Bảng phí giao theo km, dựng từ đúng công thức tính phí của máy chủ (storefront.delivery.tiers). */
+  function deliveryFeeTableHtml() {
+    const delivery = state.storefront?.delivery;
+    if (!delivery?.tiers?.length) return '';
+    const rows = delivery.tiers.map(tier => `<tr><td>${tier.fromKm === 0 ? `Đến ${tier.toKm} km` : `${tier.fromKm} – ${tier.toKm} km`}</td><td>${formatMoney(tier.fee)}</td></tr>`).join('');
+    return `<details class="fee-table"><summary>Bảng phí giao hàng theo khoảng cách</summary><table><thead><tr><th>Khoảng cách</th><th>Phí giao</th></tr></thead><tbody>${rows}</tbody></table><small class="muted">Quãng đường tính theo đường chim bay từ quán tới địa chỉ giao. Trên ${delivery.maxKm} km quán không giao.</small></details>`;
+  }
+
   function renderMenuList(items) {
     $('#menuCount').textContent = `${state.catalogCategoryName || 'Tất cả'} · top ${items.length} món tại ${state.city}`;
-    $('#menuList').innerHTML = items.length ? items.map(item => `
+    $('#menuList').innerHTML = !items.length ? `${empty()}${suggestionsHtml(state.menuSuggestions)}` : items.map(item => `
       <article class="food-card" data-search-item-restaurant="${item.restaurantId}" tabindex="0">
-        ${photo(item.name, item.imageUrl, 'food-card-photo', item.discountPrice ? '<span class="photo-chip chip-sale">Giảm giá</span>' : '')}
+        ${photo(emojiLabel(item), item.imageUrl, 'food-card-photo', item.discountPrice ? '<span class="photo-chip chip-sale">Giảm giá</span>' : '')}
         <div class="card-body">
           <strong class="clamp-2">${escapeHtml(item.name)}</strong>
           <span class="muted clamp-1">${escapeHtml(item.restaurantName || '')}</span>
@@ -836,7 +893,7 @@
           </div>
         </div>
       </article>
-    `).join('') : empty();
+    `).join('');
     document.querySelectorAll('[data-search-item-restaurant]').forEach(card => {
       card.addEventListener('click', () => selectRestaurant(Number(card.dataset.searchItemRestaurant)));
     });
@@ -844,16 +901,15 @@
 
   async function selectRestaurant(restaurantId) {
     try {
-      const [detail, menu, reviews] = await Promise.all([
+      const [detail, menu] = await Promise.all([
         api(`/api/catalog/restaurants/${restaurantId}`),
-        api(`/api/catalog/restaurants/${restaurantId}/menu`),
-        api(`/api/catalog/restaurants/${restaurantId}/reviews?pageSize=8`)
+        api(`/api/catalog/restaurants/${restaurantId}/menu`)
       ]);
       state.selectedRestaurant = detail;
       state.selectedMenu = flattenMenu(menu);
-      state.selectedReviews = reviews.items || [];
+      state.selectedReviews = [];
       $('#selectedRestaurantTitle').textContent = detail.name;
-      renderRestaurantDetail(detail, menu, reviews);
+      renderRestaurantDetail(detail, menu);
       showSubView('customer', 'detail');
     } catch (error) {
       $('#restaurantDetail').innerHTML = errorBox(error);
@@ -877,7 +933,7 @@
     $('#restaurantDetail').innerHTML = `
       <div class="sf-store">
         <header class="sf-store-head">
-          ${photo(detail.name, detail.coverUrl || detail.logoUrl, 'sf-store-photo')}
+          ${photo(detail.name, detail.logoUrl || detail.coverUrl, 'sf-store-photo')}
           <div class="sf-store-info">
             <h2>${Number(detail.rating) >= 4 ? '<i class="sf-verified" title="Quán được đánh giá từ 4★">✔</i>' : ''}${escapeHtml(detail.name)}</h2>
             <p class="sf-store-cat">${escapeHtml(detail.categoryName || 'Nhà hàng')} · ${escapeHtml([detail.address, detail.district, detail.city].filter(Boolean).join(', '))}</p>
@@ -915,6 +971,8 @@
     });
     loadShopVouchers(detail.id);
     renderMiniCart();
+    const reviewsBox = document.querySelector('[data-reviews-restaurant]');
+    if (reviewsBox) mountReviews(reviewsBox, { url: `/api/catalog/restaurants/${detail.id}/reviews`, kind: 'restaurant', stillValid: () => state.selectedRestaurant?.id === detail.id });
     document.querySelector('[data-favorite-restaurant]')?.addEventListener('click', () => toggleFavoriteRestaurant(detail.id));
     document.querySelector('[data-open-customer-orders]')?.addEventListener('click', () => {
       showSubView('customer', 'orders');
@@ -972,18 +1030,7 @@
           </div>
           <button class="secondary-button" type="button" data-open-customer-orders>Đánh giá từ đơn hàng</button>
         </div>
-        <div class="review-list">
-          ${reviews.length ? reviews.map(review => `
-            <article class="review-card">
-              <div>
-                <strong>${escapeHtml(review.customerName || 'Khách hàng')}</strong>
-                <span class="star-line">${renderStars(review.rating)} <small>${escapeHtml(new Date(review.createdAt).toLocaleDateString('vi-VN'))}</small></span>
-              </div>
-              <p>${escapeHtml(review.comment || 'Khách hàng chưa để lại bình luận.')}</p>
-              ${review.restaurantReply ? `<blockquote>${escapeHtml(review.restaurantReply)}</blockquote>` : ''}
-            </article>
-          `).join('') : '<div class="empty-state">Quán chưa có bình luận hiển thị. Hãy đặt và đánh giá sau khi đơn được giao.</div>'}
-        </div>
+        <div class="reviews-mount" data-reviews-restaurant="${detail.id}"><p class="muted">Đang tải đánh giá...</p></div>
       </section>
     `;
   }
@@ -1028,7 +1075,7 @@
           <input type="hidden" data-restaurant-for="${item.id}" value="${restaurantId}">
         </div>
         <div class="sf-item-side">
-          ${photo(item.name, item.imageUrl, 'sf-item-photo')}
+          ${photo(emojiLabel(item), item.imageUrl, 'sf-item-photo')}
           <button class="sf-add" type="button" aria-label="Thêm ${escapeHtml(item.name)}">+</button>
         </div>
       </article>
@@ -1044,7 +1091,7 @@
     $('#itemModalTitle').textContent = item.name;
     $('#itemModalDescription').textContent = item.description || `${item.categoryName || 'Menu'} · ${item.preparationTime || 0} phút chuẩn bị`;
     $('#itemModalPrice').innerHTML = `<strong>${formatMoney(item.effectivePrice)}</strong>${item.discountPrice ? `<span>Giá gốc ${formatMoney(item.basePrice)}</span>` : ''}`;
-    $('#itemModalMedia').innerHTML = `${photo(item.name, item.imageUrl, 'modal-photo')}`;
+    $('#itemModalMedia').innerHTML = `${photo(emojiLabel(item), item.imageUrl, 'modal-photo')}`;
     $('#itemModalGallery').innerHTML = `<button type="button" class="gallery-chip" data-favorite-item="${item.id}">♡ Lưu món</button>`;
     $('#itemModalMeta').innerHTML = [
       Number(item.totalReviews) ? `<span>★ ${Number(item.rating).toFixed(1)} (${item.totalReviews})</span>` : '',
@@ -1073,26 +1120,83 @@
   async function loadItemReviews(item) {
     const box = $('#itemReviews');
     if (!Number(item.totalReviews)) { box.innerHTML = '<p class="muted">Món này chưa có đánh giá.</p>'; return; }
+    await mountReviews(box, { url: `/api/catalog/menu-items/${item.id}/reviews`, kind: 'item', stillValid: () => state.selectedMenuItem?.id === item.id });
+  }
+
+  /* ===== Khối đánh giá dùng chung (món + quán) =====
+     - mỗi dòng sao ở thanh phân bố là nút bấm: lọc danh sách theo đúng số sao đó (bấm lại để bỏ lọc)
+     - danh sách nằm trong khung có thanh cuộn riêng, cuộn tới cuối thì tự tải thêm */
+  function reviewCardHtml(review) {
+    return `<li class="review-item">
+      <div><b>${escapeHtml(review.customerName || 'Khách hàng')}</b> <span class="review-stars">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
+        ${review.createdAt ? `<small class="muted">${escapeHtml(new Date(review.createdAt).toLocaleDateString('vi-VN'))}</small>` : ''}</div>
+      ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : '<p class="muted">Không để lại bình luận.</p>'}
+      ${review.restaurantReply ? `<blockquote>Phản hồi của quán: ${escapeHtml(review.restaurantReply)}</blockquote>` : ''}</li>`;
+  }
+
+  async function mountReviews(box, { url, kind, stillValid = () => true, pageSize = 8 }) {
+    const view = { star: null, page: 1, items: [], total: 0, summary: null, loading: false };
+    const fetchPage = async () => {
+      const params = new URLSearchParams({ pageSize: String(pageSize), pageNumber: String(view.page) });
+      if (view.star) params.set('rating', String(view.star));
+      return api(`${url}?${params}`);
+    };
+    const renderList = () => {
+      const list = box.querySelector('[data-review-list]');
+      if (!list) return;
+      list.innerHTML = view.items.length ? view.items.map(reviewCardHtml).join('') : `<li class="muted review-empty">Chưa có đánh giá ${view.star ? `${view.star}★` : ''} nào.</li>`;
+      if (view.items.length < view.total) list.insertAdjacentHTML('beforeend', '<li class="review-more"><button type="button" class="sf-more" data-review-more>Xem thêm đánh giá</button></li>');
+      box.querySelector('[data-review-filter]').innerHTML = view.star
+        ? `Đang xem ${view.total} đánh giá <b>${view.star}★</b> <button type="button" class="text-button" data-review-star="${view.star}">Bỏ lọc</button>`
+        : `Tất cả ${view.summary.total} đánh giá — bấm vào một dòng sao để xem riêng`;
+      box.querySelectorAll('[data-review-star].review-bar').forEach(bar => {
+        const selected = Number(bar.dataset.reviewStar) === view.star;
+        bar.classList.toggle('is-selected', selected);
+        bar.setAttribute('aria-pressed', String(selected));
+      });
+    };
+    const load = async ({ reset }) => {
+      if (view.loading) return;
+      view.loading = true;
+      try {
+        if (reset) { view.page = 1; view.items = []; }
+        const data = await fetchPage();
+        if (!stillValid()) return;
+        view.summary = data.summary;
+        view.total = Number(data.totalItems ?? data.pagination?.totalItems ?? data.items.length);
+        view.items = reset ? data.items : [...view.items, ...data.items];
+        if (!box.querySelector('[data-review-list]')) {
+          const { average, total, distribution } = view.summary;
+          box.innerHTML = `
+            <div class="review-summary">
+              <div class="review-score"><strong>${Number(average).toFixed(1)}</strong><span>★</span><small>${total} đánh giá</small></div>
+              <div class="review-bars">
+                ${[5, 4, 3, 2, 1].map(star => `<button type="button" class="review-bar" data-review-star="${star}" aria-pressed="false" title="Xem các đánh giá ${star} sao"><span>${star}★</span><i><b style="width:${total ? Math.round(distribution[star] * 100 / total) : 0}%"></b></i><em>${distribution[star]}</em></button>`).join('')}
+              </div>
+            </div>
+            <p class="review-filter" data-review-filter></p>
+            <ul class="review-list review-scroll" data-review-list tabindex="0" aria-label="Danh sách đánh giá"></ul>`;
+          box.querySelector('[data-review-list]').addEventListener('scroll', event => {
+            const el = event.currentTarget;
+            if (view.items.length < view.total && el.scrollTop + el.clientHeight >= el.scrollHeight - 36) { view.page += 1; load({ reset: false }); }
+          }, { passive: true });
+          box.addEventListener('click', event => {
+            if (event.target.closest('[data-review-more]')) { if (view.items.length < view.total) { view.page += 1; load({ reset: false }); } return; }
+            const bar = event.target.closest('[data-review-star]');
+            if (!bar) return;
+            const star = Number(bar.dataset.reviewStar);
+            view.star = view.star === star ? null : star;
+            box.querySelector('[data-review-list]').scrollTop = 0;
+            load({ reset: true });
+          });
+        }
+        renderList();
+      } catch {
+        if (!view.summary) box.innerHTML = '';
+      } finally { view.loading = false; }
+    };
     box.innerHTML = '<p class="muted">Đang tải đánh giá...</p>';
-    try {
-      const data = await api(`/api/catalog/menu-items/${item.id}/reviews?pageSize=4`);
-      if (state.selectedMenuItem?.id !== item.id) return;
-      const { average, total, distribution } = data.summary;
-      box.innerHTML = `
-        <div class="review-summary">
-          <div class="review-score"><strong>${average.toFixed(1)}</strong><span>★</span><small>${total} đánh giá</small></div>
-          <div class="review-bars">
-            ${[5, 4, 3, 2, 1].map(star => `<div class="review-bar"><span>${star}★</span><i><b style="width:${total ? Math.round(distribution[star] * 100 / total) : 0}%"></b></i><em>${distribution[star]}</em></div>`).join('')}
-          </div>
-        </div>
-        <ul class="review-list">
-          ${data.items.map(review => `
-            <li><div><b>${escapeHtml(review.customerName)}</b> <span class="review-stars">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span></div>
-            ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}</li>`).join('')}
-        </ul>`;
-    } catch {
-      box.innerHTML = '';
-    }
+    await load({ reset: true });
   }
 
   function closeItemModal() {
@@ -1123,7 +1227,7 @@
       const toppings = group.toppings || [];
       const min = Number(group.minSelect || 0) || (group.required ? 1 : 0);
       const max = Math.max(min, Number(group.maxSelect || toppings.length) || toppings.length);
-      const hint = min > 0 ? (min === max ? `Chọn ${min}` : `Chọn ${min}-${max}`) : `Tuỳ chọn · tối đa ${max}`;
+      const hint = min > 0 ? (min === max ? `Chọn ${min}` : `Chọn ${min}-${max}`) : (max >= toppings.length && toppings.length > 1 ? 'Tuỳ chọn · thêm bao nhiêu cũng được' : `Tuỳ chọn · tối đa ${max}`);
       return `
         <section class="option-box" data-option-group="topping" data-group-id="${group.id}" data-group-name="${escapeHtml(group.name)}" data-min="${min}" data-max="${max}">
           <strong>${escapeHtml(group.name)} ${min > 0 ? '<span class="status-chip is-danger">Bắt buộc</span>' : '<span class="status-chip is-muted">Tuỳ chọn</span>'}</strong>
@@ -1363,7 +1467,12 @@
   }
 
   function voucherExpiry(endAt) {
-    return new Date(endAt).getFullYear() >= 2090 ? 'Không giới hạn thời gian' : `HSD ${new Date(endAt).toLocaleDateString('vi-VN')}`;
+    const end = new Date(endAt);
+    if (end.getFullYear() >= 2090) return 'Không giới hạn thời gian';
+    const days = Math.ceil((end.getTime() - Date.now()) / 86400000);
+    const date = end.toLocaleDateString('vi-VN');
+    if (days < 0) return `Đã hết hạn (HSD ${date})`;
+    return days === 0 ? `Hết hạn hôm nay (HSD ${date})` : `Còn ${days} ngày (HSD ${date})`;
   }
 
   function voucherTicket(voucher, action = '') {
@@ -1545,7 +1654,8 @@
     box.innerHTML = `
       <strong>🍱 Combo gồm</strong>
       <ul>${item.components.map(part => `<li><span>${part.quantity} × ${escapeHtml(part.name)}</span><b>${formatMoney(part.unitPrice * part.quantity)}</b></li>`).join('')}</ul>
-      <div class="combo-total"><span>Mua lẻ ${formatMoney(item.originalPrice)}</span><b>Combo ${formatMoney(item.effectivePrice)} · tiết kiệm ${formatMoney(item.savings)}</b></div>`;
+      <div class="combo-total"><span>Mua lẻ ${formatMoney(item.originalPrice)}</span><b>Combo ${formatMoney(item.effectivePrice)} · tiết kiệm ${formatMoney(item.savings)}</b></div>
+      ${(item.toppingGroups || []).length ? `<p class="muted combo-note">Các lựa chọn bên dưới (${escapeHtml(item.toppingGroups.map(group => group.name).join(', '))}) áp dụng cho cả combo. Muốn mỗi món một kiểu, hãy ghi vào phần ghi chú.</p>` : ''}`;
   }
 
   function renderCart() {
@@ -1576,6 +1686,7 @@
     `).join('');
     const fees = `
       <div id="cartQuote" class="cart-quote"><div class="fee-row"><span>Tạm tính</span><b>${formatMoney(cart.subtotal)}</b></div></div>
+      ${deliveryFeeTableHtml()}
       <button class="secondary-button" type="button" id="clearCartButton">Xóa toàn bộ giỏ</button>
     `;
     $('#cartItems').innerHTML = rows + fees;
@@ -1653,6 +1764,12 @@
       setStatus('Chưa có địa chỉ giao hàng.', true);
       return;
     }
+    // Đồ uống có cồn (máy chủ báo qua báo giá): phải xác nhận đủ 18 tuổi trước khi đặt
+    let ageConfirmed = false;
+    if (state.quote?.requiresAgeConfirmation) {
+      ageConfirmed = window.confirm('Đơn hàng có đồ uống có cồn (bia, rượu). Bạn xác nhận mình đã đủ 18 tuổi và chịu trách nhiệm về việc đặt hàng này?');
+      if (!ageConfirmed) { setStatus('Bạn cần xác nhận đủ 18 tuổi để đặt đồ uống có cồn.', true); return; }
+    }
     try {
       const order = await api('/api/customer/orders/checkout', {
         method: 'POST',
@@ -1665,7 +1782,8 @@
           customerNote: $('#customerNote').value.trim() || undefined,
           shipperNote: $('#shipperNote').value.trim() || undefined,
           needUtensils: $('#needUtensils').checked,
-          contactlessDelivery: $('#contactlessDelivery').checked
+          contactlessDelivery: $('#contactlessDelivery').checked,
+          ageConfirmed
         })
       });
       state.cart = null;
@@ -1681,15 +1799,46 @@
     }
   }
 
-  async function loadCustomerOrders() {
+  const ORDERS_PAGE_SIZE = 20;
+  async function loadCustomerOrders({ append = false } = {}) {
     if (!state.token || roleOf(state.user) !== 'CUSTOMER') return;
     try {
-      const result = await api('/api/customer/orders');
-      const items = result.items || [];
-      $('#customerOrders').innerHTML = items.length ? items.map(renderOrderSummary).join('') : empty();
-      bindCustomerOrderActions();
+      state.ordersPage = append ? (state.ordersPage || 1) + 1 : 1;
+      const result = await api(`/api/customer/orders?pageSize=${ORDERS_PAGE_SIZE}&pageNumber=${state.ordersPage}`);
+      state.orders = append ? [...(state.orders || []), ...(result.items || [])] : (result.items || []);
+      state.ordersTotal = result.totalItems ?? state.orders.length;
+      renderCustomerOrders();
     } catch (error) {
       $('#customerOrders').innerHTML = errorBox(error);
+    }
+  }
+
+  function renderCustomerOrders() {
+    const items = state.orders || [];
+    const more = items.length < (state.ordersTotal || 0);
+    $('#customerOrders').innerHTML = items.length
+      ? `<p class="muted">Hiển thị ${items.length}/${state.ordersTotal} đơn hàng</p>${items.map(renderOrderSummary).join('')}${more ? '<div class="load-more"><button class="sf-more" type="button" id="loadMoreOrders">Xem thêm đơn cũ ↻</button></div>' : ''}`
+      : empty();
+    $('#loadMoreOrders')?.addEventListener('click', () => loadCustomerOrders({ append: true }));
+    bindCustomerOrderActions();
+  }
+
+  /** Đặt lại: thêm lại đúng các món (biến thể, topping, ghi chú, số lượng) của đơn cũ vào giỏ của quán đó. */
+  async function reorder(orderId) {
+    const order = (state.orders || []).find(item => String(item.id) === String(orderId));
+    if (!order?.canReorder) { setStatus('Đơn này có món không còn bán nên không thể đặt lại nguyên đơn.', true); return; }
+    try {
+      for (const item of order.items) {
+        state.cart = await api('/api/customer/cart/items', { method: 'POST', body: JSON.stringify({
+          restaurantId: order.restaurantId, menuItemId: item.menuItemId, variantId: item.variantId, quantity: item.quantity,
+          toppingIds: (item.toppings || []).map(topping => topping.toppingId).filter(Boolean), note: item.note || undefined
+        }) });
+      }
+      renderCart();
+      setStatus(`Đã thêm lại ${order.items.length} món từ đơn ${order.orderCode} vào giỏ hàng.`);
+      showSubView('customer', 'cart');
+    } catch (error) {
+      setStatus(error.message, true);
     }
   }
 
@@ -1698,8 +1847,10 @@
       <article class="order-card">
         <strong>${escapeHtml(order.orderCode)}</strong>
         <span>${escapeHtml(order.restaurantName)} · ${escapeHtml(statusLabel(order.status))} · ${escapeHtml(paymentLabel(order.paymentMethod))}</span>
+        ${(order.items || []).length ? `<div class="order-thumbs">${order.items.slice(0, 4).map(item => `<span class="order-thumb" title="${escapeHtml(item.name)} × ${item.quantity}">${photo(item.name, item.imageUrl, 'order-thumb-img')}<small>${escapeHtml(item.name)} ×${item.quantity}</small></span>`).join('')}${order.items.length > 4 ? `<span class="muted">+${order.items.length - 4} món</span>` : ''}</div>` : ''}
         <span>Tổng: ${formatMoney(order.totalAmount)} · Phí giao: ${formatMoney(order.deliveryFee)} · Giảm: ${formatMoney(order.discountAmount)}</span>
         <button class="secondary-button" type="button" data-view-order="${order.id}">Xem chi tiết</button>
+        ${['DELIVERED', 'CANCELLED'].includes(order.status) && order.canReorder ? `<button class="secondary-button" type="button" data-reorder="${order.id}">Đặt lại</button>` : ''}
         ${['PENDING', 'CONFIRMED', 'PREPARING'].includes(order.status) && can('order.cancel') ? `<button type="button" data-cancel-order="${order.id}">Hủy đơn</button>` : ''}
       </article>
     `;
@@ -1712,6 +1863,7 @@
     document.querySelectorAll('[data-view-order]').forEach(button => {
       button.addEventListener('click', () => viewCustomerOrder(button.dataset.viewOrder));
     });
+    document.querySelectorAll('[data-reorder]').forEach(button => button.addEventListener('click', () => reorder(button.dataset.reorder)));
   }
 
   async function createInvoice(orderId) {
@@ -1797,7 +1949,7 @@
         ${renderOrderReviewForms(order)}
       </article>
     `;
-    $('#backToOrdersButton').addEventListener('click', loadCustomerOrders);
+    $('#backToOrdersButton').addEventListener('click', () => (state.orders ? renderCustomerOrders() : loadCustomerOrders()));
     document.querySelector('[data-create-invoice]')?.addEventListener('click', () => createInvoice(order.id));
     document.querySelector('[data-review-restaurant]')?.addEventListener('click', () => createReview(order.id, 'restaurant'));
     document.querySelector('[data-review-shipper]')?.addEventListener('click', () => createReview(order.id, 'shipper'));
@@ -1939,7 +2091,7 @@
         `).join('')}
         ${menuItems.map(item => `
           <article class="food-card is-row" data-search-item-restaurant="${item.restaurantId}">
-            ${photo(item.name, item.imageUrl, 'food-card-photo')}
+            ${photo(emojiLabel(item), item.imageUrl, 'food-card-photo')}
             <div class="card-body"><strong class="clamp-2">${escapeHtml(item.name)}</strong><span class="muted">${escapeHtml(item.restaurantName || '')}</span><span class="price">${formatMoney(item.effectivePrice)}</span></div>
           </article>
         `).join('')}
@@ -2370,7 +2522,7 @@
       <tr>
         <td>
           <div class="owner-menu-cell">
-            ${photo(item.name, item.imageUrl, 'owner-menu-thumb')}
+            ${photo(emojiLabel(item), item.imageUrl, 'owner-menu-thumb')}
             <div>
               <strong>${escapeHtml(item.name)}</strong>
               <span class="muted">${escapeHtml(item.description || '')}</span>

@@ -64,6 +64,16 @@ async function commonsSearch(query) {
   const json = await getJson(`https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query + ' filetype:bitmap')}&gsrnamespace=6&gsrlimit=30&${INFO}&format=json`);
   return fromCommonsPages(json?.query?.pages);
 }
+// Ảnh trong bài Wikipedia (vi/en): tìm bài theo từ khoá rồi lấy ảnh của bài đó — giấy phép đọc từ Commons
+async function wikiImages(lang, query) {
+  const found = await getJson(`https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=2&format=json`);
+  const out = [];
+  for (const hit of found?.query?.search ?? []) {
+    const json = await getJson(`https://${lang}.wikipedia.org/w/api.php?action=query&generator=images&titles=${encodeURIComponent(hit.title)}&gimlimit=30&${INFO}&format=json`);
+    out.push(...fromCommonsPages(json?.query?.pages).map(item => ({ ...item, source: `Wikipedia ${lang}: ${hit.title}` })));
+  }
+  return out;
+}
 async function openverse(query) {
   const json = await getJson(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&license=by,by-sa,cc0,pdm&extension=jpg&size=medium,large&page_size=20&mature=false`);
   return (json?.results ?? []).filter(item => item.url && item.width >= 700).map(item => ({
@@ -94,9 +104,14 @@ for (const type of TYPES) {
   mkdirSync(dir, { recursive: true });
   const seen = new Set(); const candidates = [];
   const add = list => { for (const item of list) { if (!seen.has(item.downloadUrl) && candidates.length < PER) { seen.add(item.downloadUrl); candidates.push(item); } } };
-  for (const category of type.cats ?? []) add(await commonsCategory(category));
-  for (const query of type.search ?? []) if (candidates.length < PER) add(await commonsSearch(query));
-  for (const query of type.ov ?? []) if (candidates.length < PER) add(await openverse(query));
+  const ovOnly = args.includes('--ov-only'); // chỉ Openverse (dùng khi tìm kiếm Commons trả ảnh không liên quan)
+  // Mỗi nguồn tối đa PER/3 ứng viên để không nguồn nào chiếm hết chỗ; phần còn lại dồn cho tìm tệp Commons
+  const cap = Math.ceil(PER / 3);
+  const addCapped = (list, limit) => add(list.slice(0, limit));
+  if (!ovOnly) for (const category of type.cats ?? []) addCapped(await commonsCategory(category), cap);
+  if (args.includes('--wiki')) for (const [lang, query] of type.wiki ?? []) if (candidates.length < PER) addCapped(await wikiImages(lang, query), cap);
+  for (const query of type.ov ?? []) if (candidates.length < PER) addCapped(await openverse(query), cap);
+  if (!ovOnly) for (const query of type.search ?? []) if (candidates.length < PER) add(await commonsSearch(query));
   const kept = [];
   for (const item of candidates) {
     const index = kept.length + 1;

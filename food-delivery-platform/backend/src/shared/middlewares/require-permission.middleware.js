@@ -1,5 +1,6 @@
 import { query } from '../database/mysql.js';
 import { HttpError } from '../http/http-error.js';
+import { M } from '../http/messages.js';
 
 export function requirePermission(...permissionCodes) {
   return createPermissionMiddleware(query, ...permissionCodes);
@@ -10,7 +11,7 @@ export function createPermissionMiddleware(queryFn, ...permissionCodes) {
 
   return async (req, res, next) => {
     if (!req.user?.id) {
-      next(new HttpError(401, 'Authentication required'));
+      next(new HttpError(401, M.authRequired));
       return;
     }
 
@@ -38,7 +39,7 @@ export function createPermissionMiddleware(queryFn, ...permissionCodes) {
       );
 
       if (Number(rows[0]?.granted_count ?? 0) !== requiredCodes.length) {
-        next(new HttpError(403, 'Permission denied'));
+        next(new HttpError(403, M.permissionDenied));
         return;
       }
 

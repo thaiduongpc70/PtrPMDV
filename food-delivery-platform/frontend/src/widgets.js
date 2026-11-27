@@ -55,7 +55,8 @@
       if (!message) return;
       if (!fd().state.token) {
         toggle(false);
-        fd().openAuth('login', 'Đăng nhập để gửi yêu cầu hỗ trợ, hoặc gọi hotline 1900 6868.');
+        const hotline = fd().state.storefront?.contact?.phone; // số hotline lấy từ cấu hình hệ thống (API storefront)
+        fd().openAuth('login', `Đăng nhập để gửi yêu cầu hỗ trợ${hotline ? `, hoặc gọi hotline ${hotline}` : ''}.`);
         return;
       }
       const topic = $('#contactTopic');

@@ -1,4 +1,5 @@
 import { HttpError } from '../http/http-error.js';
+import { M } from '../http/messages.js';
 
 const buckets = new Map();
 
@@ -14,9 +15,10 @@ export function rateLimit({ windowMs = 60_000, max = 120, key = defaultKey } = {
     }
 
     current.count += 1;
-    if (current.count > max) {
+    const limit = typeof max === 'function' ? max(req) : max;
+    if (current.count > limit) {
       res.setHeader('Retry-After', Math.ceil((current.resetAt - now) / 1000));
-      next(new HttpError(429, 'Too many requests'));
+      next(new HttpError(429, M.tooManyRequests));
       return;
     }
     next();

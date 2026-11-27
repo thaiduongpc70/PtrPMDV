@@ -8,6 +8,7 @@
    Chạy sau simulate-activity.mjs, simulate-extras.mjs, finalize-realistic-data.mjs:  node scripts/spread-timeline.mjs --yes */
 import 'dotenv/config';
 import mysql from 'mysql2/promise';
+import { makeSampler } from './lib/order-hours.mjs';
 
 if (!process.argv.includes('--yes')) {
   console.log('Thêm --yes để xác nhận gán lại mốc thời gian cho toàn bộ đơn hàng.');
@@ -44,7 +45,11 @@ const START = Date.UTC(2026, 7, 29, 0, 0, 0) / 1000;
 const LAST_START = nowNaive - 4500; // đơn mới nhất bắt đầu cách hiện tại ít nhất 75 phút để kịp hoàn tất
 
 /* ---------- 1. Thời điểm đặt đơn ---------- */
-const orders = await run('SELECT id, order_status, payment_method, ordered_at FROM orders ORDER BY id');
+const orders = await run('SELECT id, restaurant_id, order_status, payment_method, ordered_at FROM orders ORDER BY id');
+// Giờ đặt đơn lấy mẫu theo giờ mở cửa + loại quán (lib/order-hours.mjs): đơn luôn nằm trong giờ mở cửa của quán
+const shopRows = await run("SELECT r.id, r.name, TIME_FORMAT(r.opening_time, '%H:%i:%s') AS opening, TIME_FORMAT(r.closing_time, '%H:%i:%s') AS closing, COALESCE(c.name, '') AS category FROM restaurants r LEFT JOIN restaurant_categories c ON c.id = r.category_id");
+const samplers = new Map(shopRows.map(row => [Number(row.id), makeSampler({ opening: row.opening ?? '00:00:00', closing: row.closing ?? '00:00:00', category: row.category, name: row.name })]));
+const samplerOf = order => samplers.get(Number(order.restaurant_id)) ?? makeSampler({ opening: '07:00:00', closing: '22:00:00' });
 const spanDays = (epoch(orders[orders.length - 1].ordered_at) - epoch(orders[0].ordered_at)) / 86400;
 const alreadySpread = spanDays > 3; // chạy lại trên dữ liệu đã trải: giữ nguyên thời điểm đặt đơn, chỉ dựng lại các sự kiện
 
@@ -65,18 +70,22 @@ function sampleWeighted(entries) {
   }
   return entries[entries.length - 1][0];
 }
-const sampleStart = () => {
-  for (;;) {
-    const value = sampleWeighted(dayEntries) + sampleWeighted(HOURS) * 3600 + Math.floor(rnd() * 3600);
+const sampleStart = order => {
+  const sampler = samplerOf(order);
+  for (let attempt = 0; ; attempt += 1) {
+    const value = sampleWeighted(dayEntries) + sampler.sample(rnd) * 60 + Math.floor(rnd() * 60);
     if (value <= LAST_START) return value;
+    if (attempt > 200) return LAST_START - Math.floor(rnd() * 86400);
   }
 };
 
 const recentEntries = dayEntries.filter(([t]) => t >= nowNaive - RECENT_DAYS * 86400);
-const sampleRecentStart = () => {
-  for (;;) {
-    const value = sampleWeighted(recentEntries) + sampleWeighted(HOURS) * 3600 + Math.floor(rnd() * 3600);
+const sampleRecentStart = order => {
+  const sampler = samplerOf(order);
+  for (let attempt = 0; ; attempt += 1) {
+    const value = sampleWeighted(recentEntries) + sampler.sample(rnd) * 60 + Math.floor(rnd() * 60);
     if (value <= LAST_START && value >= nowNaive - RECENT_DAYS * 86400) return value;
+    if (attempt > 200) return LAST_START - Math.floor(rnd() * 86400);
   }
 };
 
@@ -87,11 +96,10 @@ if (alreadySpread) {
   for (const order of orders) {
     const id = Number(order.id);
     const finished = finalStatuses.has(order.order_status);
-    starts.set(id, !finished ? nowNaive - Math.floor(between(3, 40) * 60) : RECENT_FROM && id >= RECENT_FROM ? sampleRecentStart() : epoch(order.ordered_at));
+    starts.set(id, !finished ? nowNaive - Math.floor(between(3, 40) * 60) : RECENT_FROM && id >= RECENT_FROM ? sampleRecentStart(order) : epoch(order.ordered_at));
   }
 } else {
-  const sortedTimes = finishedOrders.map(sampleStart).sort((a, b) => a - b);
-  finishedOrders.forEach((order, index) => starts.set(Number(order.id), sortedTimes[index]));
+  for (const order of finishedOrders) starts.set(Number(order.id), sampleStart(order));
   for (const order of orders.filter(o => !finalStatuses.has(o.order_status))) starts.set(Number(order.id), nowNaive - Math.floor(between(3, 40) * 60));
 }
 
@@ -189,7 +197,7 @@ await update('delivery_status_history', `UPDATE delivery_status_history t JOIN d
   LEFT JOIN ${gpsRank} g ON g.id = t.id
   SET t.created_at = ${F(`CASE WHEN g.id IS NOT NULL THEN IF(g.rn = 1, e.t_g1, e.t_g2)
     WHEN t.status = 'ASSIGNED' THEN e.t_assign WHEN t.status = 'ACCEPTED' THEN e.t_accept WHEN t.status = 'PICKED_UP' THEN e.t_pick
-    WHEN t.status = 'DELIVERING' THEN e.t_dlv ELSE e.t_end END`)}`);
+    WHEN t.status = 'DELIVERING' THEN e.t_dlv ELSE COALESCE(e.t_end, e.t_cancel, e.t_last) END`)}`); // chuyến CANCELLED (đơn bị huỷ sau khi gán tài xế) không có t_end
 await update('shipper_locations', `UPDATE shipper_locations t JOIN deliveries d ON d.id = t.delivery_id JOIN tmp_ev e ON e.order_id = d.order_id
   JOIN ${locRank} g ON g.id = t.id SET t.recorded_at = ${F('COALESCE(IF(g.rn = 1, e.t_g1, IF(g.rn = 2, e.t_g2, e.t_dlv)), e.t_last)')}`);
 await update('shipper_earnings', `UPDATE shipper_earnings t JOIN deliveries d ON d.id = t.delivery_id JOIN tmp_ev e ON e.order_id = d.order_id SET t.created_at = ${F('COALESCE(e.t_end, e.t_last)')}`);
@@ -213,9 +221,9 @@ await update('support_messages', `UPDATE support_messages t JOIN support_tickets
 /* ---------- 4. Thông báo và nhật ký: lấy mốc từ chính sự kiện mà chúng ghi lại ---------- */
 console.log('Thông báo và nhật ký:');
 await update('notifications', `UPDATE notifications n JOIN tmp_ev e ON e.order_id = n.reference_id AND n.reference_type = 'ORDER' SET n.created_at = ${F(`CASE
-  WHEN n.message LIKE '%was placed%' THEN e.t0 + 1 WHEN n.message LIKE 'Restaurant confirmed%' THEN e.t_conf + 1
-  WHEN n.message LIKE 'Kitchen started%' THEN e.t_prep + 1 WHEN n.message LIKE 'Order is ready%' THEN e.t_ready + 1
-  WHEN n.message LIKE '%rejected%' THEN COALESCE(e.t_cancel, e.t0) + 1 ELSE e.t_last END`)}, n.read_at = NULL, n.is_read = 0`);
+  WHEN n.message LIKE '%was placed%' OR n.message LIKE '%đã được đặt%' THEN e.t0 + 1 WHEN n.message LIKE 'Restaurant confirmed%' OR n.message LIKE 'Quán đã xác nhận%' THEN e.t_conf + 1
+  WHEN n.message LIKE 'Kitchen started%' OR n.message LIKE 'Bếp bắt đầu%' OR n.message LIKE 'Quán đang chuẩn bị%' THEN e.t_prep + 1 WHEN n.message LIKE 'Order is ready%' OR n.message LIKE '%sẵn sàng%' THEN e.t_ready + 1
+  WHEN n.message LIKE '%rejected%' OR n.message LIKE '%từ chối%' THEN COALESCE(e.t_cancel, e.t0) + 1 ELSE e.t_last END`)}, n.read_at = NULL, n.is_read = 0`);
 
 const audit = (label, actions, source, value) => update(`audit ${label}`, `UPDATE audit_logs a ${source} SET a.created_at = ${value} WHERE a.action IN (${actions.map(x => `'${x}'`).join(',')})`);
 await audit('ORDER_CREATE', ['ORDER_CREATE'], 'JOIN tmp_ev e ON e.order_id = a.entity_id', F('e.t0 + 1'));

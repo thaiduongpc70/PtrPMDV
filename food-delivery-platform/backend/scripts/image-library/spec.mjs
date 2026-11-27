@@ -5,6 +5,11 @@
  *   match  : regex áp lên tên món viết thường; khớp đầu tiên (theo thứ tự mảng) thắng. Món không khớp loại nào → KHÔNG gắn ảnh.
  *   cats   : thư mục Wikimedia Commons; search: truy vấn tệp Commons; ov: truy vấn Openverse
  */
+import { ROUND3, WIKI_RETRY } from './spec-round3.mjs';
+import { ROUND4 } from './spec-round4.mjs';
+import { ROUND5 } from './spec-round5.mjs';
+import { ROUND6 } from './spec-round6.mjs';
+
 const T = (key, must, match, sources = {}) => ({ key, must, match, ...sources });
 
 export const TYPES = [
@@ -20,7 +25,7 @@ export const TYPES = [
   T('bun-thang', 'bún thang (trứng thái chỉ, giò, gà xé)', /^bún thang/, { search: ['bún thang'], ov: ['bun thang'] }),
   T('bun-oc', 'bún ốc (ốc, nước chua, bún)', /^bún ốc/, { search: ['bún ốc'], ov: ['bun oc snail noodle'] }),
   T('hu-tieu', 'hủ tiếu Nam Vang (sợi hủ tiếu, tôm, thịt, gan, hẹ)', /^hủ tiếu (nam vang|khô|thập cẩm|xá xíu|sườn)/, { cats: ['Hủ tiếu'], search: ['hủ tiếu'], ov: ['hu tieu nam vang'] }),
-  T('mi-quang', 'mì Quảng (sợi mì bản to, ít nước, bánh tráng, đậu phộng)', /^mì quảng gà/, { cats: ['Mì Quảng'], search: ['mì Quảng'], ov: ['mi quang'] }),
+  T('mi-quang', 'mì Quảng (sợi mì bản to, ít nước, bánh tráng, đậu phộng)', /^mì quảng/, { cats: ['Mì Quảng'], search: ['mì Quảng'], ov: ['mi quang'] }),
   T('cao-lau', 'cao lầu Hội An (sợi vàng, xá xíu, rau sống)', /^cao lầu/, { cats: ['Cao lầu'], search: ['cao lầu'], ov: ['cao lau hoi an'] }),
   T('mi-hoanh-thanh', 'mì hoành thánh (mì, hoành thánh, xá xíu)', /^mì hoành thánh/, { search: ['mì hoành thánh', 'wonton noodle soup'], ov: ['wonton noodle soup'] }),
   T('cha-ca-la-vong', 'chả cá Lã Vọng (chả cá nghệ rán với thì là, bún)', /chả cá lã vọng/, { search: ['chả cá Lã Vọng'], ov: ['cha ca la vong'] }),
@@ -109,5 +114,37 @@ export const TYPES = [
   T('croissant', 'bánh croissant bơ', /^croissant/, { cats: ['Croissants'], search: ['croissant'], ov: ['croissant'] }),
   T('coca-cola', 'lon Coca-Cola', /^coca-cola/, { search: ['coca-cola can'], ov: ['coca cola can'] }),
   T('pepsi', 'lon Pepsi', /^pepsi/, { search: ['pepsi can'], ov: ['pepsi can'] }),
-  T('kem-dua', 'kem dừa / kem', /^kem dừa/, { cats: ['Ice cream'], search: ['coconut ice cream'], ov: ['coconut ice cream'] })
+  T('kem-dua', 'kem dừa / kem', /^kem dừa/, { cats: ['Ice cream'], search: ['coconut ice cream'], ov: ['coconut ice cream'] }),
+
+  // ===== Đợt 2: các loại món còn thiếu ảnh đúng =====
+  T('com-ga', 'đĩa cơm gà (cơm vàng/trắng, thịt gà xé hoặc đùi gà, rau, nước chấm)', /^cơm gà (xé|đùi|nướng|thập cẩm|trứng|lòng)/, { search: ['cơm gà Hội An', 'cơm gà'], ov: ['com ga hoi an chicken rice vietnamese'] }),
+  T('chao', 'tô cháo (cháo trắng/đặc, topping thịt/gà, hành, quẩy)', /^cháo (gà|sườn|thịt bằm|lòng)/, { search: ['cháo gà', 'cháo'], ov: ['chao ga vietnamese chicken congee'] }),
+  T('tra-dao-cam-sa', 'ly trà đào cam sả (trà cam đào, miếng đào, sả, đá)', /^trà đào cam sả/, { search: ['trà đào cam sả', 'peach tea'], ov: ['peach orange lemongrass tea vietnam', 'iced peach tea with peach slices'] }),
+  T('ca-phe-muoi', 'cà phê muối (lớp kem muối trắng trên cà phê)', /^cà phê muối/, { search: ['cà phê muối'], ov: ['salt coffee vietnam cafe muoi'] }),
+  T('ca-phe-dua', 'cà phê dừa (cà phê với cốt dừa đá xay)', /^cà phê dừa/, { search: ['cà phê dừa'], ov: ['vietnamese coconut coffee'] }),
+  T('cacao', 'ly cacao / socola đá', /^cacao đá/, { search: ['iced chocolate', 'iced cocoa'], ov: ['iced chocolate drink glass', 'iced cocoa'] }),
+  T('nuoc-cam', 'ly nước ép cam (màu cam, có cam tươi bên cạnh)', /^nước (ép )?cam$/, { ov: ['glass of fresh orange juice with oranges', 'orange juice glass'] }),
+  T('tra-sua-khoai-mon', 'ly trà sữa khoai môn (màu tím nhạt)', /khoai môn/, { search: ['taro milk tea'], ov: ['taro milk tea bubble tea purple'] }),
+  T('tra-sua-thai-xanh', 'ly trà sữa Thái xanh (màu xanh lá)', /thái xanh/, { search: ['Thai green milk tea'], ov: ['thai green tea milk tea glass'] }),
+  T('tra-sua-matcha', 'ly trà sữa/đá xay matcha (màu xanh matcha)', /^(trà sữa matcha|matcha đá xay)/, { search: ['matcha latte iced', 'matcha frappe'], ov: ['iced matcha milk tea bubble tea', 'matcha frappuccino'] }),
+  T('quay', 'quẩy (bánh quẩy chiên vàng dài)', /^quẩy/, { search: ['quẩy', 'youtiao'], ov: ['youtiao fried dough stick vietnamese quay'] }),
+  T('bo-bia', 'bò bía (cuốn bánh tráng nhân củ sắn, lạp xưởng, trứng)', /^bò bía/, { search: ['bò bía'], ov: ['bo bia vietnamese rolls'] }),
+  T('nem-lui', 'nem lụi (thịt xiên sả nướng)', /^nem lụi/, { search: ['nem lụi'], ov: ['nem lui lemongrass pork skewers hue'] }),
+  T('nem-chua-ran', 'nem chua rán (nem chua chiên vàng)', /^nem chua rán/, { search: ['nem chua rán'], ov: ['nem chua ran fried fermented pork'] }),
+  T('bi-cuon', 'bì cuốn (cuốn bì heo thính, rau)', /^bì cuốn/, { search: ['bì cuốn'], ov: ['bi cuon vietnamese rolls shredded pork skin'] }),
+  T('mien', 'miến (miến gà/cua/lươn nước)', /^miến cua/, { search: ['miến gà', 'miến'], ov: ['mien ga vietnamese glass noodle chicken soup'] }),
+  T('banh-canh-cua', 'bánh canh cua (nước sệt, cua, sợi bánh to)', /^bánh canh cua/, { search: ['bánh canh cua'], ov: ['banh canh cua crab thick noodle soup'] }),
+  T('banh-canh-gio-heo', 'bánh canh giò heo (nước sệt, giò heo, sợi bánh to)', /^bánh canh giò heo/, { search: ['bánh canh giò heo'], ov: ['banh canh gio heo pork knuckle'] }),
+  T('banh-canh', 'bánh canh (sợi bánh to, nước sệt, cua/giò)', /^bánh canh/, { search: ['bánh canh'], ov: ['banh canh crab vietnamese thick noodle soup'] }),
+  T('bun-moc', 'bún mọc (bún, mọc viên, giò, rau)', /^bún mọc/, { search: ['bún mọc'], ov: ['bun moc pork ball noodle soup'] }),
+  T('banh-mi-bo-kho', 'bánh mì bò kho (ổ bánh mì ăn với bò kho)', /^bánh mì bò kho/, { search: ['bánh mì bò kho'], ov: ['banh mi bo kho'] }),
+  T('hu-tieu-bo-kho', 'hủ tiếu bò kho (sợi hủ tiếu vàng, bò kho)', /^hủ tiếu bò kho/, { search: ['bò kho', 'hủ tiếu bò kho'], ov: ['bo kho vietnamese beef stew'] }),
+  T('goi-du-du', 'gỏi đu đủ/xoài (sợi đu đủ xanh/xoài, khô bò/tôm, rau răm)', /^gỏi đu đủ khô bò/, { search: ['gỏi đu đủ', 'green papaya salad'], ov: ['goi du du vietnamese green papaya salad'] }),
+  T('canh-kho-qua', 'canh khổ qua nhồi thịt (trái khổ qua nhồi thịt trong nước canh)', /canh khổ qua/, { search: ['canh khổ qua'], ov: ['canh kho qua stuffed bitter melon soup'] }),
+  T('dau-hu-sot-ca', 'đậu hũ sốt cà chua (đậu hũ chiên sốt cà đỏ, hành)', /đậu hũ sốt cà/, { search: ['đậu sốt cà chua', 'đậu phụ sốt cà chua'], ov: ['tofu tomato sauce vietnamese dau hu sot ca'] }),
+  T('ga-sot-han', 'gà rán sốt kiểu Hàn (gà phủ sốt cay đỏ/BBQ, mè)', /^gà sốt bbq hàn/, { search: ['Korean fried chicken'], ov: ['korean fried chicken yangnyeom glazed'] }),
+  T('pizza-veg', 'pizza rau củ (ớt chuông, nấm, ô liu, cà chua)', /^pizza rau củ/, { search: ['vegetable pizza'], ov: ['vegetarian pizza vegetables'] })
 ];
+
+TYPES.push(...ROUND3, ...ROUND4, ...ROUND5, ...ROUND6);
+for (const type of TYPES) if (WIKI_RETRY[type.key]) type.wiki = WIKI_RETRY[type.key];

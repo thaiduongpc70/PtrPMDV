@@ -16,7 +16,7 @@ Sau khi đổi schema hoặc route: `node tools/generate-dev-docs.mjs` (cần My
 ## Lệnh thường dùng (trong `food-delivery-platform/backend`)
 
 ```
-npm start                 # chạy server + frontend tại http://localhost:3001
+npm start                 # chạy server + frontend tại http://localhost:3001 (cổng 3000 bị Grafana khác chiếm)
 npm test                  # test đơn vị (không cần DB)
 npm run check             # kiểm tra cú pháp
 npm run data:*            # dựng/nối dữ liệu qua API thật (xem docs/dev/data-pipeline.md)

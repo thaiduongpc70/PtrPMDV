@@ -1,8 +1,10 @@
 import { asyncHandler } from '../../shared/http/async-handler.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { catalogService } from './catalog.service.js';
+import { M } from '../../shared/http/messages.js';
 
-export const getStorefront = asyncHandler(async (_req, res) => res.json(await catalogService.getStorefront()));
+export const getStorefront = asyncHandler(async (req, res) => res.json(await catalogService.getStorefront(req.query)));
+export const getDeliveryFees = asyncHandler(async (_req, res) => res.json(await catalogService.getDeliveryFees()));
 export const listCollections = asyncHandler(async (req, res) => res.json(await catalogService.listCollections(req.query)));
 export const listCities = asyncHandler(async (_req, res) => res.json(await catalogService.listCities()));
 export const listDistricts = asyncHandler(async (req, res) => res.json(await catalogService.listDistricts(req.query)));
@@ -26,7 +28,7 @@ export const getRestaurant = asyncHandler(async (req, res) => {
   const restaurant = await catalogService.getRestaurant(restaurantId);
 
   if (!restaurant) {
-    throw new HttpError(404, 'Restaurant not found');
+    throw new HttpError(404, M.restaurantNotFound);
   }
 
   res.json(restaurant);
@@ -53,7 +55,7 @@ function readId(value) {
   const id = Number(value);
 
   if (!Number.isInteger(id) || id <= 0) {
-    throw new HttpError(400, 'Invalid id');
+    throw new HttpError(400, M.idInvalid);
   }
 
   return id;

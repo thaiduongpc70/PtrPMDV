@@ -68,3 +68,21 @@ test('province lookup accepts common spellings', () => {
   assert.equal(findProvince('hà nội').name, 'Hà Nội');
   assert.equal(findProvince('Atlantis'), null);
 });
+
+test('bảng phí giao sinh từ chính công thức tính phí', async () => {
+  const { deliveryFeeTable } = await import('../src/shared/pricing/delivery-fee.js');
+  const options = { base: 15000, perKm: 5000, maxKm: 8 };
+  const table = deliveryFeeTable(options);
+  assert.deepEqual(table[0], { fromKm: 0, toKm: 3, fee: 15000 });
+  assert.deepEqual(table.at(-1), { fromKm: 7, toKm: 8, fee: 40000 });
+  for (const row of table) assert.equal(deliveryFeeFor(options, row.toKm).fee, row.fee);
+  assert.equal(table.length, 6);
+});
+
+test('định dạng tiền VND kiểu Việt Nam', async () => {
+  const { formatVnd } = await import('../src/shared/pricing/format-money.js');
+  assert.equal(formatVnd(49000), '49.000đ');
+  assert.equal(formatVnd(1250000), '1.250.000đ');
+  assert.equal(formatVnd(0), '0đ');
+  assert.equal(formatVnd('105000.00'), '105.000đ');
+});
