@@ -1,7 +1,7 @@
 $kind: collection
 description: "Collection tổng hợp các API chính để test hệ thống Food Delivery: auth, customer, restaurant, shipper, admin, payment, chat/support và settlement. Import vào Postman, tạo environment hoặc dùng collection variables có sẵn."
 variables:
-  baseUrl: http://localhost:3000
+  baseUrl: http://localhost:3002
   accessToken: ""
   refreshToken: ""
   userId: ""
@@ -55,7 +55,7 @@ scripts:
       const match = header.match(/\{\{(customerToken|restaurantToken|shipperToken|adminToken)\}\}/);
       if (match && !pm.collectionVariables.get(match[1])) {
         pm.sendRequest({
-          url: pm.collectionVariables.get('baseUrl') + '/api/auth/login',
+          url: pm.variables.get('baseUrl') + '/api/auth/login',
           method: 'POST',
           header: { 'Content-Type': 'application/json' },
           body: { mode: 'raw', raw: JSON.stringify({ emailOrUsername: accounts[match[1]], password: 'duong2k5' }) }

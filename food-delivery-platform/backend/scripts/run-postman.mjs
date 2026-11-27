@@ -1,6 +1,6 @@
 /* Runs the Postman collection stored in /postman (git-native YAML format) with newman.
-   Usage: node scripts/run-postman.mjs [--folder "99 - Full E2E Flow"] [--base http://localhost:3001] [--export out.json] [--no-history]
-   The API must already be running.
+   Usage: node scripts/run-postman.mjs [--folder "99 - Full E2E Flow"] [--base http://localhost:3002] [--export out.json] [--no-history]
+   The API must already be running on a COPY of the database (the collection writes data): see docs/user-guide.md.
    Every run is recorded under /postman/runs (history.json, HISTORY.md and one detailed report per run), and the
    converted v2.1 collection is written to /postman/exports so it can be imported into the Postman app. */
 import fs from 'node:fs';
@@ -21,7 +21,7 @@ const option = name => {
   return index === -1 ? null : args[index + 1];
 };
 const folders = args.flatMap((arg, index) => (arg === '--folder' ? [args[index + 1]] : []));
-const baseUrl = option('--base') || 'http://localhost:3001';
+const baseUrl = option('--base') || 'http://localhost:3002';
 const postmanDir = path.resolve(collectionDir, '../..');
 const saveHistory = !args.includes('--no-history');
 

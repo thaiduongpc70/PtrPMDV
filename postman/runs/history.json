@@ -1,5 +1,17 @@
 [
   {
+    "id": "20261127-210715",
+    "startedAt": "2026-11-27T14:07:15.172Z",
+    "durationMs": 77670,
+    "scope": "Toàn bộ collection",
+    "baseUrl": "http://localhost:3002",
+    "requests": 484,
+    "assertions": 844,
+    "failedAssertions": 0,
+    "requestErrors": 0,
+    "result": "PASSED"
+  },
+  {
     "id": "20261127-205043",
     "startedAt": "2026-11-27T13:50:43.888Z",
     "durationMs": 79444,
