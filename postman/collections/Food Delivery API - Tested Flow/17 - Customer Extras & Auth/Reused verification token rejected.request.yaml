@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/email/verification/confirm"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"token":"{{pmVerify}}"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Reused verification token rejected: HTTP 400/401", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([400,401]));
+      pm.test("Reused verification token rejected: nội dung", () => { pm.expect(j.message).to.be.a('string').that.is.not.empty; });
+    language: text/javascript
+order: 13000

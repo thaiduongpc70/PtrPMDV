@@ -118,7 +118,8 @@ Kết quả hiện tại: 20 quán, 406 món + 60 combo (mỗi món/combo 20-50 
 
 ### Chạy trong app Postman và xem lịch sử
 - Import `postman/exports/Food Delivery API.postman_collection.json` (hoặc để Postman tự đọc thư mục `postman/collections` ở Local View), mở collection → **Run** → **Start run**. Mỗi lần chạy được Postman lưu ở tab **Runs** của collection và mục **History** ở thanh bên.
-- Các folder `00`–`08` được viết lại theo từng vai trò (khách, nhà hàng, tài xế, admin) và có assertion cho từng request; `99 - Full E2E Flow` đi trọn một đơn từ đặt → giao → hóa đơn → đánh giá. Toàn collection hiện có 269 request / 424 assertion (kết quả mới nhất trong `postman/runs/HISTORY.md`).
+- Toàn collection có 484 request / 844 assertion, phủ 225/225 thao tác API; folder `99 - Full E2E Flow` đi trọn một đơn từ đặt → giao → hóa đơn → đánh giá (kết quả mới nhất trong `postman/runs/HISTORY.md`).
+- **Bộ test ghi và sửa dữ liệu** nên chỉ chạy trên DB bản sao: bật máy chủ riêng với `DB_NAME=<db bản sao> PORT=3002 AUTH_EXPOSE_TOKENS=true RATE_LIMIT_MAX=10000`, rồi `node scripts/run-postman.mjs --base http://localhost:3002`. Chạy trong giờ các quán thử đang mở cửa.
 
 ## Giao diện cửa hàng kiểu ShopeeFood (bản thiết kế lại)
 

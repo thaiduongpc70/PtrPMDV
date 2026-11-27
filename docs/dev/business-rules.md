@@ -219,3 +219,13 @@ Nếu cần dựng lại số liệu sau khi sửa dữ liệu hàng loạt: `sc
 | #46496 | FD-MWYZH2U6-IUM1I | kh.huynh.mai.linh | CANCELLED | MOMO/REFUNDED | Đợt 19: kiểm luật hoàn tiền ("Kiểm thử huỷ sau hoàn một phần") |
 
 Đơn #45688 (ZaloPay 122.000đ, đặt 24/11) không phải đơn kiểm thử: bị kẹt PENDING đã trả tiền, được job xử lý ở đợt 20 (CANCELLED, hoàn #3087 duyệt COMPLETED).
+
+## 25. Đợt 21 (27/11/2026): sửa lỗi phát hiện khi chạy Postman toàn bộ chức năng và khi rà luồng
+
+- **Phân công**: chỉ khi đơn `READY_FOR_PICKUP` hoặc `SHIPPER_ASSIGNED` (đổi tài xế); đề nghị `OFFERED` cũ của đơn bị huỷ khi đổi tài xế (`operations/delivery-rules.js`).
+- **Chuyến giao**: `ASSIGNED/ACCEPTED → PICKED_UP|FAILED`, `PICKED_UP → DELIVERING|DELIVERED|FAILED`, `DELIVERING → DELIVERED|FAILED`; gửi lại đúng trạng thái hiện tại thì không ghi gì; đơn đã đóng trả 409.
+- **COD** (`payments/cod-service.js`): tài xế chỉ thu giao dịch của mình; `SETTLED` không quay về `COLLECTED`; chỉ đối soát giao dịch `COLLECTED`; mã lạ 404.
+- **Tài xế**: không tự đặt hoặc tự gỡ `SUSPENDED`; không gửi GPS vào chuyến của người khác; từ chối đề nghị không thuộc mình trả 404.
+- **Quán từ chối đơn** chỉ ghi `order_cancellations` một lần (trước đó lỗi 500).
+- **Thực đơn**: `PATCH` size/topping/nhóm topping giữ nguyên trường không gửi; `PUT` combo và nhóm topping của món trả nội dung phản hồi.
+- **Xuất dữ liệu**: loại không hỗ trợ trả 400, không tạo job.

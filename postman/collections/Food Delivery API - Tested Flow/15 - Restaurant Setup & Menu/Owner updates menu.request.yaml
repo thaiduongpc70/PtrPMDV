@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/menus/{{pmMenuId}}"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"name":"Thực đơn Postman 2"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner updates menu: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Owner updates menu: nội dung", () => { pm.expect(j.name).to.eql('Thực đơn Postman 2'); pm.expect(j.description).to.eql('thử'); });
+    language: text/javascript
+order: 11000

@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/shippers/profile"
+method: GET
+headers:
+  Authorization: Bearer {{shipperToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Shipper profile: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Shipper profile: nội dung", () => { pm.collectionVariables.set('pmShipperId', String((j.id || j.profile.id))); });
+    language: text/javascript
+order: 29000

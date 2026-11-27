@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/restaurants"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"ownerUserId":{{pmOwnerId}},"name":"Quán PM xoá {{pmStamp}}","address":"2 Đường Điện Biên","city":"Hưng Yên","latitude":20.65,"longitude":106.06,"openingTime":"07:00","closingTime":"22:00"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Admin creates second restaurant: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Admin creates second restaurant: nội dung", () => { pm.collectionVariables.set('pmNewRid2', String((j.id || j.restaurant.id))); });
+    language: text/javascript
+order: 10000

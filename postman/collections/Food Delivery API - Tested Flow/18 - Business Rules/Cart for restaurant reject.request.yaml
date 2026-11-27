@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/cart/items"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{newToken}}
+body:
+  type: text
+  content: '{"restaurantId":{{pmRid}},"menuItemId":{{pmDishId}},"quantity":1}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Cart for restaurant reject: HTTP 200/201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200,201]));
+      pm.test("Cart for restaurant reject: nội dung", () => { pm.expect(j.items.map(x => String(x.menuItemId))).to.include(pm.collectionVariables.get('pmDishId')); });
+    language: text/javascript
+order: 22000

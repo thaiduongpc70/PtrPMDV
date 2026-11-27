@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/register/customer"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"username":"pm.khach{{pmStamp}}","email":"pm{{pmStamp}}@example.com","phone":"09{{pmStamp}}","password":"Matkhau#12345","fullName":"Khách Postman"}'
+auth:
+  type: noauth
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set('pmStamp', String(Date.now()).slice(-8));
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Register fresh customer: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Register fresh customer: nội dung", () => { pm.collectionVariables.set('newToken', String(j.accessToken)); });
+    language: text/javascript
+order: 8000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/orders/{{pmOrder3}}/ready"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: "{}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Restaurant ready: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Restaurant ready: nội dung", () => { pm.expect(j.status).to.eql('READY_FOR_PICKUP'); pm.expect(String(j.id)).to.eql(pm.collectionVariables.get('pmOrder3')); });
+    language: text/javascript
+order: 35000

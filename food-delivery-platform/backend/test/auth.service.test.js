@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { authRepository } from '../src/modules/auth/auth.repository.js';
-import { authService } from '../src/modules/auth/auth.service.js';
-import { verifyPassword } from '../src/shared/security/password.js';
-import { hashRefreshToken } from '../src/shared/security/token.js';
+
+process.env.AUTH_EXPOSE_TOKENS = 'true';
+const { env } = await import('../src/shared/config/env.js');
+const { authRepository } = await import('../src/modules/auth/auth.repository.js');
+const { verifyPassword } = await import('../src/shared/security/password.js');
+const { hashRefreshToken } = await import('../src/shared/security/token.js');
+const { authService } = await import('../src/modules/auth/auth.service.js');
 
 test('password reset request creates a hashed token for an active account', async t => {
   let storedToken;

@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/email/verification/confirm"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"token":"{{pmVerify}}"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Confirm email verification: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Confirm email verification: nội dung", () => { pm.expect(j.user.emailVerifiedAt).to.be.a('string'); });
+    language: text/javascript
+order: 12000

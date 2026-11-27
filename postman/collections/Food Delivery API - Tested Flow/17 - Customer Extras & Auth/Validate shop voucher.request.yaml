@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/promotions/{{pmRid}}/validate"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{newToken}}
+body:
+  type: text
+  content: '{"code":"{{pmShopCode}}","subtotal":100000}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Validate shop voucher: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Validate shop voucher: nội dung", () => { pm.expect(JSON.stringify(j)).to.include('12000'); });
+    language: text/javascript
+order: 25000

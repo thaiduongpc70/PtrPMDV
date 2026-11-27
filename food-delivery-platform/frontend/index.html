@@ -703,14 +703,14 @@
           </form>
           <form class="stacked-form" id="forgotForm" data-auth-pane="forgot" hidden>
             <h3>Quên mật khẩu</h3>
-            <p class="muted">Nhập email đã đăng ký. Nếu email tồn tại, hệ thống gửi mã đặt lại mật khẩu (có hiệu lực trong thời gian ngắn).</p>
+            <p class="muted">Nhập email đã đăng ký. Nếu email tồn tại, hệ thống tạo mã đặt lại mật khẩu (có hiệu lực trong thời gian ngắn). Hệ thống chưa gửi email tự động.</p>
             <label>Email <input id="forgotEmail" type="email" required placeholder="ban@email.com"></label>
             <button class="primary-button" type="submit">GỬI MÃ ĐẶT LẠI</button>
             <div class="auth-row"><a href="#" data-auth-tab="login">← Quay lại đăng nhập</a><a href="#" id="haveTokenLink">Tôi đã có mã</a></div>
           </form>
           <form class="stacked-form" id="resetForm" data-auth-pane="reset" hidden>
             <h3>Đặt lại mật khẩu</h3>
-            <label>Mã đặt lại <input id="resetToken" required autocomplete="one-time-code" placeholder="Dán mã nhận được qua email"></label>
+            <label>Mã đặt lại <input id="resetToken" required autocomplete="one-time-code" placeholder="Dán mã đặt lại"></label>
             <label>Mật khẩu mới <input id="resetPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự"></label>
             <button class="primary-button" type="submit">ĐẶT LẠI MẬT KHẨU</button>
             <div class="auth-row"><a href="#" data-auth-tab="login">← Quay lại đăng nhập</a></div>

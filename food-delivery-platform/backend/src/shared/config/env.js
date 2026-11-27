@@ -91,6 +91,9 @@ export const env = Object.freeze({
   },
   auth: {
     jwtSecret,
+    // Chỉ để thử trên máy (dự án chưa gửi email): trả mã đặt lại/xác minh ngay trong response.
+    // Luôn tắt ở production, kể cả khi đặt biến.
+    exposeAuthTokens: nodeEnv !== 'production' && readString('AUTH_EXPOSE_TOKENS') === 'true',
     accessTokenTtlSeconds: readInteger(
       'ACCESS_TOKEN_TTL_SECONDS',
       3600,

@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/promotions"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"code":"PM{{pmStamp}}","name":"Voucher Postman","discountType":"FIXED_AMOUNT","discountValue":10000,"minimumOrder":50000,"usageLimit":20,"startAt":"{{pmStart}}","endAt":"{{pmEnd}}"}'
+auth:
+  type: noauth
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set('pmStamp', String(Date.now()).slice(-8)); pm.collectionVariables.set('pmStart', new Date(Date.now() - 86400000).toISOString()); pm.collectionVariables.set('pmEnd', new Date(Date.now() + 20 * 86400000).toISOString());
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner creates shop voucher: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Owner creates shop voucher: nội dung", () => { pm.collectionVariables.set('pmShopPromoId', String((j.id || j.promotion.id))); pm.collectionVariables.set('pmShopCode', 'PM' + pm.collectionVariables.get('pmStamp')); });
+    language: text/javascript
+order: 35000

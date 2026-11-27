@@ -52,6 +52,8 @@ export async function importCsv(input) {
 export async function createExport({ userId, exportType = 'ORDERS', format = 'CSV', filters = {} }) {
   const normalizedFormat = String(format).toUpperCase();
   if (!['CSV', 'EXCEL', 'PDF'].includes(normalizedFormat)) throw new HttpError(400, M.formatCsvExcelPdf);
+  // Chặn loại dữ liệu sai trước khi tạo job (trước đây tạo job FAILED rồi trả 201)
+  if (!Object.hasOwn(EXPORT_TITLES, String(exportType).toUpperCase())) throw new HttpError(400, M.exportTypeUnsupported);
   const result = await query(
     `INSERT INTO export_jobs (user_id, export_type, format, status)
      VALUES (?, ?, ?, 'PROCESSING')`,

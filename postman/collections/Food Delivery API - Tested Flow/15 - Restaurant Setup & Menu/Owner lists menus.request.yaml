@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/menus"
+method: GET
+headers:
+  Authorization: Bearer {{restaurantToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner lists menus: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Owner lists menus: nội dung", () => { pm.expect(j.items).to.be.an('array'); });
+    language: text/javascript
+order: 10000

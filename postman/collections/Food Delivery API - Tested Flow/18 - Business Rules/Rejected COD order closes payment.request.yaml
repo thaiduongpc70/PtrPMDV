@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/orders/{{pmOrder2}}"
+method: GET
+headers:
+  Authorization: Bearer {{newToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Rejected COD order closes payment: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Rejected COD order closes payment: nội dung", () => { pm.expect(j.paymentStatus).to.eql('CANCELLED'); });
+    language: text/javascript
+order: 26000

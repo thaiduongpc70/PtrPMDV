@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/addresses"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{newToken}}
+body:
+  type: text
+  content: '{"label":"Nhà","receiverName":"Khách Postman","receiverPhone":"0901234567","addressLine":"10 Đường Điện Biên","city":"Hưng Yên","latitude":{{pmLat}},"longitude":{{pmLng}},"isDefault":true}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Create delivery address near shop: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Create delivery address near shop: nội dung", () => { pm.collectionVariables.set('pmAddrId', String((j.id || j.address.id))); });
+    language: text/javascript
+order: 26000

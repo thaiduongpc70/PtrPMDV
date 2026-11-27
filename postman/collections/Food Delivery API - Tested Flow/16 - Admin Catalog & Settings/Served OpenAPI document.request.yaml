@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/openapi.json"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Served OpenAPI document: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Served OpenAPI document: nội dung", () => { pm.expect(Object.keys(j.paths).length).to.be.above(100); });
+    language: text/javascript
+order: 33000

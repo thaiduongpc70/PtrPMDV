@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/cart/items"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{newToken}}
+body:
+  type: text
+  content: '{"restaurantId":{{pmRid}},"menuItemId":{{pmDishId}},"quantity":1}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Add dish to cart: HTTP 200/201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200,201]));
+      pm.test("Add dish to cart: nội dung", () => { pm.collectionVariables.set('pmLineId', String((j.items || j.cart.items)[0].id)); });
+    language: text/javascript
+order: 27000

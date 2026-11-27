@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/partners/register/shipper"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{ "fullName": "Tài xế Postman", "username": "nc{{pSuffix}}", "email": "nc{{pSuffix}}@postman.test", "phone": "083{{pSuffix}}", "password": "Matkhau#12345", "identityNumber": "083{{pSuffix}}", "vehicleType": "BICYCLE" }'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Thiếu cam kết: HTTP 400', () => pm.response.to.have.status(400));
+      pm.test('báo cần đồng ý cam kết', () => pm.expect(pm.response.json().message).to.include('cam kết'));
+    language: text/javascript
+order: 9500

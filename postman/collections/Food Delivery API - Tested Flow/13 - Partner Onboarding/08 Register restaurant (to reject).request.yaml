@@ -2,11 +2,12 @@ $kind: http-request
 url: "{{baseUrl}}/api/partners/register/restaurant"
 method: POST
 headers:
-  Content-Type: "application/json"
+  Content-Type: application/json
 body:
   type: text
   content: |-
     {
+      "commitment": { "accepted": true, "readToEnd": true, "version": "{{pCommitVersion}}", "kind": "restaurant" },
       "ownerName": "Chủ quán Postman",
       "username": "nhb{{pSuffix}}",
       "email": "nhb{{pSuffix}}@postman.test",

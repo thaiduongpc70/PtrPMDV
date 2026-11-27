@@ -8,6 +8,8 @@ import { CANCEL_REASON_CODES, CANCELLABLE_STATUSES, cancelOrderInTransaction } f
 import { M } from '../../shared/http/messages.js';
 import { notificationService } from '../notifications/notification.service.js';
 import { closeOpenPayments, createRefund } from '../payments/refund-service.js';
+import { collectCod, settleCod } from '../payments/cod-service.js';
+import { assertAssignable, assertOwnAvailabilityChange, checkDeliveryTransition } from './delivery-rules.js';
 import { readLimitOffset } from '../../shared/http/pagination.js';
 import { readSearchTerm } from '../../shared/http/search-param.js';
 
@@ -87,6 +89,7 @@ shipperRoutes.patch('/profile', requirePermission('delivery.update'), asyncHandl
 shipperRoutes.patch('/availability', requirePermission('delivery.update'), asyncHandler(async (req, res) => {
   const shipper = await requireShipper(req.user.id);
   const status = readEnum(req.body?.availabilityStatus, ['OFFLINE', 'AVAILABLE', 'BUSY', 'SUSPENDED'], 'availabilityStatus');
+  assertOwnAvailabilityChange(shipper.availabilityStatus, status);
   await query('UPDATE shipper_profiles SET availability_status = ? WHERE id = ?', [status, shipper.id]);
   audit(req, 'SHIPPER_AVAILABILITY_UPDATE', 'SHIPPER', shipper.id, { availabilityStatus: status });
   res.json(await requireShipper(req.user.id));
@@ -138,12 +141,13 @@ shipperRoutes.post('/assignments/:assignmentId/accept', requirePermission('deliv
 shipperRoutes.post('/assignments/:assignmentId/reject', requirePermission('delivery.update'), asyncHandler(async (req, res) => {
   const shipper = await requireShipper(req.user.id);
   const assignmentId = readId(req.params.assignmentId, 'assignmentId');
-  await query(
+  const updated = await query(
     `UPDATE delivery_assignments
      SET assignment_status = 'REJECTED', rejected_at = CURRENT_TIMESTAMP, reject_reason = ?
      WHERE id = ? AND shipper_id = ? AND assignment_status = 'OFFERED'`,
     [nullableText(req.body?.reason, 500), assignmentId, shipper.id]
   );
+  if (!updated.affectedRows) throw new HttpError(404, M.assignmentNotFound);
   audit(req, 'DELIVERY_ASSIGNMENT_REJECT', 'DELIVERY_ASSIGNMENT', assignmentId, req.body);
   res.json({ id: assignmentId, status: 'REJECTED' });
 }));
@@ -159,6 +163,7 @@ shipperRoutes.post('/locations', requirePermission('delivery.update'), asyncHand
   const deliveryId = req.body?.deliveryId ? readId(req.body.deliveryId, 'deliveryId') : null;
   const latitude = readDecimal(req.body?.latitude, 'latitude');
   const longitude = readDecimal(req.body?.longitude, 'longitude');
+  if (deliveryId) await assertOwnDelivery(query, deliveryId, shipper.id);
   const result = await query(
     `INSERT INTO shipper_locations (shipper_id, delivery_id, latitude, longitude, speed, heading, accuracy)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -408,16 +413,17 @@ paymentRoutes.get('/cod', requirePermission('payment.view'), asyncHandler(async 
 
 paymentRoutes.post('/cod/:codId/collect', requirePermission('delivery.update'), asyncHandler(async (req, res) => {
   const codId = readId(req.params.codId, 'codId');
-  await query(`UPDATE cod_transactions SET status = 'COLLECTED', collected_at = CURRENT_TIMESTAMP WHERE id = ?`, [codId]);
+  const shipperId = req.user.role === 'SHIPPER' ? (await requireShipper(req.user.id)).id : null;
+  const result = await withTransaction(connection => collectCod(connection, codId, { shipperId }));
   audit(req, 'COD_COLLECT', 'COD_TRANSACTION', codId);
-  res.json({ id: codId, status: 'COLLECTED' });
+  res.json(result);
 }));
 
 paymentRoutes.post('/cod/:codId/settle', requirePermission('payment.manage'), asyncHandler(async (req, res) => {
   const codId = readId(req.params.codId, 'codId');
-  await query(`UPDATE cod_transactions SET status = 'SETTLED', settled_at = CURRENT_TIMESTAMP WHERE id = ?`, [codId]);
+  const result = await withTransaction(connection => settleCod(connection, codId));
   audit(req, 'COD_SETTLE', 'COD_TRANSACTION', codId);
-  res.json({ id: codId, status: 'SETTLED' });
+  res.json(result);
 }));
 
 paymentRoutes.post('/orders/:orderId/invoice', requirePermission('payment.view'), asyncHandler(async (req, res) => {
@@ -696,6 +702,11 @@ settlementRoutes.post('/admin/settlements/generate', requireRole('ADMIN'), requi
   res.status(201).json({ items, totalItems: items.length });
 }));
 
+export async function assertOwnDelivery(exec, deliveryId, shipperId) {
+  const rows = await exec('SELECT id FROM deliveries WHERE id = ? AND shipper_id = ? LIMIT 1', [deliveryId, shipperId]);
+  if (!rows[0]) throw new HttpError(404, M.deliveryNotFound);
+}
+
 async function requireShipper(userId) {
   const rows = await query(
     `SELECT id, user_id, full_name, identity_number, vehicle_type, vehicle_plate, driving_license,
@@ -749,6 +760,7 @@ async function createAssignment(input) {
       [input.orderId]
     );
     if (!orderRows[0]) throw new HttpError(404, M.orderNotFound);
+    assertAssignable(orderRows[0].order_status);
     const shipperRows = await connection.execute(
       `SELECT id FROM shipper_profiles
        WHERE id = ? AND availability_status IN ('AVAILABLE','BUSY') AND deleted_at IS NULL
@@ -775,6 +787,8 @@ async function createAssignment(input) {
       ]
     );
     const deliveryRows = await connection.execute('SELECT id FROM deliveries WHERE order_id = ? LIMIT 1', [input.orderId]);
+    // Đổi tài xế: đóng đề nghị cũ còn chờ, tránh tài xế cũ bấm nhận rồi giành lại đơn (trigger trg_assignment_accept)
+    await connection.execute(`UPDATE delivery_assignments SET assignment_status = 'CANCELLED' WHERE order_id = ? AND assignment_status = 'OFFERED'`, [input.orderId]);
     const assignmentResult = await connection.execute(
       `INSERT INTO delivery_assignments (order_id, shipper_id, assigned_by)
        VALUES (?, ?, ?)`,
@@ -837,6 +851,7 @@ export async function updateDeliveryStatus(input) {
       [input.deliveryId, input.shipperId]
     );
     if (!rows[0]) throw new HttpError(404, M.deliveryNotFound);
+    if (checkDeliveryTransition(rows[0].delivery_status, rows[0].order_status, input.status)) return mapDelivery(rows[0]); // bấm lặp: giữ nguyên
     const statusToOrder = {
       PICKED_UP: 'PICKED_UP',
       DELIVERING: 'DELIVERING',

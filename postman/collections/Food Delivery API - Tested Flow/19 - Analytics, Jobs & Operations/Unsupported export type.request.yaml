@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/jobs/exports"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"exportType":"XXX"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Unsupported export type: HTTP 400", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([400]));
+      pm.test("Unsupported export type: nội dung", () => { pm.expect(j.message).to.be.a('string').that.is.not.empty; });
+    language: text/javascript
+order: 11000

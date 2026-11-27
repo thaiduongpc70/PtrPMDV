@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/jobs/exports"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"exportType":"SETTLEMENT","format":"CSV"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Create export job: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Create export job: nội dung", () => { pm.collectionVariables.set('pmExportId', String(j.id)); });
+    language: text/javascript
+order: 8000

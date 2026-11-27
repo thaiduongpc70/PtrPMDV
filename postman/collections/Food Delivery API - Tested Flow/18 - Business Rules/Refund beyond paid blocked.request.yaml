@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/payments/orders/{{pmOrderId}}/refund"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: "{}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Refund beyond paid blocked: HTTP 409", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([409]));
+      pm.test("Refund beyond paid blocked: nội dung", () => { pm.expect(j.message).to.match(/đã được hoàn/); });
+    language: text/javascript
+order: 21000

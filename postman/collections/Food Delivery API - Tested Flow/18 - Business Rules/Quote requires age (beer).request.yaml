@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/orders/quote"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{newToken}}
+body:
+  type: text
+  content: '{"restaurantId":{{pmRid}},"addressId":{{pmAddrId}}}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Quote requires age (beer): HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Quote requires age (beer): nội dung", () => { pm.expect(j.requiresAgeConfirmation).to.eql(true); });
+    language: text/javascript
+order: 2000

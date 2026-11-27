@@ -325,27 +325,25 @@ export const orderRepository = {
       );
       if (!rows[0]) return { error: 'NOT_FOUND' };
       const current = rows[0];
-      const updates = targetStatus === 'CONFIRMED'
-        ? 'confirmed_at = CURRENT_TIMESTAMP'
-        : targetStatus === 'READY_FOR_PICKUP'
-          ? 'prepared_at = CURRENT_TIMESTAMP'
-          : targetStatus === 'CANCELLED'
-            ? 'cancelled_at = CURRENT_TIMESTAMP'
-            : '';
-      if (targetStatus === 'CANCELLED') {
-        // Quán từ chối: dùng chung luồng huỷ (ghi lịch sử, order_cancellations, yêu cầu hoàn nếu đã trả, đóng giao dịch chưa thu)
-        await cancelOrderInTransaction(connection, current, { actorUserId: userId, reasonCode: reasonCode ?? 'RESTAURANT_REJECTED', reason: note, historyNote: note });
-      } else {
-        await connection.execute(`UPDATE orders SET order_status = ?${updates ? `, ${updates}` : ''} WHERE id = ?`, [targetStatus, orderId]);
-        // Trigger trg_order_status_history đã ghi dòng chuyển trạng thái; bổ sung người thực hiện/ghi chú thay vì ghi thêm dòng trùng.
-        await connection.execute('UPDATE order_status_history SET changed_by = ?, note = ? WHERE order_id = ? AND new_status = ? ORDER BY id DESC LIMIT 1', [userId, note, orderId, targetStatus]);
-      }
-      if (targetStatus === 'CANCELLED') await connection.execute('INSERT INTO order_cancellations (order_id, cancelled_by, reason_code, reason, refund_amount) VALUES (?, ?, ?, ?, 0)', [orderId, userId, reasonCode ?? 'RESTAURANT_REJECTED', note]);
+      await applyRestaurantTransition(connection, current, { userId, orderId, targetStatus, note, reasonCode });
       const updatedRows = await connection.execute('SELECT o.*, r.name AS restaurant_name, r.owner_user_id, u.email AS customer_email FROM orders o INNER JOIN restaurants r ON r.id = o.restaurant_id INNER JOIN customer_profiles cp ON cp.id = o.customer_id INNER JOIN users u ON u.id = cp.user_id WHERE o.id = ? LIMIT 1', [orderId]);
       return { before: mapOrderSummary(current), after: mapOrderSummary(updatedRows[0]), customerUserId: Number(current.customer_user_id), customerEmail: current.customer_email, restaurantOwnerUserId: Number(current.owner_user_id), orderCode: current.order_code, orderId: Number(orderId), status: targetStatus };
     });
   }
 };
+
+/** Ghi một bước chuyển trạng thái do quán thực hiện (trong transaction đã mở, đơn đã được khoá). */
+export async function applyRestaurantTransition(connection, current, { userId, orderId, targetStatus, note, reasonCode = null }) {
+  if (targetStatus === 'CANCELLED') {
+    // Quán từ chối: dùng chung luồng huỷ (ghi lịch sử, order_cancellations, yêu cầu hoàn nếu đã trả, đóng giao dịch chưa thu)
+    await cancelOrderInTransaction(connection, current, { actorUserId: userId, reasonCode: reasonCode ?? 'RESTAURANT_REJECTED', reason: note, historyNote: note });
+    return;
+  }
+  const stamp = targetStatus === 'CONFIRMED' ? ', confirmed_at = CURRENT_TIMESTAMP' : targetStatus === 'READY_FOR_PICKUP' ? ', prepared_at = CURRENT_TIMESTAMP' : '';
+  await connection.execute(`UPDATE orders SET order_status = ?${stamp} WHERE id = ?`, [targetStatus, orderId]);
+  // Trigger trg_order_status_history đã ghi dòng chuyển trạng thái; bổ sung người thực hiện/ghi chú thay vì ghi thêm dòng trùng.
+  await connection.execute('UPDATE order_status_history SET changed_by = ?, note = ? WHERE order_id = ? AND new_status = ? ORDER BY id DESC LIMIT 1', [userId, note, orderId, targetStatus]);
+}
 
 async function loadAndValidateToppings(connection, itemId, toppingIds) {
   if (toppingIds.length === 0) {

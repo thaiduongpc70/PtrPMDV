@@ -13,8 +13,9 @@ Mục đích: giúp người/AI vào làm tiếp **không phải khám phá lạ
 | 7 | [data-pipeline.md](data-pipeline.md) | Dữ liệu "chạy thật" qua API: lệnh, thứ tự, khôi phục | viết tay |
 | 8 | [gotchas.md](gotchas.md) | Bẫy đã gặp, quy ước sửa file, những gì chưa làm | viết tay |
 | 9 | [run-server.md](run-server.md) | Bật/dừng máy chủ nhanh, kiểm tra /health, biến môi trường chỉ dùng cho script dữ liệu | viết tay |
+| 10 | [backend-flows.md](backend-flows.md) | **Người mới học dự án đọc file này**: request đi qua đâu, đăng nhập/RBAC, frontend gọi backend, luồng từng chức năng theo vai trò, sơ đồ, bảng chức năng ↔ API ↔ file | viết tay |
 
-Tài liệu liên quan có sẵn: `docs/openapi.json` (Swagger `/api/docs`), `docs/user-guide.md` (hướng dẫn dùng), `docs/deployment.md`, `docs/handover-checklist.md`, `outputs/master-plan/Master Plan.xlsx` (kế hoạch gốc), `Food_Delivery_Phan_1_Quy_trinh_nghiep_vu.docx` (quy trình nghiệp vụ), `postman/` (bộ test).
+Tài liệu liên quan có sẵn: `docs/bao-cao/BaoCao_FoodGo.docx` (báo cáo bài tập lớn), `docs/openapi.json` (Swagger `/api/docs`), `docs/user-guide.md` (hướng dẫn dùng), `docs/deployment.md`, `docs/handover-checklist.md`, `outputs/master-plan/Master Plan.xlsx` (kế hoạch gốc), `Food_Delivery_Phan_1_Quy_trinh_nghiep_vu.docx` (quy trình nghiệp vụ), `postman/` (bộ test).
 
 ## Làm mới hai file sinh tự động
 

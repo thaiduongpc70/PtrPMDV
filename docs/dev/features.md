@@ -70,7 +70,7 @@ Bảng điều khiển, giám sát giao hàng (bản đồ), **báo cáo & phân
 | 5.1 | Nhập/xuất Excel/CSV/PDF qua job | ✅ | Xuất .xlsx/.pdf/.csv thật; nhập `.xlsx` ✅ (cùng CSV, SpreadsheetML) — trang Admin → Dữ liệu |
 | 5.2 | Rà SQLi/XSS/CSRF, upload, secret | 🟡 | Dùng truy vấn tham số hoá, `escapeHtml` ở frontend, helmet+CSP, rate limit; chưa có báo cáo rà soát bảo mật chính thức |
 | 6.1 | Docker Compose, CI/CD, logging, health | ✅ | `.github/workflows`, `/health/live|ready`, log JSON |
-| 6.2 | OpenAPI/Postman/tài liệu | ✅ | `docs/openapi.json` (70 path, chưa phủ hết 219 route), Postman |
+| 6.2 | OpenAPI/Postman/tài liệu | ✅ | `docs/openapi.json` (phủ toàn bộ 225 thao tác), Postman 484 request, `docs/dev/backend-flows.md`, báo cáo `docs/bao-cao/` |
 | 6.3 | Video demo, kiểm tra bàn giao | 🟡 | `docs/video-demo-script.md`, `handover-checklist.md`; chưa có video |
 | 7 | Ổn định realtime/GPS, hiệu năng | 🟡 | API đo < ~120 ms trên 18k đơn; chưa tải thử nặng |
 

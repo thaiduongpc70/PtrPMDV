@@ -166,11 +166,7 @@ export const authService = {
       expiresAt
     });
 
-    return {
-      ...response,
-      resetToken,
-      expiresAt
-    };
+    return env.auth.exposeAuthTokens ? { ...response, resetToken, expiresAt } : response;
   },
 
   async resetPassword(input) {
@@ -229,11 +225,7 @@ export const authService = {
       expiresAt
     });
 
-    return {
-      ...response,
-      verificationToken,
-      expiresAt
-    };
+    return env.auth.exposeAuthTokens ? { ...response, verificationToken, expiresAt } : response;
   },
 
   async verifyEmail(token) {

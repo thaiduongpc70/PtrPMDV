@@ -6,7 +6,5 @@ workspace:
 cloudResources:
   collections:
     ../postman/collections/Food Delivery API - Tested Flow: ed7dfc29-e10c-4b9e-b11b-9061e6878487
-    ../postman/collections/Food Delivery API - Tested Flow-1: 1f2255f0-1163-4ef8-b77a-6868dfe40176
-    ../postman/collections/Food Delivery API - Full Flow Tests: ac22a21e-fc7f-40b8-9999-87dcd346665b
   globals:
     ../postman/globals/workspace.globals.yaml: 08caf604-15ed-40a7-878d-2f3f40930a27

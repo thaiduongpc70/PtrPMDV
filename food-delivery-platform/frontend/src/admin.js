@@ -149,7 +149,7 @@
           <button type="button" class="todo ${t.n ? 'has-items' : ''}" data-act="go" data-go="${t.go}"><span>${t.ico}</span><div><strong>${num(t.n)}</strong><small>${t.text}</small></div><i>›</i></button>`).join('')}</div></div>
       </div>
       <div class="grid-3">
-        <div class="card"><h4>Trạng thái đơn hàng</h4>${donut(d.orderStatus, { labelKey: 'status', valueKey: 'total', labelFn: s => ({ DELIVERED: 'Đã giao', CANCELLED: 'Đã hủy', PENDING: 'Chờ xác nhận', READY_FOR_PICKUP: 'Sẵn sàng', PREPARING: 'Đang chuẩn bị', CONFIRMED: 'Đã xác nhận', DELIVERING: 'Đang giao', SHIPPER_ASSIGNED: 'Có tài xế', PICKED_UP: 'Đã lấy hàng' }[s] || s) })}</div>
+        <div class="card"><h4>Trạng thái đơn hàng</h4>${donut(d.orderStatus, { labelKey: 'status', valueKey: 'total', labelFn: s => ({ DELIVERED: 'Đã giao', CANCELLED: 'Đã hủy', PENDING: 'Chờ xác nhận', READY_FOR_PICKUP: 'Sẵn sàng', PREPARING: 'Đang chuẩn bị', CONFIRMED: 'Đã xác nhận', DELIVERING: 'Đang giao', SHIPPER_ASSIGNED: 'Có tài xế', PICKED_UP: 'Đã lấy hàng', FAILED: 'Thất bại' }[s] || s) })}</div>
         <div class="card"><h4>Người dùng theo vai trò</h4>${hbars(d.userRoles.map(x => ({ ...x, name: fd().roleLabel(x.role) })), { valueKey: 'total', tone: 'is-blue' })}</div>
         <div class="card"><h4>Nhà hàng theo trạng thái</h4>${hbars(d.restaurantStatus.map(x => ({ ...x, name: ({ ACTIVE: 'Hoạt động', PENDING: 'Chờ duyệt', INACTIVE: 'Tạm ngưng', SUSPENDED: 'Bị khóa' }[x.status] || x.status) })), { valueKey: 'total', tone: 'is-green' })}</div>
       </div>

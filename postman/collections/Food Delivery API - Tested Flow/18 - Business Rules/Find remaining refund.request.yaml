@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/manage/refunds?status=PENDING&pageSize=100"
+method: GET
+headers:
+  Authorization: Bearer {{adminToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Find remaining refund: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Find remaining refund: nội dung", () => { const found = j.items.find(x => String(x.orderId) === pm.collectionVariables.get('pmOrderId')); pm.expect(found).to.exist; pm.collectionVariables.set('pmRefund2', String(found.id)); });
+    language: text/javascript
+order: 18000

@@ -3282,8 +3282,7 @@
       event.preventDefault();
       try {
         const result = await api('/api/auth/password/forgot', { method: 'POST', body: JSON.stringify({ email: $('#forgotEmail').value.trim() }) });
-        setStatus(`${result.message === 'If the email exists, a password reset token has been created' ? 'Nếu email tồn tại, mã đặt lại mật khẩu đã được tạo và gửi tới hộp thư của bạn.' : result.message} Nhập mã ở bước tiếp theo.`);
-        openAuth('reset');
+        openAuth('reset', `${result.message}. Hệ thống chưa gửi email: hãy liên hệ quản trị viên để nhận mã.`);
       } catch (error) { setStatus(error.message, true); }
     });
     $('#resetForm').addEventListener('submit', async event => {

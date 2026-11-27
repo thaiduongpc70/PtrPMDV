@@ -1,4 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/api/payments/orders/{{orderId}}/invoice"
-method: POST
-order: 3000

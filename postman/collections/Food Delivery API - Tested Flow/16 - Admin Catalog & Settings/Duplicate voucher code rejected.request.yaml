@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/manage/promotions"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"code":"SYS{{pmStamp}}","name":"trùng","discountType":"PERCENT","discountValue":10}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Duplicate voucher code rejected: HTTP 409", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([409]));
+      pm.test("Duplicate voucher code rejected: nội dung", () => { pm.expect(j.message).to.match(/đã tồn tại/); });
+    language: text/javascript
+order: 21000

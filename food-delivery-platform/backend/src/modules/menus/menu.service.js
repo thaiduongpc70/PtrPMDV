@@ -115,7 +115,7 @@ export const menuService = {
     const variants = await this.listVariants(userId, restaurantId, itemId);
     const current = variants.find(value => value.id === variantId);
     if (!current) throw new HttpError(404, M.variantNotFound);
-    const data = validateVariant(input);
+    const data = validateVariant({ ...current, ...input }); // PATCH: trường không gửi giữ nguyên
     await menuRepository.updateVariant(variantId, itemId, data);
     const updated = (await this.listVariants(userId, restaurantId, itemId)).find(value => value.id === variantId);
     return mutation(current, updated);
@@ -141,7 +141,7 @@ export const menuService = {
   },
   async updateToppingGroup(userId, restaurantId, groupId, input) {
     const current = await getGroup(userId, restaurantId, groupId);
-    const data = validateToppingGroup(input);
+    const data = validateToppingGroup({ ...current, ...input }); // PATCH: trường không gửi giữ nguyên
     await menuRepository.updateToppingGroup(groupId, restaurantId, data);
     const updated = await getGroup(userId, restaurantId, groupId);
     return mutation(current, updated);
@@ -166,7 +166,7 @@ export const menuService = {
     const toppings = await this.listToppings(userId, restaurantId, groupId);
     const current = toppings.find(topping => topping.id === toppingId);
     if (!current) throw new HttpError(404, M.toppingNotFound);
-    const data = validateTopping(input);
+    const data = validateTopping({ ...current, ...input }); // PATCH: trường không gửi giữ nguyên
     await menuRepository.updateTopping(toppingId, groupId, data);
     const updated = (await this.listToppings(userId, restaurantId, groupId)).find(topping => topping.id === toppingId);
     return mutation(current, updated);
@@ -190,7 +190,7 @@ export const menuService = {
     const result = await menuRepository.setComboComponents(itemId, restaurantId, components);
     if (result.error === 'NOT_FOUND') throw new HttpError(404, M.menuItemNotFound);
     if (result.error === 'INVALID_COMPONENTS') throw new HttpError(400, M.comboComponents);
-    return { itemId, components, audit: { oldValues: null, newValues: { itemId, components } } };
+    return { value: { itemId, components }, audit: { oldValues: null, newValues: { itemId, components } } };
   },
   async linkToppingGroups(userId, restaurantId, itemId, input) {
     await getItem(userId, restaurantId, itemId);
@@ -198,7 +198,7 @@ export const menuService = {
     const groups = await menuRepository.listToppingGroups(userId, restaurantId);
     if (groupIds.some(id => !groups.some(group => group.id === id))) throw new HttpError(400, M.toppingGroupForeign);
     if (!await menuRepository.linkToppingGroups(itemId, restaurantId, groupIds)) throw new HttpError(404, M.menuItemNotFound);
-    return { itemId, groupIds, audit: { oldValues: null, newValues: { itemId, groupIds } } };
+    return { value: { itemId, groupIds }, audit: { oldValues: null, newValues: { itemId, groupIds } } };
   }
 };
 

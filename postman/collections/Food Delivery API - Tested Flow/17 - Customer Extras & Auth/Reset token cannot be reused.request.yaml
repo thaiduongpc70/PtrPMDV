@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/password/reset"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"token":"{{pmReset}}","password":"Matkhau#67890"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Reset token cannot be reused: HTTP 401", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([401]));
+      pm.test("Reset token cannot be reused: nội dung", () => { pm.expect(j.message).to.be.a('string').that.is.not.empty; });
+    language: text/javascript
+order: 16000

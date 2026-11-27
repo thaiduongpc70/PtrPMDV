@@ -2,11 +2,12 @@ $kind: http-request
 url: "{{baseUrl}}/api/partners/register/shipper"
 method: POST
 headers:
-  Content-Type: "application/json"
+  Content-Type: application/json
 body:
   type: text
   content: |-
     {
+      "commitment": { "accepted": true, "readToEnd": true, "version": "{{pCommitVersion}}", "kind": "shipper" },
       "fullName": "Tài xế Postman",
       "username": "tx{{pSuffix}}",
       "email": "tx{{pSuffix}}@postman.test",

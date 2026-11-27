@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/jobs/imports/{{pmImportId}}"
+method: GET
+headers:
+  Authorization: Bearer {{adminToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Get import job: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Get import job: nội dung", () => { pm.expect(String(j.id)).to.eql(pm.collectionVariables.get('pmImportId')); pm.expect(j.failedRows).to.eql(0); });
+    language: text/javascript
+order: 14000

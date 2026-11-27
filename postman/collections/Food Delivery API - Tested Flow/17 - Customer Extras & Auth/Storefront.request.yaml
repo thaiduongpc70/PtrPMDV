@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/catalog/storefront"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Storefront: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Storefront: nội dung", () => { pm.expect(j.stats.restaurants).to.be.above(0); });
+    language: text/javascript
+order: 6000

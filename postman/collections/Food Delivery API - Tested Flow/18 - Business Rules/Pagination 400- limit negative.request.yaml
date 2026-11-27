@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/deliveries/reviews?limit=-1"
+method: GET
+headers:
+  Authorization: Bearer {{adminToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Pagination 400: limit negative: HTTP 400", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([400]));
+      pm.test("Pagination 400: limit negative: nội dung", () => { pm.expect(j.message).to.match(/không hợp lệ|vượt/); });
+    language: text/javascript
+order: 43000

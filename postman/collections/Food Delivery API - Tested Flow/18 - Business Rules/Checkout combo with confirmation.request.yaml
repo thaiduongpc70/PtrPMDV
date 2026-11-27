@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/orders/checkout"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{newToken}}
+body:
+  type: text
+  content: '{"restaurantId":{{pmRid}},"addressId":{{pmAddrId}},"paymentMethod":"MOMO","ageConfirmed":true}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Checkout combo with confirmation: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Checkout combo with confirmation: nội dung", () => { pm.collectionVariables.set('pmOrderId', String((j.id || j.order.id))); pm.collectionVariables.set('pmTotal', String((j.totalAmount || j.order.totalAmount))); });
+    language: text/javascript
+order: 8000

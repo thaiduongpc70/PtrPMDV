@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/jobs/background"
+method: GET
+headers:
+  Authorization: Bearer {{adminToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("List background jobs: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("List background jobs: nội dung", () => { pm.expect(j.items).to.be.an('array').that.is.not.empty; });
+    language: text/javascript
+order: 17000

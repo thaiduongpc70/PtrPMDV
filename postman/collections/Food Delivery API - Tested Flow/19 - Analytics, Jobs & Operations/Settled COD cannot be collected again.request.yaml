@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/payments/cod/{{pmCodId}}/collect"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{shipperToken}}
+body:
+  type: text
+  content: "{}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Settled COD cannot be collected again: HTTP 409", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([409]));
+      pm.test("Settled COD cannot be collected again: nội dung", () => { pm.expect(j.message).to.include('đã đối soát'); });
+    language: text/javascript
+order: 28000

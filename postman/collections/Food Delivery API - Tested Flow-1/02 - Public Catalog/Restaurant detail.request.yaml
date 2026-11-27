@@ -1,6 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/api/catalog/restaurants/{{restaurantId}}"
-method: GET
-auth:
-  type: noauth
-order: 5000

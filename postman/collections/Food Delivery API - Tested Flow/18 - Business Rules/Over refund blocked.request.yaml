@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/payments/orders/{{pmOrderId}}/refund"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"amount":{{pmPart}},"reason":"vượt"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Over refund blocked: HTTP 409", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([409]));
+      pm.test("Over refund blocked: nội dung", () => { pm.expect(j.message).to.match(/vượt quá/); });
+    language: text/javascript
+order: 12000

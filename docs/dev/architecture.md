@@ -34,7 +34,7 @@ PtrPMDV/
    │  ├─ src/shared/              # config/env, database/mysql, http (error, pagination), middlewares, cache, pricing, data (63 tỉnh)
    │  ├─ database/migrations/     # *.sql áp theo thứ tự tên file (xem gotchas: áp bằng mysql client)
    │  ├─ scripts/                 # data pipeline (data:*), backup/restore, postman runner, smoke
-   │  ├─ test/                    # node:test (≈77 test, không cần DB)
+   │  ├─ test/                    # node:test (hơn 230 test, không cần DB)
    │  └─ backups/                 # dump đầy đủ (gitignored): realistic-data-YYYYMMDD.sql
    └─ frontend/
       ├─ index.html               # MỘT trang, nhiều "screen" + "sub-view"

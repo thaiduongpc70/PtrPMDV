@@ -43,7 +43,7 @@ function readAccount(body) {
   const password = String(body?.password ?? '');
   if (password.length < 8) throw new HttpError(400, M.passwordMin);
   return {
-    username: text(body?.username, 100, 'username', { required: true, pattern: /^[a-zA-Z0-9_.-]{3,100}$/, message: 'Username must be 3-100 characters (letters, digits, . _ -)' }),
+    username: text(body?.username, 100, 'username', { required: true, pattern: /^[a-zA-Z0-9_.-]{3,100}$/, message: 'Tên đăng nhập gồm 3-100 ký tự (chữ không dấu, số, dấu . _ -)' }),
     email: text(body?.email, 150, 'email', { required: true, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: M.emailRequired }).toLowerCase(),
     phone: text(body?.phone, 20, 'phone', { required: true, pattern: /^[0-9+().\-\s]{8,20}$/, message: M.phoneNumberInvalid }),
     password

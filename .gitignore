@@ -35,3 +35,6 @@ food-delivery-platform/backend/scripts/_*
 .sheets/
 *.log
 *.sql.bak
+
+# Tệp khoá của Word
+~$*

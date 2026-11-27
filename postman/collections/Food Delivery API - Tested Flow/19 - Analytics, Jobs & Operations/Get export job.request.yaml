@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/jobs/exports/{{pmExportId}}"
+method: GET
+headers:
+  Authorization: Bearer {{adminToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Get export job: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Get export job: nội dung", () => { pm.expect(String(j.id)).to.eql(pm.collectionVariables.get('pmExportId')); pm.expect(j.status).to.eql('COMPLETED'); pm.expect(j.fileUrl).to.match(/\.csv$/); });
+    language: text/javascript
+order: 10000

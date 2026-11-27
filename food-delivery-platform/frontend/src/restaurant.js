@@ -199,7 +199,7 @@
       const totalRevenue = series.reduce((a, b) => a + b.revenue, 0);
       const totalOrders = series.reduce((a, b) => a + b.orders, 0);
       const r = s.restaurant;
-      const statusLabels = { DELIVERED: 'Đã giao', CANCELLED: 'Đã hủy', PENDING: 'Chờ xác nhận', READY_FOR_PICKUP: 'Sẵn sàng', PREPARING: 'Đang chuẩn bị', CONFIRMED: 'Đã xác nhận', DELIVERING: 'Đang giao', SHIPPER_ASSIGNED: 'Có tài xế', PICKED_UP: 'Đã lấy hàng' };
+      const statusLabels = { DELIVERED: 'Đã giao', CANCELLED: 'Đã hủy', PENDING: 'Chờ xác nhận', READY_FOR_PICKUP: 'Sẵn sàng', PREPARING: 'Đang chuẩn bị', CONFIRMED: 'Đã xác nhận', DELIVERING: 'Đang giao', SHIPPER_ASSIGNED: 'Có tài xế', PICKED_UP: 'Đã lấy hàng', FAILED: 'Thất bại' };
       el.innerHTML = `
         ${s.today.pending ? `<div class="alert-bar"><span>🔔 Bạn có <b>${s.today.pending}</b> đơn mới đang chờ xác nhận.</span><button class="primary-button compact-button" data-act="go" data-go="orders">Xử lý ngay</button></div>` : ''}
         <div class="stat-grid">

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/operating-hours"
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"operatingHours":[{"dayOfWeek":1,"openTime":"00:00","closeTime":"23:59","isClosed":false},{"dayOfWeek":2,"openTime":"00:00","closeTime":"23:59","isClosed":false},{"dayOfWeek":3,"openTime":"00:00","closeTime":"23:59","isClosed":false},{"dayOfWeek":4,"openTime":"00:00","closeTime":"23:59","isClosed":false},{"dayOfWeek":5,"openTime":"00:00","closeTime":"23:59","isClosed":false},{"dayOfWeek":6,"openTime":"00:00","closeTime":"23:59","isClosed":false},{"dayOfWeek":7,"openTime":"00:00","closeTime":"23:59","isClosed":false}]}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner sets operating hours (always open): HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Owner sets operating hours (always open): nội dung", () => { pm.expect(j.items).to.have.lengthOf(7); pm.expect(j.items.every(d => !d.isClosed)).to.eql(true); });
+    language: text/javascript
+order: 4000

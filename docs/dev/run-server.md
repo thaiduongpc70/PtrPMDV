@@ -26,6 +26,7 @@ Get-CimInstance Win32_Process -Filter "name='node.exe'" | Where-Object { $_.Comm
 | `ALLOW_ORDER_WHEN_CLOSED=true` | `simulate-activity.mjs` cần đặt đơn lúc quán đóng cửa | Tắt ngay sau khi chạy; máy chủ thật không được bật |
 | `RATE_LIMIT_MAX=10000` | script gọi API hàng loạt (`spread-timeline`, `simulate-closeout`, `apply.mjs`) | Mặc định 240/phút/IP/đường dẫn; quản trị viên có trần riêng `RATE_LIMIT_ADMIN_MAX` (2400) |
 | `REFUND_AUTO_APPROVE_MINUTES` | job tự duyệt hoàn tiền đơn huỷ/thất bại (mặc định 240, 0 = tắt) | job chạy cùng `job.worker.js` mỗi 30 giây |
+| `AUTH_EXPOSE_TOKENS=true` | chạy Postman hoặc thử luồng quên mật khẩu/xác minh email | Trả mã trong response; chỉ dùng trên máy hoặc DB bản sao |
 | `SEARCH_MIN_DISH_HITS` | ngưỡng số món để quán là kết quả chính của tìm kiếm (mặc định 3) | |
 
 Chạy xong script: khởi động lại máy chủ **không** kèm các biến trên.

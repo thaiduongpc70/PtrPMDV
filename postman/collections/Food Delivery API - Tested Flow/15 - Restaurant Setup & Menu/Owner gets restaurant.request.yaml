@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}"
+method: GET
+headers:
+  Authorization: Bearer {{restaurantToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner gets restaurant: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Owner gets restaurant: nội dung", () => { pm.expect(String(j.id)).to.eql(pm.collectionVariables.get('pmRid')); pm.collectionVariables.set('pmLat', String(j.latitude)); pm.collectionVariables.set('pmLng', String(j.longitude)); pm.collectionVariables.set('pmRName', j.name); pm.collectionVariables.set('pmRDesc', j.description || ''); });
+    language: text/javascript
+order: 2000

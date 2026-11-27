@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/manage/promotions"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"code":"SYS{{pmStamp}}","name":"Giảm PM","discountType":"PERCENT","discountValue":10,"maxDiscount":20000,"minimumOrder":50000}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Admin creates platform voucher: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Admin creates platform voucher: nội dung", () => { pm.collectionVariables.set('pmSysPromoId', String(j.id)); });
+    language: text/javascript
+order: 20000
