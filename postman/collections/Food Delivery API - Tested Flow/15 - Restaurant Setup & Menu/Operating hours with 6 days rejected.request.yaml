@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/operating-hours"
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"operatingHours":[]}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Operating hours with 6 days rejected: HTTP 400", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([400]));
+      pm.test("Operating hours with 6 days rejected: nội dung", () => { pm.expect(j.message).to.match(/7/); });
+    language: text/javascript
+order: 5000

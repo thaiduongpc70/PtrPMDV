@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/manage/{{restaurantId}}/hours"
+method: PUT
+headers:
+  Content-Type: "application/json"
+  Authorization: "Bearer {{restaurantToken}}"
+body:
+  type: text
+  content: |-
+    {
+      "items": [
+        {
+          "dayOfWeek": 1,
+          "openTime": "22:00",
+          "closeTime": "08:00",
+          "isClosed": false
+        }
+      ]
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Reject invalid hours: HTTP 400', () => pm.expect(pm.response.code).to.be.oneOf([400]));
+    language: text/javascript
+order: 7000

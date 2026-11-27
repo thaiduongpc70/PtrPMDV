@@ -1,6 +1,7 @@
 import { asyncHandler } from '../../shared/http/async-handler.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { restaurantService } from './restaurant.service.js';
+import { M } from '../../shared/http/messages.js';
 
 export const listPublicRestaurantCategories = asyncHandler(async (req, res) => {
   const items = await restaurantService.listPublicCategories();
@@ -230,7 +231,7 @@ function setAudit(req, action, entityType, entityId = null) {
 function readId(value, entityName) {
   const id = Number(value);
   if (!Number.isInteger(id) || id <= 0) {
-    throw new HttpError(400, `Invalid ${entityName} id`);
+    throw new HttpError(400, M.entityIdInvalid(entityName));
   }
   return id;
 }

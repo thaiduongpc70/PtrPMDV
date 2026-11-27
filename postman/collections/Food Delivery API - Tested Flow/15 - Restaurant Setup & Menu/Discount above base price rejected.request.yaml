@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/menu-items"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"name":"Sai giá","basePrice":1000,"discountPrice":2000}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Discount above base price rejected: HTTP 400", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([400]));
+      pm.test("Discount above base price rejected: nội dung", () => { pm.expect(j.message).to.be.a('string'); });
+    language: text/javascript
+order: 19000

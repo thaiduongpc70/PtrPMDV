@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/restaurants/{{pmNewRid}}/state"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"status":"ACTIVE"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Admin changes restaurant state: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Admin changes restaurant state: nội dung", () => { pm.expect(j.status || j.restaurant.status).to.eql('ACTIVE'); });
+    language: text/javascript
+order: 7000

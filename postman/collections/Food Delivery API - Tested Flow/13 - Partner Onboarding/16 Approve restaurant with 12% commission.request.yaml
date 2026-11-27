@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/partners/applications/{{restAppId}}/approve"
+method: POST
+headers:
+  Content-Type: "application/json"
+  Authorization: "Bearer {{adminToken}}"
+body:
+  type: text
+  content: |-
+    {
+      "commissionRate": 12,
+      "note": "Hồ sơ hợp lệ"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Approve restaurant with 12% commission: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+    language: text/javascript
+order: 16000

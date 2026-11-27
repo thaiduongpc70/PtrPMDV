@@ -9,7 +9,7 @@ npm.cmd run seed:real
 npm.cmd run dev
 ```
 
-Open `http://localhost:3000`. The Express API serves the frontend, `/api/docs` Swagger UI, `/api/openapi.json`, uploads and generated exports.
+Open `http://localhost:3001`. The Express API serves the frontend, `/api/docs` Swagger UI, `/api/openapi.json`, uploads and generated exports.
 
 ## Docker Compose
 
@@ -19,7 +19,7 @@ From `food-delivery-platform`:
 docker compose up --build
 ```
 
-Services are API `3000`, MySQL `3307`, Redis `6379` and MailHog `8025`.
+Services are API `3001` (container 3000), MySQL `3307`, Redis `6379` and MailHog `8025`.
 
 The API uses Redis for catalog response cache when `REDIS_URL` is set. If Redis is unavailable in local development, it falls back to in-process memory cache and logs a single warning.
 

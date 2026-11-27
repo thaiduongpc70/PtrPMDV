@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/partners/applications?status=PENDING"
+method: GET
+headers:
+  Content-Type: "application/json"
+  Authorization: "Bearer {{adminToken}}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Admin lists pending applications: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("new shipper application is listed", () => pm.expect(Array.isArray(json.items) && json.items.some(a => a.id == pm.collectionVariables.get("shipAppId"))).to.be.true);
+      pm.test("pending counter", () => pm.expect(json.counts.PENDING >= 3).to.be.true);
+    language: text/javascript
+order: 11000

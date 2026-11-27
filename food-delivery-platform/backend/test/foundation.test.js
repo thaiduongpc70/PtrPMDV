@@ -122,7 +122,7 @@ test('HTTP error handler maps invalid JSON to 400', () => {
   const result = handleError({ type: 'entity.parse.failed' });
   assert.deepEqual(result, {
     statusCode: 400,
-    body: { message: 'Request body contains invalid JSON' }
+    body: { message: 'Dữ liệu gửi lên không phải JSON hợp lệ' }
   });
 });
 
@@ -130,15 +130,15 @@ test('HTTP error handler maps oversized body to 413', () => {
   const result = handleError({ type: 'entity.too.large' });
   assert.deepEqual(result, {
     statusCode: 413,
-    body: { message: 'Request body is too large' }
+    body: { message: 'Dữ liệu gửi lên quá lớn' }
   });
 });
 
 test('HTTP error handler preserves expected application errors', () => {
-  const result = handleError(new HttpError(403, 'Permission denied'));
+  const result = handleError(new HttpError(403, 'Bạn không có quyền thực hiện thao tác này'));
   assert.deepEqual(result, {
     statusCode: 403,
-    body: { message: 'Permission denied' }
+    body: { message: 'Bạn không có quyền thực hiện thao tác này' }
   });
 });
 
@@ -146,7 +146,7 @@ test('HTTP error handler hides unexpected error details', () => {
   const result = handleError(new Error('database password leaked here'));
   assert.deepEqual(result, {
     statusCode: 500,
-    body: { message: 'Internal server error' }
+    body: { message: 'Hệ thống gặp lỗi, vui lòng thử lại sau' }
   });
 });
 

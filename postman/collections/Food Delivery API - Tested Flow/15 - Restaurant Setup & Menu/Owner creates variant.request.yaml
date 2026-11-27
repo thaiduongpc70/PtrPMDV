@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/menu-items/{{pmTmpItemId}}/variants"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"name":"Cỡ lớn","priceAdjustment":5000}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner creates variant: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Owner creates variant: nội dung", () => { pm.collectionVariables.set('pmVariantId', String((j.id || j.variant.id))); });
+    language: text/javascript
+order: 21000

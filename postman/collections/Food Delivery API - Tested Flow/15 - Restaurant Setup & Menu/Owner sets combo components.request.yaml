@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/menu-items/{{pmComboId}}/combo"
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"components":[{"itemId":{{pmDishId}},"quantity":1},{"itemId":{{pmBeerId}},"quantity":2}]}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner sets combo components: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Owner sets combo components: nội dung", () => { pm.expect(j.components).to.have.lengthOf(2); });
+    language: text/javascript
+order: 20000

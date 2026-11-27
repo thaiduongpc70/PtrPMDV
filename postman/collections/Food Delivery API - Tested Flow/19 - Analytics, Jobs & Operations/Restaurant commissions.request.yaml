@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/settlements/restaurant/commissions"
+method: GET
+headers:
+  Authorization: Bearer {{restaurantToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Restaurant commissions: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Restaurant commissions: nội dung", () => { pm.expect(j.items).to.be.an('array').that.is.not.empty; pm.expect(j.items[0]).to.include.keys('orderCode', 'commissionRate', 'commissionAmount'); });
+    language: text/javascript
+order: 6000

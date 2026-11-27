@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/catalog/menu-items/{{publicMenuItemId}}/reviews?pageSize=5"
+method: GET
+headers:
+  Content-Type: "application/json"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Dish reviews: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("summary has distribution 1-5", () => pm.expect(Object.keys(json.summary.distribution).sort()).to.eql(['1','2','3','4','5']));
+      pm.test("average matches rating range", () => pm.expect(json.summary.total === 0 || (json.summary.average >= 1 && json.summary.average <= 5)).to.be.true);
+      pm.test("page size respected", () => pm.expect(json.items.length <= 5).to.be.true);
+    language: text/javascript
+order: 6000

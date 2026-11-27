@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/profile"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{newToken}}
+body:
+  type: text
+  content: '{"fullName":"Khách Postman Sửa"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Fresh customer updates profile: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Fresh customer updates profile: nội dung", () => { pm.expect(JSON.stringify(j)).to.include('Postman Sửa'); });
+    language: text/javascript
+order: 9000

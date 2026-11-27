@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/shippers/documents"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{shipperToken}}
+body:
+  type: text
+  content: '{"documentType":"OTHER","documentNumber":"PM-{{pmStamp}}","imageUrl":"https://example.com/d.jpg"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Shipper adds document: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Shipper adds document: nội dung", () => { pm.collectionVariables.set('pmDocId', String((j.id || j.document.id))); });
+    language: text/javascript
+order: 21000

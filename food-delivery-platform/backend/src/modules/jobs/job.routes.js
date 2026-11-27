@@ -23,7 +23,8 @@ jobRoutes.post('/imports', requireRole('ADMIN', 'RESTAURANT'), requirePermission
     jobType: req.body?.jobType,
     fileName: req.body?.fileName,
     content: req.body?.content,
-    format: req.body?.format
+    format: req.body?.format,
+    encoding: req.body?.encoding
   });
   req.auditUserId = req.user.id;
   req.auditAction = 'IMPORT_JOB_CREATE';

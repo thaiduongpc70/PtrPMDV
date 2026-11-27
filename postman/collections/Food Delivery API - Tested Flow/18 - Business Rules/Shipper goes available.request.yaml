@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/shippers/availability"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{shipperToken}}
+body:
+  type: text
+  content: '{"availabilityStatus":"AVAILABLE"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Shipper goes available: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Shipper goes available: nội dung", () => { pm.expect(j.availabilityStatus).to.eql('AVAILABLE'); });
+    language: text/javascript
+order: 30000

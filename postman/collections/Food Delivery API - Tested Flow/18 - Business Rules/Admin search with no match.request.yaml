@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/manage/customers?keyword=zzzz-khong-co"
+method: GET
+headers:
+  Authorization: Bearer {{adminToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Admin search with no match: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Admin search with no match: nội dung", () => { pm.expect(j.totalItems).to.eql(0); });
+    language: text/javascript
+order: 58000

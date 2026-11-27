@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/payments/orders/{{pmOrderId}}/mock-pay"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{newToken}}
+body:
+  type: text
+  content: '{"outcome":"PAID"}'
+auth:
+  type: noauth
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set('pmPart', String(Math.round(Number(pm.collectionVariables.get('pmTotal')) * 0.6)));
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Mock pay order: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Mock pay order: nội dung", () => { pm.expect(j.status).to.eql('PAID'); pm.expect(String(j.orderId)).to.eql(pm.collectionVariables.get('pmOrderId')); });
+    language: text/javascript
+order: 10000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/promotions/{{pmShopPromoId}}"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"code":"PM{{pmStamp}}","name":"Voucher Postman sửa","discountType":"FIXED_AMOUNT","discountValue":12000,"minimumOrder":50000,"usageLimit":20,"startAt":"{{pmStart}}","endAt":"{{pmEnd}}"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner updates shop voucher: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Owner updates shop voucher: nội dung", () => { pm.expect(j.discountValue).to.eql(12000); pm.expect(j.name).to.eql('Voucher Postman sửa'); });
+    language: text/javascript
+order: 36000

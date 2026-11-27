@@ -48,7 +48,7 @@ function trimRequired(value, maxLength) {
   const trimmed = trimOptional(value, maxLength);
 
   if (!trimmed) {
-    throw new Error('Audit log value is required.');
+    throw new Error('Thiếu giá trị nhật ký kiểm toán.');
   }
 
   return trimmed;

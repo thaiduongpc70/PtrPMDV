@@ -14,6 +14,7 @@ import {
   validateToppingGroup,
   validateVariant
 } from './menu.validation.js';
+import { M } from '../../shared/http/messages.js';
 
 export const menuService = {
   async listMenus(userId, restaurantId) {
@@ -36,7 +37,7 @@ export const menuService = {
   },
   async deleteMenu(userId, restaurantId, menuId) {
     const current = await getMenu(userId, restaurantId, menuId);
-    if (!await menuRepository.softDeleteMenu(menuId, restaurantId)) throw new HttpError(404, 'Menu not found');
+    if (!await menuRepository.softDeleteMenu(menuId, restaurantId)) throw new HttpError(404, M.menuNotFound);
     return mutation(current, { ...current, status: 'INACTIVE', deleted: true });
   },
 
@@ -62,7 +63,7 @@ export const menuService = {
   },
   async deleteCategory(userId, restaurantId, categoryId) {
     const current = await getCategory(userId, restaurantId, categoryId);
-    if (!await menuRepository.softDeleteCategory(categoryId, restaurantId)) throw new HttpError(404, 'Menu category not found');
+    if (!await menuRepository.softDeleteCategory(categoryId, restaurantId)) throw new HttpError(404, M.menuCategoryNotFound);
     return mutation(current, { ...current, status: 'INACTIVE' });
   },
 
@@ -94,7 +95,7 @@ export const menuService = {
   },
   async deleteItem(userId, restaurantId, itemId) {
     const current = await getItem(userId, restaurantId, itemId);
-    if (!await menuRepository.softDeleteItem(itemId, restaurantId)) throw new HttpError(404, 'Menu item not found');
+    if (!await menuRepository.softDeleteItem(itemId, restaurantId)) throw new HttpError(404, M.menuItemNotFound);
     return mutation(current, { ...current, isAvailable: false, deleted: true });
   },
 
@@ -113,8 +114,8 @@ export const menuService = {
   async updateVariant(userId, restaurantId, itemId, variantId, input) {
     const variants = await this.listVariants(userId, restaurantId, itemId);
     const current = variants.find(value => value.id === variantId);
-    if (!current) throw new HttpError(404, 'Variant not found');
-    const data = validateVariant(input);
+    if (!current) throw new HttpError(404, M.variantNotFound);
+    const data = validateVariant({ ...current, ...input }); // PATCH: trường không gửi giữ nguyên
     await menuRepository.updateVariant(variantId, itemId, data);
     const updated = (await this.listVariants(userId, restaurantId, itemId)).find(value => value.id === variantId);
     return mutation(current, updated);
@@ -122,7 +123,7 @@ export const menuService = {
   async deleteVariant(userId, restaurantId, itemId, variantId) {
     const variants = await this.listVariants(userId, restaurantId, itemId);
     const current = variants.find(value => value.id === variantId);
-    if (!current) throw new HttpError(404, 'Variant not found');
+    if (!current) throw new HttpError(404, M.variantNotFound);
     await menuRepository.deleteVariant(variantId, itemId);
     return mutation(current, { ...current, status: 'INACTIVE' });
   },
@@ -140,14 +141,14 @@ export const menuService = {
   },
   async updateToppingGroup(userId, restaurantId, groupId, input) {
     const current = await getGroup(userId, restaurantId, groupId);
-    const data = validateToppingGroup(input);
+    const data = validateToppingGroup({ ...current, ...input }); // PATCH: trường không gửi giữ nguyên
     await menuRepository.updateToppingGroup(groupId, restaurantId, data);
     const updated = await getGroup(userId, restaurantId, groupId);
     return mutation(current, updated);
   },
   async deleteToppingGroup(userId, restaurantId, groupId) {
     const current = await getGroup(userId, restaurantId, groupId);
-    if (!await menuRepository.deleteToppingGroup(groupId, restaurantId)) throw new HttpError(404, 'Topping group not found');
+    if (!await menuRepository.deleteToppingGroup(groupId, restaurantId)) throw new HttpError(404, M.toppingGroupNotFound);
     return mutation(current, { ...current, deleted: true });
   },
   async listToppings(userId, restaurantId, groupId) {
@@ -164,8 +165,8 @@ export const menuService = {
   async updateTopping(userId, restaurantId, groupId, toppingId, input) {
     const toppings = await this.listToppings(userId, restaurantId, groupId);
     const current = toppings.find(topping => topping.id === toppingId);
-    if (!current) throw new HttpError(404, 'Topping not found');
-    const data = validateTopping(input);
+    if (!current) throw new HttpError(404, M.toppingNotFound);
+    const data = validateTopping({ ...current, ...input }); // PATCH: trường không gửi giữ nguyên
     await menuRepository.updateTopping(toppingId, groupId, data);
     const updated = (await this.listToppings(userId, restaurantId, groupId)).find(topping => topping.id === toppingId);
     return mutation(current, updated);
@@ -173,35 +174,49 @@ export const menuService = {
   async deleteTopping(userId, restaurantId, groupId, toppingId) {
     const toppings = await this.listToppings(userId, restaurantId, groupId);
     const current = toppings.find(topping => topping.id === toppingId);
-    if (!current) throw new HttpError(404, 'Topping not found');
+    if (!current) throw new HttpError(404, M.toppingNotFound);
     await menuRepository.deleteTopping(toppingId, groupId);
     return mutation(current, { ...current, status: 'INACTIVE' });
+  },
+  async setCombo(userId, restaurantId, itemId, input) {
+    await getItem(userId, restaurantId, itemId);
+    const raw = Array.isArray(input?.components) ? input.components : [];
+    const components = raw.map(part => {
+      const quantity = Number(part?.quantity ?? 1);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) throw new HttpError(400, M.componentQty);
+      return { itemId: readId(part?.itemId, 'component item id'), quantity };
+    });
+    if (new Set(components.map(part => part.itemId)).size !== components.length) throw new HttpError(400, M.componentUnique);
+    const result = await menuRepository.setComboComponents(itemId, restaurantId, components);
+    if (result.error === 'NOT_FOUND') throw new HttpError(404, M.menuItemNotFound);
+    if (result.error === 'INVALID_COMPONENTS') throw new HttpError(400, M.comboComponents);
+    return { value: { itemId, components }, audit: { oldValues: null, newValues: { itemId, components } } };
   },
   async linkToppingGroups(userId, restaurantId, itemId, input) {
     await getItem(userId, restaurantId, itemId);
     const groupIds = Array.from(new Set((input?.groupIds ?? []).map(id => readId(id, 'topping group id'))));
     const groups = await menuRepository.listToppingGroups(userId, restaurantId);
-    if (groupIds.some(id => !groups.some(group => group.id === id))) throw new HttpError(400, 'Topping group does not belong to restaurant');
-    if (!await menuRepository.linkToppingGroups(itemId, restaurantId, groupIds)) throw new HttpError(404, 'Menu item not found');
-    return { itemId, groupIds, audit: { oldValues: null, newValues: { itemId, groupIds } } };
+    if (groupIds.some(id => !groups.some(group => group.id === id))) throw new HttpError(400, M.toppingGroupForeign);
+    if (!await menuRepository.linkToppingGroups(itemId, restaurantId, groupIds)) throw new HttpError(404, M.menuItemNotFound);
+    return { value: { itemId, groupIds }, audit: { oldValues: null, newValues: { itemId, groupIds } } };
   }
 };
 
 async function ensureRestaurant(userId, restaurantId) {
   const restaurant = await menuRepository.findRestaurantForOwner(userId, restaurantId);
-  if (!restaurant) throw new HttpError(404, 'Restaurant not found');
+  if (!restaurant) throw new HttpError(404, M.restaurantNotFound);
   return restaurant;
 }
 async function ensureOptionalMenu(userId, restaurantId, menuId) {
-  if (menuId !== null && !await menuRepository.findMenu(userId, restaurantId, menuId)) throw new HttpError(400, 'Menu does not belong to restaurant');
+  if (menuId !== null && !await menuRepository.findMenu(userId, restaurantId, menuId)) throw new HttpError(400, M.menuForeign);
 }
 async function ensureOptionalCategory(userId, restaurantId, categoryId) {
-  if (categoryId !== null && !await menuRepository.findCategory(userId, restaurantId, categoryId)) throw new HttpError(400, 'Category does not belong to restaurant');
+  if (categoryId !== null && !await menuRepository.findCategory(userId, restaurantId, categoryId)) throw new HttpError(400, M.categoryForeign);
 }
-async function getMenu(userId, restaurantId, menuId) { const value = await menuRepository.findMenu(userId, restaurantId, menuId); if (!value) throw new HttpError(404, 'Menu not found'); return value; }
-async function getCategory(userId, restaurantId, categoryId) { const value = await menuRepository.findCategory(userId, restaurantId, categoryId); if (!value) throw new HttpError(404, 'Menu category not found'); return value; }
-async function getItem(userId, restaurantId, itemId) { const value = await menuRepository.findItem(userId, restaurantId, itemId); if (!value) throw new HttpError(404, 'Menu item not found'); return value; }
-async function getGroup(userId, restaurantId, groupId) { const value = (await menuRepository.listToppingGroups(userId, restaurantId)).find(group => group.id === groupId); if (!value) throw new HttpError(404, 'Topping group not found'); return value; }
+async function getMenu(userId, restaurantId, menuId) { const value = await menuRepository.findMenu(userId, restaurantId, menuId); if (!value) throw new HttpError(404, M.menuNotFound); return value; }
+async function getCategory(userId, restaurantId, categoryId) { const value = await menuRepository.findCategory(userId, restaurantId, categoryId); if (!value) throw new HttpError(404, M.menuCategoryNotFound); return value; }
+async function getItem(userId, restaurantId, itemId) { const value = await menuRepository.findItem(userId, restaurantId, itemId); if (!value) throw new HttpError(404, M.menuItemNotFound); return value; }
+async function getGroup(userId, restaurantId, groupId) { const value = (await menuRepository.listToppingGroups(userId, restaurantId)).find(group => group.id === groupId); if (!value) throw new HttpError(404, M.toppingGroupNotFound); return value; }
 function mutation(oldValues, newValues) { return { value: newValues, audit: { oldValues, newValues } }; }
 function trim(value, max) { if (value === undefined || value === null) return null; const text = String(value).trim(); return text ? text.slice(0, max) : null; }
-function readBooleanQuery(value) { if (value === 'true' || value === '1' || value === true) return true; if (value === 'false' || value === '0' || value === false) return false; throw new HttpError(400, 'available must be true or false'); }
+function readBooleanQuery(value) { if (value === 'true' || value === '1' || value === true) return true; if (value === 'false' || value === '0' || value === false) return false; throw new HttpError(400, M.availableBool); }

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/topping-groups/{{pmGroupId}}"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"name":"Topping Postman 2"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner updates topping group: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Owner updates topping group: nội dung", () => { pm.expect(j.name).to.eql('Topping Postman 2'); pm.expect(j.maxSelect).to.eql(2); });
+    language: text/javascript
+order: 26000

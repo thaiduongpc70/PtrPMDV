@@ -58,14 +58,14 @@ test('admin restaurant creation maps owner and category failures to bad requests
   await assertHttpError(
     () => restaurantService.createForAdmin(validProfileInput),
     400,
-    'owner account'
+    'chủ nhà hàng'
   );
 
   response = { error: 'CATEGORY_NOT_FOUND' };
   await assertHttpError(
     () => restaurantService.createForAdmin(validProfileInput),
     400,
-    'category'
+    'danh mục'
   );
 });
 

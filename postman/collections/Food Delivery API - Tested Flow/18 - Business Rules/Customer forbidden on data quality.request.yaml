@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/dashboard/data-quality"
+method: GET
+headers:
+  Authorization: Bearer {{newToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Customer forbidden on data quality: HTTP 403", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([403]));
+      pm.test("Customer forbidden on data quality: nội dung", () => { pm.expect(j.message).to.be.a('string').that.is.not.empty; });
+    language: text/javascript
+order: 52000

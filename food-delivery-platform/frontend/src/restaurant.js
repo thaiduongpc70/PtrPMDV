@@ -14,6 +14,7 @@
     { id: 'dashboard', ico: '📊', label: 'Tổng quan' },
     { id: 'orders', ico: '🔔', label: 'Đơn đang xử lý' },
     { id: 'history', ico: '🧾', label: 'Lịch sử đơn hàng' },
+    { id: 'reports', ico: '📈', label: 'Báo cáo & thống kê' },
     { group: 'Cửa hàng' },
     { id: 'menu', ico: '🍽️', label: 'Thực đơn' },
     { id: 'promotions', ico: '🎟️', label: 'Khuyến mãi' },
@@ -53,7 +54,7 @@
     nav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => fd().showSubView('restaurant', button.dataset.view)));
 
     const layout = screen.querySelector('.restaurant-layout');
-    ['dashboard', 'history', 'reviews'].forEach(id => layout.insertAdjacentHTML('afterbegin', `<section class="page-section" data-view-panel="restaurant:${id}"></section>`));
+    ['dashboard', 'history', 'reviews', 'reports'].forEach(id => layout.insertAdjacentHTML('afterbegin', `<section class="page-section" data-view-panel="restaurant:${id}"></section>`));
 
     // branches panel: hide legacy controls, add opening hours
     const branches = panel('branches');
@@ -156,7 +157,7 @@
     clearInterval(boardTimer);
     boardTimer = null;
     if (!rid()) return;
-    const fn = { dashboard, history, reviews, branches: hours, orders: boardAuto, menu: () => fd().loadOwnerMenu() }[view];
+    const fn = { dashboard, history, reviews, reports: el => window.FDAN.restaurant(el, rid()), branches: hours, orders: boardAuto, menu: () => fd().loadOwnerMenu() }[view];
     fn?.(panel(view));
   }
 
@@ -198,7 +199,7 @@
       const totalRevenue = series.reduce((a, b) => a + b.revenue, 0);
       const totalOrders = series.reduce((a, b) => a + b.orders, 0);
       const r = s.restaurant;
-      const statusLabels = { DELIVERED: 'Đã giao', CANCELLED: 'Đã hủy', PENDING: 'Chờ xác nhận', READY_FOR_PICKUP: 'Sẵn sàng', PREPARING: 'Đang chuẩn bị', CONFIRMED: 'Đã xác nhận', DELIVERING: 'Đang giao', SHIPPER_ASSIGNED: 'Có tài xế', PICKED_UP: 'Đã lấy hàng' };
+      const statusLabels = { DELIVERED: 'Đã giao', CANCELLED: 'Đã hủy', PENDING: 'Chờ xác nhận', READY_FOR_PICKUP: 'Sẵn sàng', PREPARING: 'Đang chuẩn bị', CONFIRMED: 'Đã xác nhận', DELIVERING: 'Đang giao', SHIPPER_ASSIGNED: 'Có tài xế', PICKED_UP: 'Đã lấy hàng', FAILED: 'Thất bại' };
       el.innerHTML = `
         ${s.today.pending ? `<div class="alert-bar"><span>🔔 Bạn có <b>${s.today.pending}</b> đơn mới đang chờ xác nhận.</span><button class="primary-button compact-button" data-act="go" data-go="orders">Xử lý ngay</button></div>` : ''}
         <div class="stat-grid">
@@ -234,7 +235,12 @@
     if (!el.dataset.ready) {
       el.dataset.ready = '1';
       el.innerHTML = `
-        <div class="page-toolbar"><div><h3>Lịch sử đơn hàng</h3><p class="muted">Tra cứu mọi đơn đã nhận theo thời gian, trạng thái hoặc khách hàng.</p></div></div>
+        <div class="page-toolbar"><div><h3>Lịch sử đơn hàng</h3><p class="muted">Tra cứu mọi đơn đã nhận theo thời gian, trạng thái hoặc khách hàng.</p></div><div class="button-row">${window.FDExport.menu([
+          { label: 'Đơn hàng', url: `/api/restaurant/export/{rid}/orders` },
+          { label: 'Doanh thu theo ngày', url: `/api/restaurant/export/{rid}/revenue` },
+          { label: 'Thực đơn & số món đã bán', url: `/api/restaurant/export/{rid}/menu` },
+          { label: 'Đối soát', url: `/api/restaurant/export/{rid}/settlements` }
+        ])}</div></div>
         <form class="filter-bar" data-filters>
           <input type="search" name="q" placeholder="Mã đơn, tên/SĐT khách…">
           <select name="status"><option value="">Mọi trạng thái</option>${['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'SHIPPER_ASSIGNED', 'PICKED_UP', 'DELIVERING', 'DELIVERED', 'CANCELLED'].map(x => `<option value="${x}">${chip(x, 'order').replace(/<[^>]+>/g, '')}</option>`).join('')}</select>

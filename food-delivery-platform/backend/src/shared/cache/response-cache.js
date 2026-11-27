@@ -12,7 +12,8 @@ export function responseCache({ ttlMs = 30_000, prefix = '' } = {}) {
       return;
     }
 
-    const key = `${prefix}:${req.originalUrl}`;
+    // Khoá theo người dùng: kết quả có thể cá nhân hoá (vd khoảng cách từ địa chỉ mặc định) nên không dùng chung giữa các tài khoản
+    const key = `${prefix}:${req.user?.id ? `u${req.user.id}` : 'anon'}:${req.originalUrl}`;
     getCacheEntry(key)
       .then(existing => {
         if (existing) {

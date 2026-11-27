@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/shippers/availability"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{shipperToken}}
+body:
+  type: text
+  content: '{"availabilityStatus":"AVAILABLE"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Suspended shipper cannot reactivate himself: HTTP 403", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([403]));
+      pm.test("Suspended shipper cannot reactivate himself: nội dung", () => { pm.expect(j.message).to.include('tạm khoá'); });
+    language: text/javascript
+order: 33000

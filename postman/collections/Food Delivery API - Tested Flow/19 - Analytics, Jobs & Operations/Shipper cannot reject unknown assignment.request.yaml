@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/shippers/assignments/999999999/reject"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{shipperToken}}
+body:
+  type: text
+  content: '{"reason":"x"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Shipper cannot reject unknown assignment: HTTP 404", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([404]));
+      pm.test("Shipper cannot reject unknown assignment: nội dung", () => { pm.expect(j.message).to.include('đề nghị'); });
+    language: text/javascript
+order: 31000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/promotions"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"code":"PX{{pmStamp}}","name":"Voucher sẽ xoá","discountType":"FIXED_AMOUNT","discountValue":1000,"minimumOrder":10000,"usageLimit":1,"startAt":"{{pmStart}}","endAt":"{{pmEnd}}"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner creates throwaway voucher: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Owner creates throwaway voucher: nội dung", () => { pm.collectionVariables.set('pmTmpPromoId', String((j.id || j.promotion.id))); });
+    language: text/javascript
+order: 42000

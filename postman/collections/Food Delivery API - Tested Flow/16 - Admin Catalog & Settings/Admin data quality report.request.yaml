@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/dashboard/data-quality"
+method: GET
+headers:
+  Authorization: Bearer {{adminToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Admin data quality report: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Admin data quality report: nội dung", () => { pm.expect(j.checks).to.have.property('refundsExceedPaid', 0); pm.expect(j.checks).to.have.property('duplicateCompletedRefunds', 0); pm.expect(j.checks).to.have.property('paymentsOutOfSyncWithRefunds', 0); pm.expect(j.checks.staleOrders).to.have.property('pending'); });
+    language: text/javascript
+order: 15000

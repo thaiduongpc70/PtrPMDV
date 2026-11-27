@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/loyalty"
+method: GET
+headers:
+  Authorization: Bearer {{newToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Fresh customer loyalty: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Fresh customer loyalty: nội dung", () => { pm.expect(j.points).to.eql(0); pm.expect(j.rewards).to.be.an('array'); });
+    language: text/javascript
+order: 21000

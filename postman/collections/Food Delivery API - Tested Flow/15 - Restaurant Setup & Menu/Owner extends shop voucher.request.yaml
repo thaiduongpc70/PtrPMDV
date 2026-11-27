@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/promotions/{{pmShopPromoId}}/extend"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"days":5,"addQuota":5}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner extends shop voucher: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Owner extends shop voucher: nội dung", () => { pm.expect(String(j.id)).to.eql(pm.collectionVariables.get('pmShopPromoId')); pm.expect(new Date(j.endAt).getTime()).to.be.above(new Date(pm.collectionVariables.get('pmEnd')).getTime() + 4 * 86400000); });
+    language: text/javascript
+order: 37000

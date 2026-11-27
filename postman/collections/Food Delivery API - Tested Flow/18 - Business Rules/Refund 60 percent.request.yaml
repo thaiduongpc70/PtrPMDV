@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/payments/orders/{{pmOrderId}}/refund"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"amount":{{pmPart}},"reason":"Hoàn một phần Postman"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Refund 60 percent: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Refund 60 percent: nội dung", () => { pm.collectionVariables.set('pmRefundId', String(j.id)); });
+    language: text/javascript
+order: 11000

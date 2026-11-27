@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-const baseUrl = process.env.SMOKE_URL || 'http://localhost:3000';
+const baseUrl = process.env.SMOKE_URL || 'http://localhost:3001';
 const username = process.env.SMOKE_USER || 'thaiduongpc7';
 const password = process.env.SMOKE_PASSWORD || 'duong2k5';
 

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/payments/cod/999999999/settle"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: "{}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Unknown COD is 404: HTTP 404", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([404]));
+      pm.test("Unknown COD is 404: nội dung", () => { pm.expect(j.message).to.include('COD'); });
+    language: text/javascript
+order: 29000

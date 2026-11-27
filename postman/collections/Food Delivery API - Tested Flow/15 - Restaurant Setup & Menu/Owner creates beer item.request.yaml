@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/menu-items"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"categoryId":{{pmCatId}},"name":"Bia lon Postman","basePrice":60000}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner creates beer item: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Owner creates beer item: nội dung", () => { pm.collectionVariables.set('pmBeerId', String((j.id || j.item.id))); });
+    language: text/javascript
+order: 16000

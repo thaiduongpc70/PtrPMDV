@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/jobs/imports"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"jobType":"MENU_ITEMS","fileName":"pm.csv","content":"restaurant_id,name,base_price\n{{pmRid}},Món nhập Postman,25000"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner imports menu items: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Owner imports menu items: nội dung", () => { pm.collectionVariables.set('pmImportId', String(j.id)); pm.expect(j.successRows).to.eql(1); });
+    language: text/javascript
+order: 12000

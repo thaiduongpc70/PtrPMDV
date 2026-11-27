@@ -12,6 +12,7 @@ import {
   validateOperatingHours,
   validateRestaurantPatch
 } from './restaurant.validation.js';
+import { M } from '../../shared/http/messages.js';
 
 const adminRestaurantStatuses = new Set([
   'PENDING',
@@ -32,7 +33,7 @@ export const restaurantService = {
   async getOwned(userId, restaurantId) {
     const restaurant = await restaurantRepository.findForOwner(userId, restaurantId);
     if (!restaurant) {
-      throw new HttpError(404, 'Restaurant not found');
+      throw new HttpError(404, M.restaurantNotFound);
     }
     return restaurant;
   },
@@ -51,7 +52,7 @@ export const restaurantService = {
     const current = await this.getOwned(userId, restaurantId);
     const deleted = await restaurantRepository.softDeleteForOwner(userId, restaurantId);
     if (!deleted) {
-      throw new HttpError(404, 'Restaurant not found');
+      throw new HttpError(404, M.restaurantNotFound);
     }
 
     return {
@@ -71,7 +72,7 @@ export const restaurantService = {
       operatingHours
     );
     if (!result) {
-      throw new HttpError(404, 'Restaurant not found');
+      throw new HttpError(404, M.restaurantNotFound);
     }
 
     return {
@@ -98,7 +99,7 @@ export const restaurantService = {
       result.imageId
     );
     if (!image) {
-      throw new HttpError(500, 'Restaurant image was not created correctly');
+      throw new HttpError(500, M.imageNotCreated);
     }
 
     return {
@@ -114,7 +115,7 @@ export const restaurantService = {
       imageId
     );
     if (!current) {
-      throw new HttpError(404, 'Restaurant image not found');
+      throw new HttpError(404, M.restaurantImageNotFound);
     }
 
     const normalizedInput = input?.imageData
@@ -142,7 +143,7 @@ export const restaurantService = {
       imageId
     );
     if (!deleted) {
-      throw new HttpError(404, 'Restaurant image not found');
+      throw new HttpError(404, M.restaurantImageNotFound);
     }
 
     return {
@@ -159,7 +160,7 @@ export const restaurantService = {
       status: normalizeStatus(query.status),
       categoryId: normalizePositiveInteger(query.categoryId),
       ownerUserId: normalizePositiveInteger(query.ownerUserId),
-      keyword: trim(query.keyword, 200),
+      keyword: trim(query.keyword ?? query.search ?? query.q, 200),
       pageSize: pagination.pageSize,
       offset: pagination.offset
     };
@@ -175,7 +176,7 @@ export const restaurantService = {
   async getForAdmin(restaurantId) {
     const restaurant = await restaurantRepository.findForAdmin(restaurantId);
     if (!restaurant) {
-      throw new HttpError(404, 'Restaurant not found');
+      throw new HttpError(404, M.restaurantNotFound);
     }
     return restaurant;
   },
@@ -185,10 +186,10 @@ export const restaurantService = {
     const result = await restaurantRepository.createForAdmin(data);
 
     if (result.error === 'OWNER_NOT_FOUND') {
-      throw new HttpError(400, 'Active restaurant owner account not found');
+      throw new HttpError(400, M.ownerNotFound);
     }
     if (result.error === 'CATEGORY_NOT_FOUND') {
-      throw new HttpError(400, 'Active restaurant category not found');
+      throw new HttpError(400, M.activeCategoryNotFound);
     }
 
     const restaurant = await this.getForAdmin(result.restaurantId);
@@ -213,7 +214,7 @@ export const restaurantService = {
     const data = validateAdminRestaurantState(current, input);
     const updated = await restaurantRepository.updateStateForAdmin(restaurantId, data);
     if (!updated) {
-      throw new HttpError(404, 'Restaurant not found');
+      throw new HttpError(404, M.restaurantNotFound);
     }
 
     const restaurant = await this.getForAdmin(restaurantId);
@@ -224,7 +225,7 @@ export const restaurantService = {
     const current = await this.getForAdmin(restaurantId);
     const deleted = await restaurantRepository.softDeleteForAdmin(restaurantId);
     if (!deleted) {
-      throw new HttpError(404, 'Restaurant not found');
+      throw new HttpError(404, M.restaurantNotFound);
     }
 
     return {
@@ -258,7 +259,7 @@ export const restaurantService = {
   async updateCategory(categoryId, input) {
     const current = await restaurantRepository.findCategoryById(categoryId);
     if (!current) {
-      throw new HttpError(404, 'Restaurant category not found');
+      throw new HttpError(404, M.restaurantCategoryNotFound);
     }
     const data = validateCategoryPatch(current, input);
 
@@ -278,7 +279,7 @@ export const restaurantService = {
   async removeCategory(categoryId) {
     const current = await restaurantRepository.findCategoryById(categoryId);
     if (!current) {
-      throw new HttpError(404, 'Restaurant category not found');
+      throw new HttpError(404, M.restaurantCategoryNotFound);
     }
     await restaurantRepository.deactivateCategory(categoryId);
 
@@ -293,25 +294,25 @@ export const restaurantService = {
 
 function handleRestaurantMutationError(result) {
   if (result?.error === 'NOT_FOUND') {
-    throw new HttpError(404, 'Restaurant not found');
+    throw new HttpError(404, M.restaurantNotFound);
   }
   if (result?.error === 'CATEGORY_NOT_FOUND') {
-    throw new HttpError(400, 'Active restaurant category not found');
+    throw new HttpError(400, M.activeCategoryNotFound);
   }
 }
 
 function handleImageMutationError(result) {
   if (result?.error === 'NOT_FOUND') {
-    throw new HttpError(404, 'Restaurant image not found');
+    throw new HttpError(404, M.restaurantImageNotFound);
   }
   if (result?.error === 'IMAGE_TYPE_EXISTS') {
-    throw new HttpError(409, `Restaurant already has a ${result.imageType ?? 'LOGO/COVER'} image`);
+    throw new HttpError(409, M.imageTypeExists(result.imageType ?? 'LOGO/COVER'));
   }
 }
 
 function handleCategoryDatabaseError(error) {
   if (error?.code === 'ER_DUP_ENTRY') {
-    throw new HttpError(409, 'Restaurant category name already exists');
+    throw new HttpError(409, M.categoryNameExists);
   }
   throw error;
 }
@@ -353,7 +354,7 @@ function toRestaurantAudit(restaurant) {
 function normalizeStatus(value) {
   const status = trim(value, 20)?.toUpperCase() ?? null;
   if (status && !adminRestaurantStatuses.has(status)) {
-    throw new HttpError(400, 'Restaurant status is invalid');
+    throw new HttpError(400, M.restaurantStatusInvalid);
   }
   return status;
 }
@@ -364,7 +365,7 @@ function normalizePositiveInteger(value) {
   }
   const number = Number(value);
   if (!Number.isInteger(number) || number <= 0) {
-    throw new HttpError(400, 'Filter id must be a positive integer');
+    throw new HttpError(400, M.filterIdPositive);
   }
   return number;
 }

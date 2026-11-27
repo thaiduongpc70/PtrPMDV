@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/deliveries/assign"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"orderId":{{pmOrder3}},"shipperId":{{pmShipperId}}}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Admin assigns shipper: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Admin assigns shipper: nội dung", () => { pm.collectionVariables.set('pmAssignId', String(j.assignmentId)); pm.collectionVariables.set('pmDeliveryId', String(j.deliveryId)); });
+    language: text/javascript
+order: 36000

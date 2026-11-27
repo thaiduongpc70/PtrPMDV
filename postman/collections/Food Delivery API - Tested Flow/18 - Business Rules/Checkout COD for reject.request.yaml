@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/orders/checkout"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{newToken}}
+body:
+  type: text
+  content: '{"restaurantId":{{pmRid}},"addressId":{{pmAddrId}},"paymentMethod":"COD"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Checkout COD for reject: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Checkout COD for reject: nội dung", () => { pm.collectionVariables.set('pmOrder2', String((j.id || j.order.id))); });
+    language: text/javascript
+order: 23000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/orders/checkout"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{newToken}}
+body:
+  type: text
+  content: '{"restaurantId":{{pmRid}},"addressId":{{pmAddrId}},"paymentMethod":"COD"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Checkout without age confirmation (beer): HTTP 400", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([400]));
+      pm.test("Checkout without age confirmation (beer): nội dung", () => { pm.expect(j.message).to.match(/18 tuổi/); });
+    language: text/javascript
+order: 3000

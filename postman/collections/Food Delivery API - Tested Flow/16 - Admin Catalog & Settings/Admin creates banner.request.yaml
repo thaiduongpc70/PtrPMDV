@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/banners"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"title":"Banner PM","imageUrl":"https://example.com/b.jpg","sortOrder":99,"status":"INACTIVE"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Admin creates banner: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Admin creates banner: nội dung", () => { pm.collectionVariables.set('pmBannerId', String((j.id || j.banner.id))); });
+    language: text/javascript
+order: 26000

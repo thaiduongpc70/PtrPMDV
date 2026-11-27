@@ -4,6 +4,14 @@ import { asyncHandler } from '../../shared/http/async-handler.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { requireAuth, requireRole } from '../../shared/middlewares/require-auth.middleware.js';
 import { requirePermission } from '../../shared/middlewares/require-permission.middleware.js';
+import { CANCEL_REASON_CODES, CANCELLABLE_STATUSES, cancelOrderInTransaction } from '../orders/order-cancellation.js';
+import { M } from '../../shared/http/messages.js';
+import { notificationService } from '../notifications/notification.service.js';
+import { closeOpenPayments, createRefund } from '../payments/refund-service.js';
+import { collectCod, settleCod } from '../payments/cod-service.js';
+import { assertAssignable, assertOwnAvailabilityChange, checkDeliveryTransition } from './delivery-rules.js';
+import { readLimitOffset } from '../../shared/http/pagination.js';
+import { readSearchTerm } from '../../shared/http/search-param.js';
 
 export const accountRoutes = Router();
 export const shipperRoutes = Router();
@@ -26,13 +34,16 @@ accountRoutes.get('/session', asyncHandler(async (req, res) => {
   res.json({ user: req.user, permissions: permissions.map(row => row.code) });
 }));
 
-accountRoutes.get('/admin/users', requireRole('ADMIN'), requirePermission('user.view'), asyncHandler(async (_req, res) => {
+accountRoutes.get('/admin/users', requireRole('ADMIN'), requirePermission('user.view'), asyncHandler(async (req, res) => {
+  const userSearch = readSearchTerm(req.query);
+  const likeTerm = userSearch ? `%${userSearch.replace(/[%_\\]/g, ch => `\\${ch}`)}%` : null;
   const rows = await query(
     `SELECT u.id, u.username, u.email, u.phone, u.status, u.created_at, r.name AS role
      FROM users u INNER JOIN roles r ON r.id = u.role_id
-     WHERE u.deleted_at IS NULL
+     WHERE u.deleted_at IS NULL${userSearch ? ' AND (u.username LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR r.name LIKE ?)' : ''}
      ORDER BY u.created_at DESC, u.id DESC
-     LIMIT 200`
+     LIMIT 200`,
+    userSearch ? [likeTerm, likeTerm, likeTerm, likeTerm] : []
   );
   res.json({ items: rows.map(mapUser), totalItems: rows.length });
 }));
@@ -46,7 +57,7 @@ accountRoutes.patch('/admin/users/:userId/status', requireRole('ADMIN'), require
      FROM users u INNER JOIN roles r ON r.id = u.role_id WHERE u.id = ?`,
     [userId]
   );
-  if (!rows[0]) throw new HttpError(404, 'User not found');
+  if (!rows[0]) throw new HttpError(404, M.userNotFound);
   audit(req, 'USER_STATUS_UPDATE', 'USER', userId, { status });
   res.json(mapUser(rows[0]));
 }));
@@ -78,6 +89,7 @@ shipperRoutes.patch('/profile', requirePermission('delivery.update'), asyncHandl
 shipperRoutes.patch('/availability', requirePermission('delivery.update'), asyncHandler(async (req, res) => {
   const shipper = await requireShipper(req.user.id);
   const status = readEnum(req.body?.availabilityStatus, ['OFFLINE', 'AVAILABLE', 'BUSY', 'SUSPENDED'], 'availabilityStatus');
+  assertOwnAvailabilityChange(shipper.availabilityStatus, status);
   await query('UPDATE shipper_profiles SET availability_status = ? WHERE id = ?', [status, shipper.id]);
   audit(req, 'SHIPPER_AVAILABILITY_UPDATE', 'SHIPPER', shipper.id, { availabilityStatus: status });
   res.json(await requireShipper(req.user.id));
@@ -129,12 +141,13 @@ shipperRoutes.post('/assignments/:assignmentId/accept', requirePermission('deliv
 shipperRoutes.post('/assignments/:assignmentId/reject', requirePermission('delivery.update'), asyncHandler(async (req, res) => {
   const shipper = await requireShipper(req.user.id);
   const assignmentId = readId(req.params.assignmentId, 'assignmentId');
-  await query(
+  const updated = await query(
     `UPDATE delivery_assignments
      SET assignment_status = 'REJECTED', rejected_at = CURRENT_TIMESTAMP, reject_reason = ?
      WHERE id = ? AND shipper_id = ? AND assignment_status = 'OFFERED'`,
     [nullableText(req.body?.reason, 500), assignmentId, shipper.id]
   );
+  if (!updated.affectedRows) throw new HttpError(404, M.assignmentNotFound);
   audit(req, 'DELIVERY_ASSIGNMENT_REJECT', 'DELIVERY_ASSIGNMENT', assignmentId, req.body);
   res.json({ id: assignmentId, status: 'REJECTED' });
 }));
@@ -150,6 +163,7 @@ shipperRoutes.post('/locations', requirePermission('delivery.update'), asyncHand
   const deliveryId = req.body?.deliveryId ? readId(req.body.deliveryId, 'deliveryId') : null;
   const latitude = readDecimal(req.body?.latitude, 'latitude');
   const longitude = readDecimal(req.body?.longitude, 'longitude');
+  if (deliveryId) await assertOwnDelivery(query, deliveryId, shipper.id);
   const result = await query(
     `INSERT INTO shipper_locations (shipper_id, delivery_id, latitude, longitude, speed, heading, accuracy)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -193,6 +207,8 @@ shipperRoutes.post('/deliveries/:deliveryId/status', requirePermission('delivery
     note: nullableText(req.body?.note, 500)
   });
   audit(req, 'DELIVERY_STATUS_UPDATE', 'DELIVERY', delivery.id, delivery);
+  // Khách + chủ quán nhận thông báo: tài xế đã lấy món / đang giao / đã giao / giao thất bại (một lần cho mỗi trạng thái)
+  notificationService.notifyOrderProgress(delivery.orderId, delivery.status).catch(() => {});
   res.json(delivery);
 }));
 
@@ -240,6 +256,24 @@ deliveryRoutes.get('/order/:orderId', requirePermission('delivery.view'), asyncH
   res.json(rows[0] ? mapDelivery(rows[0]) : null);
 }));
 
+/** Đánh giá tài xế (chỉ đọc): ADMIN xem tất cả (lọc ?shipperId=), SHIPPER chỉ xem của mình, vai trò khác 403. limit ≤ 100 + offset. */
+deliveryRoutes.get('/reviews', requireRole('ADMIN', 'SHIPPER'), asyncHandler(async (req, res) => {
+  const { limit, offset } = readLimitOffset(req.query);
+  const where = ['sr.deleted_at IS NULL'];
+  const params = [];
+  if (req.user.role === 'SHIPPER') { where.push('sr.shipper_id IN (SELECT id FROM shipper_profiles WHERE user_id = ?)'); params.push(req.user.id); }
+  else if (req.query.shipperId !== undefined) { where.push('sr.shipper_id = ?'); params.push(readId(req.query.shipperId, 'shipperId')); }
+  const [{ total }] = await query(`SELECT COUNT(*) AS total FROM shipper_reviews sr WHERE ${where.join(' AND ')}`, params);
+  const rows = await query(
+    `SELECT sr.id, sr.order_id, sr.shipper_id, sr.rating, sr.comment, sr.created_at, sp.full_name AS shipper_name
+     FROM shipper_reviews sr LEFT JOIN shipper_profiles sp ON sp.id = sr.shipper_id
+     WHERE ${where.join(' AND ')} ORDER BY sr.created_at DESC, sr.id DESC LIMIT ${limit} OFFSET ${offset}`, params);
+  res.json({
+    items: rows.map(row => ({ id: Number(row.id), orderId: Number(row.order_id), shipperId: Number(row.shipper_id), shipperName: row.shipper_name, rating: Number(row.rating), comment: row.comment, createdAt: row.created_at })),
+    limit, offset, total: Number(total)
+  });
+}));
+
 deliveryRoutes.get('/available-shippers', requirePermission('delivery.assign'), asyncHandler(async (_req, res) => {
   const rows = await query(
     `SELECT id, full_name, vehicle_type, vehicle_plate, rating, total_deliveries, current_latitude, current_longitude
@@ -265,6 +299,7 @@ deliveryRoutes.get('/available-shippers', requirePermission('delivery.assign'), 
 deliveryRoutes.get('/active', requireRole('ADMIN'), asyncHandler(async (_req, res) => {
   const rows = await query(
     `SELECT d.*, o.order_code, o.order_status, o.payment_method, o.total_amount, r.name AS restaurant_name,
+            o.customer_note, o.shipper_note, o.need_utensils, o.contactless_delivery, o.receiver_name, o.receiver_phone,
             sp.full_name AS shipper_name, sp.current_latitude, sp.current_longitude
      FROM deliveries d
      INNER JOIN orders o ON o.id = d.order_id
@@ -295,13 +330,17 @@ deliveryRoutes.post('/assign', requirePermission('delivery.assign'), asyncHandle
     deliveryFee: readOptionalDecimal(req.body?.deliveryFee, null)
   });
   audit(req, 'DELIVERY_ASSIGN', 'DELIVERY_ASSIGNMENT', result.assignmentId, result);
+  // Thông báo tài xế: được giao đơn mới; tài xế cũ (nếu đổi) được báo đơn đã chuyển. Lỗi thông báo không làm hỏng việc giao đơn.
+  notificationService.notifyShipperAssigned({ orderId, shipperId }).catch(() => {});
+  notificationService.notifyOrderProgress(orderId, 'SHIPPER_ASSIGNED').catch(() => {}); // khách + chủ quán: đã có tài xế nhận đơn
+  if (result.previousShipperId && result.previousShipperId !== shipperId) notificationService.notifyShipperReassigned({ orderId, previousShipperId: result.previousShipperId }).catch(() => {});
   res.status(201).json(result);
 }));
 
 deliveryRoutes.get('/:deliveryId/locations', requirePermission('delivery.location.view'), asyncHandler(async (req, res) => {
   const deliveryId = readId(req.params.deliveryId, 'deliveryId');
   const deliveryRows = await listDeliveries({ deliveryId });
-  if (!deliveryRows[0]) throw new HttpError(404, 'Delivery not found');
+  if (!deliveryRows[0]) throw new HttpError(404, M.deliveryNotFound);
   await assertOrderAccess(req.user, Number(deliveryRows[0].order_id));
   const rows = await query(
     `SELECT * FROM shipper_locations WHERE delivery_id = ? ORDER BY recorded_at DESC, id DESC LIMIT 200`,
@@ -330,7 +369,7 @@ paymentRoutes.post('/orders/:orderId/mock-pay', requirePermission('payment.view'
   const orderId = readId(req.params.orderId, 'orderId');
   const order = await assertOrderAccess(req.user, orderId);
   if (req.user.role !== 'ADMIN' && Number(order.customer_user_id) !== Number(req.user.id)) {
-    throw new HttpError(403, 'Permission denied');
+    throw new HttpError(403, M.permissionDenied);
   }
   const rows = await query(
     `SELECT * FROM payments WHERE order_id = ? AND status IN ('PENDING','PROCESSING','FAILED') AND method <> 'COD'
@@ -374,16 +413,17 @@ paymentRoutes.get('/cod', requirePermission('payment.view'), asyncHandler(async 
 
 paymentRoutes.post('/cod/:codId/collect', requirePermission('delivery.update'), asyncHandler(async (req, res) => {
   const codId = readId(req.params.codId, 'codId');
-  await query(`UPDATE cod_transactions SET status = 'COLLECTED', collected_at = CURRENT_TIMESTAMP WHERE id = ?`, [codId]);
+  const shipperId = req.user.role === 'SHIPPER' ? (await requireShipper(req.user.id)).id : null;
+  const result = await withTransaction(connection => collectCod(connection, codId, { shipperId }));
   audit(req, 'COD_COLLECT', 'COD_TRANSACTION', codId);
-  res.json({ id: codId, status: 'COLLECTED' });
+  res.json(result);
 }));
 
 paymentRoutes.post('/cod/:codId/settle', requirePermission('payment.manage'), asyncHandler(async (req, res) => {
   const codId = readId(req.params.codId, 'codId');
-  await query(`UPDATE cod_transactions SET status = 'SETTLED', settled_at = CURRENT_TIMESTAMP WHERE id = ?`, [codId]);
+  const result = await withTransaction(connection => settleCod(connection, codId));
   audit(req, 'COD_SETTLE', 'COD_TRANSACTION', codId);
-  res.json({ id: codId, status: 'SETTLED' });
+  res.json(result);
 }));
 
 paymentRoutes.post('/orders/:orderId/invoice', requirePermission('payment.view'), asyncHandler(async (req, res) => {
@@ -402,7 +442,7 @@ paymentRoutes.get('/invoices/:orderCode', requirePermission('payment.view'), asy
      LIMIT 1`,
     [req.params.orderCode, req.params.orderCode]
   );
-  if (!rows[0]) throw new HttpError(404, 'Invoice not found');
+  if (!rows[0]) throw new HttpError(404, M.invoiceNotFound);
   await assertOrderAccess(req.user, Number(rows[0].order_id));
   res.json(mapInvoice(rows[0]));
 }));
@@ -425,48 +465,76 @@ paymentRoutes.post('/wallet/deposit', asyncHandler(async (req, res) => {
 
 paymentRoutes.post('/orders/:orderId/refund', requirePermission('payment.manage'), asyncHandler(async (req, res) => {
   const orderId = readId(req.params.orderId, 'orderId');
-  const paymentRows = await query('SELECT id, amount FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [orderId]);
-  const amount = req.body?.amount === undefined
-    ? Number(paymentRows[0]?.amount ?? 0)
-    : readPositiveMoney(req.body.amount, 'amount');
-  const result = await query(
-    `INSERT INTO refunds (order_id, payment_id, amount, reason, status, processed_by)
-     VALUES (?, ?, ?, ?, 'PENDING', ?)`,
-    [orderId, paymentRows[0]?.id ?? null, amount, nullableText(req.body?.reason, 1000), req.user.id]
-  );
-  audit(req, 'REFUND_CREATE', 'REFUND', result.insertId, { orderId, amount });
-  res.status(201).json({ id: Number(result.insertId), orderId, amount, status: 'PENDING' });
+  const amount = req.body?.amount === undefined ? null : readPositiveMoney(req.body.amount, 'amount');
+  const reason = nullableText(req.body?.reason, 1000);
+  // Chặn hoàn trùng/vượt: kiểm tra và ghi trong một giao dịch có khoá đơn (modules/payments/refund-service.js)
+  const refund = await withTransaction(connection => createRefund(connection, { orderId, amount, reason, userId: req.user.id }));
+  audit(req, 'REFUND_CREATE', 'REFUND', refund.id, { orderId, amount: refund.amount });
+  res.status(201).json(refund);
 }));
 
 paymentRoutes.post('/orders/:orderId/cancel', requirePermission('order.cancel'), asyncHandler(async (req, res) => {
   const orderId = readId(req.params.orderId, 'orderId');
   const result = await cancelOrder(req.user, orderId, req.body);
   audit(req, 'ORDER_CANCEL', 'ORDER', orderId, result);
+  notificationService.notifyOrderProgress(orderId, 'CANCELLED').catch(() => {}); // khách + chủ quán (+ tài xế đang giữ đơn): đơn đã huỷ
   res.json(result);
 }));
 
 communicationRoutes.use(requireAuth);
 communicationRoutes.post('/orders/:orderId/restaurant-review', requireRole('CUSTOMER'), requirePermission('review.create'), asyncHandler(async (req, res) => {
-  const order = await requireCustomerDeliveredOrder(req.user.id, readId(req.params.orderId, 'orderId'));
+  const orderId = readId(req.params.orderId, 'orderId');
+  const rating = readRating(req.body?.rating); // kiểm tra đầu vào (1–5, độ dài bình luận) TRƯỚC khi kiểm tra đơn/trạng thái
+  const comment = nullableText(req.body?.comment, 2000);
+  const order = await requireCustomerDeliveredOrder(req.user.id, orderId);
   const result = await query(
     `INSERT INTO restaurant_reviews (order_id, customer_id, restaurant_id, rating, comment)
      VALUES (?, ?, ?, ?, ?)`,
-    [order.id, order.customer_id, order.restaurant_id, readRating(req.body?.rating), nullableText(req.body?.comment, 2000)]
+    [order.id, order.customer_id, order.restaurant_id, rating, comment]
   );
   audit(req, 'RESTAURANT_REVIEW_CREATE', 'RESTAURANT_REVIEW', result.insertId);
   res.status(201).json({ id: Number(result.insertId), orderId: order.id });
 }));
 
 communicationRoutes.post('/orders/:orderId/shipper-review', requireRole('CUSTOMER'), requirePermission('review.create'), asyncHandler(async (req, res) => {
-  const order = await requireCustomerDeliveredOrder(req.user.id, readId(req.params.orderId, 'orderId'));
-  if (!order.shipper_id) throw new HttpError(400, 'Order has no shipper');
+  const orderId = readId(req.params.orderId, 'orderId');
+  const rating = readRating(req.body?.rating);
+  const comment = nullableText(req.body?.comment, 2000);
+  const order = await requireCustomerDeliveredOrder(req.user.id, orderId);
+  if (!order.shipper_id) throw new HttpError(400, M.orderNoShipper);
   const result = await query(
     `INSERT INTO shipper_reviews (order_id, customer_id, shipper_id, rating, comment)
      VALUES (?, ?, ?, ?, ?)`,
-    [order.id, order.customer_id, order.shipper_id, readRating(req.body?.rating), nullableText(req.body?.comment, 2000)]
+    [order.id, order.customer_id, order.shipper_id, rating, comment]
   );
   audit(req, 'SHIPPER_REVIEW_CREATE', 'SHIPPER_REVIEW', result.insertId);
   res.status(201).json({ id: Number(result.insertId), orderId: order.id });
+}));
+
+communicationRoutes.post('/orders/:orderId/item-reviews', requireRole('CUSTOMER'), requirePermission('review.create'), asyncHandler(async (req, res) => {
+  const orderId = readId(req.params.orderId, 'orderId');
+  const reviews = Array.isArray(req.body?.items) ? req.body.items : [];
+  if (reviews.length === 0 || reviews.length > 50) throw new HttpError(400, M.reviewItemsRange);
+  for (const review of reviews) { readId(review?.orderItemId, 'orderItemId'); readRating(review?.rating); nullableText(review?.comment, 2000); } // validate trước khi kiểm đơn
+  const order = await requireCustomerDeliveredOrder(req.user.id, orderId);
+  const lines = await query('SELECT id, menu_item_id FROM order_items WHERE order_id = ? AND menu_item_id IS NOT NULL', [order.id]);
+  const byLine = new Map(lines.map(line => [Number(line.id), Number(line.menu_item_id)]));
+  const created = [];
+  for (const review of reviews) {
+    const orderItemId = readId(review?.orderItemId, 'orderItemId');
+    if (!byLine.has(orderItemId)) throw new HttpError(400, M.orderItemForeign);
+    const result = await query(
+      `INSERT INTO menu_item_reviews (order_id, order_item_id, menu_item_id, customer_id, rating, comment)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [order.id, orderItemId, byLine.get(orderItemId), order.customer_id, readRating(review.rating), nullableText(review.comment, 2000)]
+    ).catch(error => {
+      if (error?.code === 'ER_DUP_ENTRY') throw new HttpError(409, 'Món này trong đơn đã được đánh giá');
+      throw error;
+    });
+    created.push({ id: Number(result.insertId), orderItemId, menuItemId: byLine.get(orderItemId) });
+  }
+  audit(req, 'MENU_ITEM_REVIEW_CREATE', 'ORDER', order.id, { count: created.length });
+  res.status(201).json({ orderId: Number(order.id), items: created, totalItems: created.length });
 }));
 
 communicationRoutes.get('/chat/sessions', asyncHandler(async (req, res) => {
@@ -634,6 +702,11 @@ settlementRoutes.post('/admin/settlements/generate', requireRole('ADMIN'), requi
   res.status(201).json({ items, totalItems: items.length });
 }));
 
+export async function assertOwnDelivery(exec, deliveryId, shipperId) {
+  const rows = await exec('SELECT id FROM deliveries WHERE id = ? AND shipper_id = ? LIMIT 1', [deliveryId, shipperId]);
+  if (!rows[0]) throw new HttpError(404, M.deliveryNotFound);
+}
+
 async function requireShipper(userId) {
   const rows = await query(
     `SELECT id, user_id, full_name, identity_number, vehicle_type, vehicle_plate, driving_license,
@@ -644,7 +717,7 @@ async function requireShipper(userId) {
      LIMIT 1`,
     [userId]
   );
-  if (!rows[0]) throw new HttpError(404, 'Shipper profile not found');
+  if (!rows[0]) throw new HttpError(404, M.shipperProfileNotFound);
   return mapShipper(rows[0]);
 }
 
@@ -660,19 +733,19 @@ async function assertOrderAccess(user, orderId) {
     [orderId]
   );
   const order = rows[0];
-  if (!order) throw new HttpError(404, 'Order not found');
+  if (!order) throw new HttpError(404, M.orderNotFound);
   const allowed = user.role === 'ADMIN'
     || Number(order.customer_user_id) === Number(user.id)
     || Number(order.owner_user_id) === Number(user.id)
     || Number(order.shipper_user_id ?? 0) === Number(user.id);
-  if (!allowed) throw new HttpError(403, 'Permission denied');
+  if (!allowed) throw new HttpError(403, M.permissionDenied);
   return order;
 }
 
 async function assertRestaurantOrAdminOrderAccess(user, orderId) {
   const order = await assertOrderAccess(user, orderId);
   if (user.role !== 'ADMIN' && Number(order.owner_user_id) !== Number(user.id)) {
-    throw new HttpError(403, 'Permission denied');
+    throw new HttpError(403, M.permissionDenied);
   }
   return order;
 }
@@ -686,14 +759,15 @@ async function createAssignment(input) {
        LIMIT 1 FOR UPDATE`,
       [input.orderId]
     );
-    if (!orderRows[0]) throw new HttpError(404, 'Order not found');
+    if (!orderRows[0]) throw new HttpError(404, M.orderNotFound);
+    assertAssignable(orderRows[0].order_status);
     const shipperRows = await connection.execute(
       `SELECT id FROM shipper_profiles
        WHERE id = ? AND availability_status IN ('AVAILABLE','BUSY') AND deleted_at IS NULL
        LIMIT 1`,
       [input.shipperId]
     );
-    if (!shipperRows[0]) throw new HttpError(400, 'Shipper is not available');
+    if (!shipperRows[0]) throw new HttpError(400, M.shipperUnavailable);
     await connection.execute(
       `INSERT INTO deliveries (order_id, shipper_id, pickup_address, delivery_address, pickup_latitude,
         pickup_longitude, delivery_latitude, delivery_longitude, distance_km, delivery_fee, delivery_status, assigned_at)
@@ -713,6 +787,8 @@ async function createAssignment(input) {
       ]
     );
     const deliveryRows = await connection.execute('SELECT id FROM deliveries WHERE order_id = ? LIMIT 1', [input.orderId]);
+    // Đổi tài xế: đóng đề nghị cũ còn chờ, tránh tài xế cũ bấm nhận rồi giành lại đơn (trigger trg_assignment_accept)
+    await connection.execute(`UPDATE delivery_assignments SET assignment_status = 'CANCELLED' WHERE order_id = ? AND assignment_status = 'OFFERED'`, [input.orderId]);
     const assignmentResult = await connection.execute(
       `INSERT INTO delivery_assignments (order_id, shipper_id, assigned_by)
        VALUES (?, ?, ?)`,
@@ -722,17 +798,18 @@ async function createAssignment(input) {
       `UPDATE orders SET shipper_id = ?, order_status = 'SHIPPER_ASSIGNED' WHERE id = ?`,
       [input.shipperId, input.orderId]
     );
+    // Trigger trg_order_status_history đã ghi dòng chuyển trạng thái; bổ sung người thực hiện/ghi chú thay vì ghi thêm dòng trùng.
     await connection.execute(
-      `INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, note)
-       VALUES (?, ?, 'SHIPPER_ASSIGNED', ?, 'Shipper assigned')`,
-      [input.orderId, orderRows[0].order_status, input.assignedBy]
+      `UPDATE order_status_history SET changed_by = ?, note = 'Đã có tài xế nhận đơn'
+       WHERE order_id = ? AND new_status = 'SHIPPER_ASSIGNED' ORDER BY id DESC LIMIT 1`,
+      [input.assignedBy, input.orderId]
     );
     await connection.execute(
       `INSERT INTO delivery_status_history (delivery_id, status, note)
-       VALUES (?, 'ASSIGNED', 'Delivery assigned')`,
+       VALUES (?, 'ASSIGNED', 'Đã phân công tài xế giao đơn')`,
       [deliveryRows[0].id]
     );
-    return { assignmentId: Number(assignmentResult.insertId), deliveryId: Number(deliveryRows[0].id), orderId: input.orderId, shipperId: input.shipperId };
+    return { assignmentId: Number(assignmentResult.insertId), deliveryId: Number(deliveryRows[0].id), orderId: input.orderId, shipperId: input.shipperId, previousShipperId: orderRows[0].shipper_id == null ? null : Number(orderRows[0].shipper_id) };
   });
 }
 
@@ -746,7 +823,7 @@ async function acceptAssignment(userId, assignmentId) {
        LIMIT 1 FOR UPDATE`,
       [assignmentId, shipper.id]
     );
-    if (!rows[0]) throw new HttpError(404, 'Assignment not found');
+    if (!rows[0]) throw new HttpError(404, M.assignmentNotFound);
     await connection.execute(
       `UPDATE delivery_assignments SET assignment_status = 'ACCEPTED', accepted_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [assignmentId]
@@ -757,14 +834,14 @@ async function acceptAssignment(userId, assignmentId) {
     );
     await connection.execute(`UPDATE shipper_profiles SET availability_status = 'BUSY' WHERE id = ?`, [shipper.id]);
     await connection.execute(
-      `INSERT INTO delivery_status_history (delivery_id, status, note) VALUES (?, 'ACCEPTED', 'Shipper accepted')`,
+      `UPDATE delivery_status_history SET note = 'Shipper accepted' WHERE delivery_id = ? AND status = 'ACCEPTED' ORDER BY id DESC LIMIT 1`,
       [rows[0].delivery_id]
     );
     return { assignmentId, deliveryId: Number(rows[0].delivery_id), orderId: Number(rows[0].order_id), status: 'ACCEPTED' };
   });
 }
 
-async function updateDeliveryStatus(input) {
+export async function updateDeliveryStatus(input) {
   return withTransaction(async connection => {
     const rows = await connection.execute(
       `SELECT d.*, o.order_status, o.payment_method, o.total_amount
@@ -773,7 +850,8 @@ async function updateDeliveryStatus(input) {
        LIMIT 1 FOR UPDATE`,
       [input.deliveryId, input.shipperId]
     );
-    if (!rows[0]) throw new HttpError(404, 'Delivery not found');
+    if (!rows[0]) throw new HttpError(404, M.deliveryNotFound);
+    if (checkDeliveryTransition(rows[0].delivery_status, rows[0].order_status, input.status)) return mapDelivery(rows[0]); // bấm lặp: giữ nguyên
     const statusToOrder = {
       PICKED_UP: 'PICKED_UP',
       DELIVERING: 'DELIVERING',
@@ -802,12 +880,14 @@ async function updateDeliveryStatus(input) {
       [statusToOrder[input.status], input.status, input.status, rows[0].order_id]
     );
     await connection.execute(
-      `INSERT INTO delivery_status_history (delivery_id, status, latitude, longitude, note)
-       VALUES (?, ?, ?, ?, ?)`,
-      [input.deliveryId, input.status, input.latitude, input.longitude, input.note]
+      `UPDATE delivery_status_history SET latitude = ?, longitude = ?, note = COALESCE(?, note)
+       WHERE delivery_id = ? AND status = ? AND (note IS NULL OR note <> 'GPS update') ORDER BY id DESC LIMIT 1`,
+      [input.latitude, input.longitude, input.note, input.deliveryId, input.status]
     );
+    if (input.status === 'FAILED') await closeOpenPayments(connection, Number(rows[0].order_id), 'FAILED'); // giao thất bại: đóng giao dịch chưa thu
     if (input.status === 'DELIVERED') {
-      await connection.execute(`UPDATE shipper_profiles SET availability_status = 'AVAILABLE', total_deliveries = total_deliveries + 1 WHERE id = ?`, [input.shipperId]);
+      // total_deliveries do trigger trg_order_delivered_statistics cộng khi đơn chuyển DELIVERED; không cộng lần nữa ở đây.
+      await connection.execute(`UPDATE shipper_profiles SET availability_status = 'AVAILABLE' WHERE id = ?`, [input.shipperId]);
       await connection.execute(`UPDATE orders SET payment_status = IF(payment_method = 'COD', 'PAID', payment_status) WHERE id = ?`, [rows[0].order_id]);
       await connection.execute(`UPDATE payments SET status = IF(method = 'COD', 'PAID', status), paid_at = IF(method = 'COD', CURRENT_TIMESTAMP, paid_at) WHERE order_id = ?`, [rows[0].order_id]);
       await connection.execute(
@@ -817,11 +897,14 @@ async function updateDeliveryStatus(input) {
          ON DUPLICATE KEY UPDATE status = status`,
         [rows[0].order_id]
       ).catch(() => null);
-      await connection.execute(
+      const earning = await connection.execute(
         `INSERT IGNORE INTO shipper_earnings (shipper_id, delivery_id, delivery_fee, bonus, tip_amount, platform_fee, net_earning)
          VALUES (?, ?, ?, 0, 0, 0, ?)`,
         [input.shipperId, input.deliveryId, Number(rows[0].delivery_fee ?? 0), Number(rows[0].delivery_fee ?? 0)]
       );
+      if (earning.affectedRows > 0) {
+        await connection.execute('UPDATE shipper_profiles SET total_earnings = total_earnings + ? WHERE id = ?', [Number(rows[0].delivery_fee ?? 0), input.shipperId]);
+      }
       await connection.execute(
         `INSERT IGNORE INTO restaurant_commissions (order_id, restaurant_id, order_amount, commission_rate, commission_amount)
          SELECT o.id, o.restaurant_id, o.total_amount, r.commission_rate, ROUND(o.total_amount * r.commission_rate / 100, 2)
@@ -842,6 +925,7 @@ async function listDeliveries(filters = {}) {
   if (filters.shipperId) { where.push('d.shipper_id = ?'); params.push(filters.shipperId); }
   return query(
     `SELECT d.*, o.order_code, o.order_status, o.payment_method, o.total_amount, r.name AS restaurant_name,
+            o.customer_note, o.shipper_note, o.need_utensils, o.contactless_delivery, o.receiver_name, o.receiver_phone,
             sp.full_name AS shipper_name
      FROM deliveries d
      INNER JOIN orders o ON o.id = d.order_id
@@ -857,7 +941,13 @@ async function listDeliveries(filters = {}) {
 async function processPaymentCallback(paymentId, status, body) {
   return withTransaction(async connection => {
     const rows = await connection.execute('SELECT * FROM payments WHERE id = ? LIMIT 1 FOR UPDATE', [paymentId]);
-    if (!rows[0]) throw new HttpError(404, 'Payment not found');
+    if (!rows[0]) throw new HttpError(404, M.paymentNotFound);
+    // Hoàn tiền chỉ đi qua luồng yêu cầu hoàn (để tổng hoàn không vượt số đã trả); không nhận tiền cho đơn đã huỷ/thất bại
+    if (status === 'REFUNDED') throw new HttpError(409, 'Hoàn tiền phải thực hiện qua yêu cầu hoàn tiền, không đổi trực tiếp trạng thái giao dịch');
+    if (status === 'PAID') {
+      const [order] = await connection.execute('SELECT order_status FROM orders WHERE id = ? FOR UPDATE', [rows[0].order_id]);
+      if (['CANCELLED', 'FAILED'].includes(order?.order_status)) throw new HttpError(409, 'Đơn đã huỷ hoặc giao thất bại, không thể ghi nhận thanh toán');
+    }
     await connection.execute(
       `UPDATE payments SET status = ?, transaction_id = COALESCE(?, transaction_id), gateway = COALESCE(?, gateway),
        paid_at = IF(? = 'PAID', CURRENT_TIMESTAMP, paid_at) WHERE id = ?`,
@@ -870,7 +960,7 @@ async function processPaymentCallback(paymentId, status, body) {
     );
     await connection.execute(
       `UPDATE orders SET payment_status = ? WHERE id = ?`,
-      [status === 'PAID' ? 'PAID' : status === 'REFUNDED' ? 'REFUNDED' : status === 'FAILED' ? 'FAILED' : 'PENDING', rows[0].order_id]
+      [status === 'PAID' ? 'PAID' : status === 'REFUNDED' ? 'REFUNDED' : status === 'FAILED' ? 'FAILED' : status === 'CANCELLED' ? 'CANCELLED' : 'PENDING', rows[0].order_id]
     );
     return { id: paymentId, orderId: Number(rows[0].order_id), status };
   });
@@ -878,46 +968,16 @@ async function processPaymentCallback(paymentId, status, body) {
 
 async function cancelOrder(user, orderId, body) {
   const order = await assertOrderAccess(user, orderId);
-  if (!['PENDING', 'CONFIRMED', 'PREPARING'].includes(order.order_status)) {
-    throw new HttpError(400, 'Order cannot be cancelled in the current status');
+  if (!CANCELLABLE_STATUSES.includes(order.order_status)) {
+    throw new HttpError(400, M.orderCannotCancel);
   }
-  return withTransaction(async connection => {
-    await connection.execute(
-      `UPDATE orders SET order_status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [orderId]
-    );
-    await connection.execute(
-      `INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, note)
-       VALUES (?, ?, 'CANCELLED', ?, ?)`,
-      [orderId, order.order_status, user.id, nullableText(body?.reason, 500) ?? 'Order cancelled']
-    );
-    const refundAmount = ['PAID', 'PARTIALLY_REFUNDED'].includes(order.payment_status)
-      ? Number(order.total_amount)
-      : 0;
-    await connection.execute(
-      `INSERT INTO order_cancellations (order_id, cancelled_by, reason_code, reason, refund_amount)
-       VALUES (?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE reason = VALUES(reason), refund_amount = VALUES(refund_amount)`,
-      [
-        orderId,
-        user.id,
-        readEnum(body?.reasonCode ?? 'CUSTOMER_CHANGED_MIND', ['CUSTOMER_CHANGED_MIND', 'RESTAURANT_REJECTED', 'OUT_OF_STOCK', 'SHIPPER_UNAVAILABLE', 'PAYMENT_FAILED', 'SYSTEM_TIMEOUT', 'OTHER'], 'reasonCode'),
-        nullableText(body?.reason, 1000),
-        refundAmount
-      ]
-    );
-    if (refundAmount > 0) {
-      const payments = await connection.execute('SELECT id FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [orderId]);
-      await connection.execute(
-        `INSERT INTO refunds (order_id, payment_id, amount, reason, status, processed_by)
-         VALUES (?, ?, ?, ?, 'PENDING', ?)`,
-        [orderId, payments[0]?.id ?? null, refundAmount, nullableText(body?.reason, 1000), user.id]
-      );
-    }
-    await connection.execute(`UPDATE deliveries SET delivery_status = 'CANCELLED' WHERE order_id = ?`, [orderId]);
-    await connection.execute(`UPDATE delivery_assignments SET assignment_status = 'CANCELLED' WHERE order_id = ? AND assignment_status = 'OFFERED'`, [orderId]);
-    return { orderId, status: 'CANCELLED', refundAmount };
-  });
+  const reasonCode = readEnum(body?.reasonCode ?? 'CUSTOMER_CHANGED_MIND', CANCEL_REASON_CODES, 'reasonCode');
+  return withTransaction(connection => cancelOrderInTransaction(connection, order, {
+    actorUserId: user.id,
+    reasonCode,
+    reason: nullableText(body?.reason, 1000),
+    historyNote: nullableText(body?.reason, 500) ?? 'Đơn hàng đã bị huỷ'
+  }));
 }
 
 async function ensureInvoice(orderId) {
@@ -930,7 +990,7 @@ async function ensureInvoice(orderId) {
      WHERE o.id = ? LIMIT 1`,
     [orderId]
   );
-  if (!rows[0]) throw new HttpError(404, 'Order not found');
+  if (!rows[0]) throw new HttpError(404, M.orderNotFound);
   const number = `INV-${rows[0].order_code}`;
   await query(
     `INSERT INTO invoices (invoice_number, order_id, customer_name, restaurant_name, subtotal, discount_amount,
@@ -978,7 +1038,7 @@ async function adjustWallet(userId, type, amount, referenceType, referenceId, de
     const after = ['DEPOSIT', 'REFUND', 'EARNING', 'ADJUSTMENT'].includes(type)
       ? before + amount
       : before - amount;
-    if (after < 0) throw new HttpError(400, 'Wallet balance is insufficient');
+    if (after < 0) throw new HttpError(400, M.walletInsufficient);
     await connection.execute('UPDATE wallets SET balance = ? WHERE id = ?', [after, rows[0].id]);
     await connection.execute(
       `INSERT INTO wallet_transactions (wallet_id, type, amount, reference_type, reference_id, balance_before, balance_after, description)
@@ -997,7 +1057,7 @@ async function requireCustomerDeliveredOrder(userId, orderId) {
      LIMIT 1`,
     [userId, orderId]
   );
-  if (!rows[0]) throw new HttpError(400, 'Review requires a delivered order');
+  if (!rows[0]) throw new HttpError(400, M.reviewNeedsDelivered);
   return rows[0];
 }
 
@@ -1015,7 +1075,7 @@ async function chatAccessParams(user) {
 
 async function assertChatAccess(user, sessionId) {
   const rows = await query(`SELECT cs.* FROM chat_sessions cs WHERE cs.id = ? AND ${chatAccessWhere(user)} LIMIT 1`, [sessionId, ...(await chatAccessParams(user))]);
-  if (!rows[0]) throw new HttpError(403, 'Permission denied');
+  if (!rows[0]) throw new HttpError(403, M.permissionDenied);
   return rows[0];
 }
 
@@ -1025,7 +1085,7 @@ async function requireTicketAccess(user, ticketId) {
      LIMIT 1`,
     user.role === 'ADMIN' ? [ticketId] : [ticketId, user.id]
   );
-  if (!rows[0]) throw new HttpError(404, 'Ticket not found');
+  if (!rows[0]) throw new HttpError(404, M.ticketNotFound);
   return rows[0];
 }
 
@@ -1034,46 +1094,51 @@ async function generateSettlements(periodStart, periodEnd, restaurantId) {
   const params = [periodStart, periodEnd];
   if (restaurantId) { where.push('o.restaurant_id = ?'); params.push(restaurantId); }
   const rows = await query(
-    `SELECT o.restaurant_id, SUM(o.total_amount) AS gross_sales,
+    `SELECT o.restaurant_id, SUM(o.subtotal) AS gross_sales,
             COALESCE(SUM(rc.commission_amount), 0) AS commission_amount,
+            COALESCE((SELECT SUM(pu.discount_amount) FROM promotion_usage pu INNER JOIN promotions p ON p.id = pu.promotion_id INNER JOIN orders po ON po.id = pu.order_id
+                      WHERE p.restaurant_id = o.restaurant_id AND po.restaurant_id = o.restaurant_id AND po.order_status = 'DELIVERED' AND DATE(po.delivered_at) BETWEEN ? AND ?), 0) AS shop_discount,
             COALESCE((SELECT SUM(ref.amount) FROM refunds ref INNER JOIN orders ro ON ro.id = ref.order_id
-                      WHERE ro.restaurant_id = o.restaurant_id AND ref.status IN ('PENDING','PROCESSING','COMPLETED')
+                      WHERE ro.restaurant_id = o.restaurant_id AND ro.order_status = 'DELIVERED' AND ref.status IN ('PENDING','PROCESSING','COMPLETED')
                       AND DATE(ref.created_at) BETWEEN ? AND ?), 0) AS refund_amount
      FROM orders o
      LEFT JOIN restaurant_commissions rc ON rc.order_id = o.id
      WHERE ${where.join(' AND ')}
      GROUP BY o.restaurant_id`,
-    [periodStart, periodEnd, ...params]
+    [periodStart, periodEnd, periodStart, periodEnd, ...params]
   );
   const items = [];
   for (const row of rows) {
     const gross = Number(row.gross_sales);
     const commission = Number(row.commission_amount);
     const refund = Number(row.refund_amount);
-    const net = gross - commission - refund;
+    // Doanh thu quán = tiền món (phí giao thuộc về tài xế, không tính cho quán); voucher do quán tự cấp được trừ vào kỳ như một khoản điều chỉnh,
+    // voucher toàn sàn do nền tảng chịu nên quán vẫn nhận đủ tiền món.
+    const adjustment = -Number(row.shop_discount);
+    const net = gross - commission - refund + adjustment;
     await query(
-      `INSERT INTO restaurant_settlements (restaurant_id, period_start, period_end, gross_sales, commission_amount, refund_amount, net_amount)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [row.restaurant_id, periodStart, periodEnd, gross, commission, refund, net]
+      `INSERT INTO restaurant_settlements (restaurant_id, period_start, period_end, gross_sales, commission_amount, refund_amount, adjustment_amount, net_amount)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [row.restaurant_id, periodStart, periodEnd, gross, commission, refund, adjustment, net]
     );
-    items.push({ restaurantId: Number(row.restaurant_id), periodStart, periodEnd, grossSales: gross, commissionAmount: commission, refundAmount: refund, netAmount: net, status: 'PENDING' });
+    items.push({ restaurantId: Number(row.restaurant_id), periodStart, periodEnd, grossSales: gross, commissionAmount: commission, refundAmount: refund, adjustmentAmount: adjustment, netAmount: net, status: 'PENDING' });
   }
   return items;
 }
 
 function readId(value, field) {
   const id = Number(value);
-  if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, `${field} must be a positive integer`);
+  if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, M.fieldPositiveInteger(field));
   return id;
 }
 
 function text(value, max, fallback = null) {
   if (value === undefined || value === null || String(value).trim() === '') {
     if (fallback !== null) return fallback;
-    throw new HttpError(400, 'Required text is missing');
+    throw new HttpError(400, M.textRequired);
   }
   const output = String(value).trim();
-  if (output.length > max) throw new HttpError(400, `Text must be at most ${max} characters`);
+  if (output.length > max) throw new HttpError(400, M.textTooLong(max));
   return output;
 }
 
@@ -1081,19 +1146,19 @@ function nullableText(value, max, fallback = null) {
   if (value === undefined) return fallback;
   if (value === null || String(value).trim() === '') return null;
   const output = String(value).trim();
-  if (output.length > max) throw new HttpError(400, `Text must be at most ${max} characters`);
+  if (output.length > max) throw new HttpError(400, M.textTooLong(max));
   return output;
 }
 
 function readEnum(value, allowed, field) {
   const output = String(value ?? '').trim().toUpperCase();
-  if (!allowed.includes(output)) throw new HttpError(400, `${field} is invalid`);
+  if (!allowed.includes(output)) throw new HttpError(400, M.fieldInvalid(field));
   return output;
 }
 
 function readDecimal(value, field) {
   const number = Number(value);
-  if (!Number.isFinite(number)) throw new HttpError(400, `${field} is invalid`);
+  if (!Number.isFinite(number)) throw new HttpError(400, M.fieldInvalid(field));
   return number;
 }
 
@@ -1104,13 +1169,13 @@ function readOptionalDecimal(value, fallback) {
 
 function readPositiveMoney(value, field) {
   const number = readDecimal(value, field);
-  if (number <= 0) throw new HttpError(400, `${field} must be greater than 0`);
+  if (number <= 0) throw new HttpError(400, M.greaterThanZero(field));
   return Math.round(number * 100) / 100;
 }
 
 function readRating(value) {
   const number = Number(value);
-  if (!Number.isInteger(number) || number < 1 || number > 5) throw new HttpError(400, 'rating must be between 1 and 5');
+  if (!Number.isInteger(number) || number < 1 || number > 5) throw new HttpError(400, M.ratingRange);
   return number;
 }
 
@@ -1126,7 +1191,7 @@ function mapUser(row) { return { id: Number(row.id), username: row.username, ema
 function mapShipper(row) { return { id: Number(row.id), userId: Number(row.user_id), fullName: row.full_name, identityNumber: row.identity_number, vehicleType: row.vehicle_type, vehiclePlate: row.vehicle_plate, drivingLicense: row.driving_license, rating: Number(row.rating), totalReviews: Number(row.total_reviews), totalDeliveries: Number(row.total_deliveries), totalEarnings: Number(row.total_earnings), availabilityStatus: row.availability_status, currentLatitude: row.current_latitude, currentLongitude: row.current_longitude, lastLocationAt: row.last_location_at, createdAt: row.created_at, updatedAt: row.updated_at }; }
 function mapDocument(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), documentType: row.document_type, documentNumber: row.document_number, imageUrl: row.image_url, verified: Boolean(row.verified), verifiedBy: row.verified_by, verifiedAt: row.verified_at, createdAt: row.created_at }; }
 function mapAssignment(row) { return { id: Number(row.id), orderId: Number(row.order_id), shipperId: Number(row.shipper_id), assignedBy: row.assigned_by, status: row.assignment_status, orderCode: row.order_code, restaurantName: row.restaurant_name, deliveryAddress: row.delivery_address, totalAmount: Number(row.total_amount), offeredAt: row.offered_at, acceptedAt: row.accepted_at, rejectedAt: row.rejected_at, rejectReason: row.reject_reason }; }
-function mapDelivery(row) { return { id: Number(row.id), orderId: Number(row.order_id), orderCode: row.order_code, shipperId: row.shipper_id === null ? null : Number(row.shipper_id), shipperName: row.shipper_name ?? null, restaurantName: row.restaurant_name ?? null, pickupAddress: row.pickup_address, deliveryAddress: row.delivery_address, pickupLatitude: row.pickup_latitude == null ? null : Number(row.pickup_latitude), pickupLongitude: row.pickup_longitude == null ? null : Number(row.pickup_longitude), deliveryLatitude: row.delivery_latitude == null ? null : Number(row.delivery_latitude), deliveryLongitude: row.delivery_longitude == null ? null : Number(row.delivery_longitude), paymentMethod: row.payment_method ?? null, totalAmount: row.total_amount == null ? null : Number(row.total_amount), orderStatus: row.order_status ?? null, distanceKm: Number(row.distance_km), deliveryFee: Number(row.delivery_fee), status: row.delivery_status, proofImageUrl: row.proof_image_url, receiverSignatureUrl: row.receiver_signature_url, createdAt: row.created_at, updatedAt: row.updated_at }; }
+function mapDelivery(row) { return { id: Number(row.id), orderId: Number(row.order_id), orderCode: row.order_code, shipperId: row.shipper_id === null ? null : Number(row.shipper_id), shipperName: row.shipper_name ?? null, restaurantName: row.restaurant_name ?? null, pickupAddress: row.pickup_address, deliveryAddress: row.delivery_address, pickupLatitude: row.pickup_latitude == null ? null : Number(row.pickup_latitude), pickupLongitude: row.pickup_longitude == null ? null : Number(row.pickup_longitude), deliveryLatitude: row.delivery_latitude == null ? null : Number(row.delivery_latitude), deliveryLongitude: row.delivery_longitude == null ? null : Number(row.delivery_longitude), receiverName: row.receiver_name ?? null, receiverPhone: row.receiver_phone ?? null, customerNote: row.customer_note ?? null, shipperNote: row.shipper_note ?? null, needUtensils: row.need_utensils == null ? true : Boolean(row.need_utensils), contactlessDelivery: row.contactless_delivery == null ? false : Boolean(row.contactless_delivery), paymentMethod: row.payment_method ?? null, totalAmount: row.total_amount == null ? null : Number(row.total_amount), orderStatus: row.order_status ?? null, distanceKm: Number(row.distance_km), deliveryFee: Number(row.delivery_fee), status: row.delivery_status, proofImageUrl: row.proof_image_url, receiverSignatureUrl: row.receiver_signature_url, createdAt: row.created_at, updatedAt: row.updated_at }; }
 function mapLocation(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), deliveryId: row.delivery_id === null ? null : Number(row.delivery_id), latitude: Number(row.latitude), longitude: Number(row.longitude), speed: Number(row.speed), heading: Number(row.heading), accuracy: row.accuracy === null ? null : Number(row.accuracy), recordedAt: row.recorded_at }; }
 function mapEarning(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), deliveryId: Number(row.delivery_id), orderId: Number(row.order_id), deliveryFee: Number(row.delivery_fee), bonus: Number(row.bonus), tipAmount: Number(row.tip_amount), platformFee: Number(row.platform_fee), netEarning: Number(row.net_earning), createdAt: row.created_at }; }
 function mapWithdrawal(row) { return { id: Number(row.id), shipperId: Number(row.shipper_id), amount: Number(row.amount), bankName: row.bank_name, bankAccount: row.bank_account, accountHolder: row.account_holder, status: row.status, requestedAt: row.requested_at, processedAt: row.processed_at, rejectReason: row.reject_reason }; }

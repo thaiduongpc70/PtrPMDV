@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/manage/refunds/{{pmRefundId}}"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"status":"REJECTED"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Completed refund is immutable: HTTP 409", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([409]));
+      pm.test("Completed refund is immutable: nội dung", () => { pm.expect(j.message).to.match(/hoàn tất/); });
+    language: text/javascript
+order: 16000

@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/manage/settlements?pageSize=1"
+method: GET
+headers:
+  Authorization: Bearer {{adminToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Admin picks open settlement: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Admin picks open settlement: nội dung", () => { pm.expect(j.items).to.be.an('array').that.is.not.empty; pm.expect(j.summary).to.have.property('grossSales'); pm.collectionVariables.set('pmSettlementId', String(j.items[0].id)); });
+    language: text/javascript
+order: 31000

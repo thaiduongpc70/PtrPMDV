@@ -1,5 +1,6 @@
 import { HttpError } from '../../shared/http/http-error.js';
 import { addressRepository } from './address.repository.js';
+import { M } from '../../shared/http/messages.js';
 
 export const addressService = {
   async list(userId) {
@@ -10,7 +11,7 @@ export const addressService = {
     const address = await addressRepository.findForUser(userId, addressId);
 
     if (!address) {
-      throw new HttpError(404, 'Address not found');
+      throw new HttpError(404, M.addressNotFound);
     }
 
     return address;
@@ -21,12 +22,12 @@ export const addressService = {
     const created = await addressRepository.createForUser(userId, data);
 
     if (!created) {
-      throw new HttpError(404, 'Customer profile not found');
+      throw new HttpError(404, M.customerNotFound);
     }
 
     const address = await addressRepository.findForUser(userId, created.addressId);
     if (!address) {
-      throw new HttpError(500, 'Address was not created correctly');
+      throw new HttpError(500, M.addressNotCreated);
     }
 
     return {
@@ -42,7 +43,7 @@ export const addressService = {
     const current = await addressRepository.findForUser(userId, addressId);
 
     if (!current) {
-      throw new HttpError(404, 'Address not found');
+      throw new HttpError(404, M.addressNotFound);
     }
 
     const requestedIsDefault = input?.isDefault === undefined
@@ -72,7 +73,7 @@ export const addressService = {
     const updated = await addressRepository.updateForUser(userId, addressId, data);
 
     if (!updated?.after) {
-      throw new HttpError(404, 'Address not found');
+      throw new HttpError(404, M.addressNotFound);
     }
 
     return {
@@ -88,7 +89,7 @@ export const addressService = {
     const updated = await addressRepository.setDefaultForUser(userId, addressId);
 
     if (!updated?.after) {
-      throw new HttpError(404, 'Address not found');
+      throw new HttpError(404, M.addressNotFound);
     }
 
     return {
@@ -110,7 +111,7 @@ export const addressService = {
     const deleted = await addressRepository.deleteForUser(userId, addressId);
 
     if (!deleted) {
-      throw new HttpError(404, 'Address not found');
+      throw new HttpError(404, M.addressNotFound);
     }
 
     return {
@@ -150,7 +151,7 @@ function validateAddressInput(input, allowPartial) {
 function readText(value, fieldName, maxLength, required) {
   if (value === undefined || value === null) {
     if (required) {
-      throw new HttpError(400, `${fieldName} is required`);
+      throw new HttpError(400, M.fieldRequired(fieldName));
     }
 
     return null;
@@ -160,14 +161,14 @@ function readText(value, fieldName, maxLength, required) {
 
   if (!text) {
     if (required) {
-      throw new HttpError(400, `${fieldName} is required`);
+      throw new HttpError(400, M.fieldRequired(fieldName));
     }
 
     return null;
   }
 
   if (text.length > maxLength) {
-    throw new HttpError(400, `${fieldName} must be at most ${maxLength} characters`);
+    throw new HttpError(400, M.fieldTooLong(fieldName, maxLength));
   }
 
   return text;
@@ -177,7 +178,7 @@ function readPhone(value) {
   const phone = readText(value, 'Receiver phone', 20, true);
 
   if (!/^[0-9+().\-\s]{8,20}$/.test(phone)) {
-    throw new HttpError(400, 'Receiver phone is invalid');
+    throw new HttpError(400, M.receiverPhoneInvalid);
   }
 
   return phone;
@@ -191,7 +192,7 @@ function readCoordinate(value, fieldName, minimum, maximum) {
   const coordinate = Number(value);
 
   if (!Number.isFinite(coordinate) || coordinate < minimum || coordinate > maximum) {
-    throw new HttpError(400, `${fieldName} is invalid`);
+    throw new HttpError(400, M.fieldNameInvalid(fieldName));
   }
 
   return coordinate;
@@ -214,7 +215,7 @@ function readBoolean(value, fallback) {
     return false;
   }
 
-  throw new HttpError(400, 'isDefault must be true or false');
+  throw new HttpError(400, M.isDefaultBool);
 }
 
 function toAuditAddress(address) {

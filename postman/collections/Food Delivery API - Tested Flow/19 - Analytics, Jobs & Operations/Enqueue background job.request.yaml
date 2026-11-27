@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/jobs/background"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"jobType":"CLEANUP_TOKENS","payload":{}}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Enqueue background job: HTTP 201", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([201]));
+      pm.test("Enqueue background job: nội dung", () => { pm.collectionVariables.set('pmBgId', String(j.id)); });
+    language: text/javascript
+order: 15000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/system-settings/%20"
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"value":"x"}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Invalid setting key rejected: HTTP 400", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([400]));
+      pm.test("Invalid setting key rejected: nội dung", () => { pm.expect(j.message).to.be.a('string').that.is.not.empty; });
+    language: text/javascript
+order: 14000

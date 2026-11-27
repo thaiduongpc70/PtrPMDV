@@ -1,6 +1,6 @@
 # Video demo script 5-10 phút
 
-Mục tiêu: quay một video ngắn chứng minh hệ thống Food Delivery chạy một cổng `http://localhost:3000`, có dữ liệu thật, API/DB/test và đủ 4 vai trò.
+Mục tiêu: quay một video ngắn chứng minh hệ thống Food Delivery chạy một cổng `http://localhost:3001`, có dữ liệu thật, API/DB/test và đủ 4 vai trò.
 
 ## Chuẩn bị
 
@@ -15,9 +15,9 @@ npm.cmd run dev
 
 Mở:
 
-- Web app: `http://localhost:3000`
-- Swagger UI: `http://localhost:3000/api/docs`
-- OpenAPI JSON: `http://localhost:3000/api/openapi.json`
+- Web app: `http://localhost:3001`
+- Swagger UI: `http://localhost:3001/api/docs`
+- OpenAPI JSON: `http://localhost:3001/api/openapi.json`
 
 ## Kịch bản quay
 

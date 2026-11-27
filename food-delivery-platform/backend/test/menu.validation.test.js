@@ -3,7 +3,7 @@ import test from 'node:test';
 import { validateItemCreate, validateItemPatch, validateToppingGroup, validateVariant } from '../src/modules/menus/menu.validation.js';
 
 test('menu item validation rejects a discount higher than the base price', () => {
-  assert.throws(() => validateItemCreate({ name: 'Pho', basePrice: 30000, discountPrice: 35000 }), error => error.statusCode === 400 && /discount/i.test(error.message));
+  assert.throws(() => validateItemCreate({ name: 'Pho', basePrice: 30000, discountPrice: 35000 }), error => error.statusCode === 400 && /giá khuyến mãi/i.test(error.message));
 });
 
 test('menu item patch preserves availability and accepts an explicit zero discount', () => {

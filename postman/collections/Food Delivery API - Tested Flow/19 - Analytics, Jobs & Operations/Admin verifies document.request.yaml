@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/manage/shipper-documents/{{pmDocId}}/verify"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: '{"verified":true}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Admin verifies document: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Admin verifies document: nội dung", () => { pm.expect(j.verified).to.eql(true); pm.expect(String(j.id)).to.eql(pm.collectionVariables.get('pmDocId')); });
+    language: text/javascript
+order: 23000

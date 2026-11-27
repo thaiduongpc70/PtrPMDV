@@ -1,0 +1,4 @@
+$kind: collection
+description: "Chủ quán và admin tạo dữ liệu thử: danh mục, quán, thực đơn,
+  topping, combo, khuyến mãi, ảnh, giờ mở cửa."
+order: 100000

@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/payments/cod"
+method: GET
+headers:
+  Authorization: Bearer {{shipperToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Pick COD transaction: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Pick COD transaction: nội dung", () => { const open = j.items.find(x => x.status === 'COLLECTED' || x.status === 'PENDING'); pm.expect(open, 'tài xế có giao dịch COD chưa đối soát').to.exist; pm.collectionVariables.set('pmCodId', String(open.id)); });
+    language: text/javascript
+order: 25000

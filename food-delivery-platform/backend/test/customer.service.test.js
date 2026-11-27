@@ -44,17 +44,17 @@ test('customer profile update validates phone, gender, and avatar URL', async t 
   await assertHttpError(
     () => customerService.updateProfile(7, { phone: 'abc' }),
     400,
-    'Phone'
+    'Số điện thoại'
   );
   await assertHttpError(
     () => customerService.updateProfile(7, { gender: 'UNKNOWN' }),
     400,
-    'Gender'
+    'Giới tính'
   );
   await assertHttpError(
     () => customerService.updateProfile(7, { avatarUrl: 'avatars/a.png' }),
     400,
-    'Avatar URL'
+    'ảnh đại diện'
   );
 });
 
@@ -73,7 +73,7 @@ test('customer profile update maps duplicate phone to conflict', async t => {
   await assertHttpError(
     () => customerService.updateProfile(7, { phone: '0909999999' }),
     409,
-    'Phone'
+    'Số điện thoại'
   );
 });
 

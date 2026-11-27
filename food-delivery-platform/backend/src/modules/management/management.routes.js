@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../../shared/database/mysql.js';
 import { asyncHandler } from '../../shared/http/async-handler.js';
+import { pagedMeta, readPagination } from '../../shared/http/pagination.js';
+import { readSearchTerm } from '../../shared/http/search-param.js';
+import { setRefundStatus } from '../payments/refund-service.js';
 import { HttpError } from '../../shared/http/http-error.js';
 import { requireAuth, requireRole } from '../../shared/middlewares/require-auth.middleware.js';
+import { M } from '../../shared/http/messages.js';
 
 export const adminManageRoutes = Router();
 export const restaurantManageRoutes = Router();
@@ -20,31 +24,30 @@ function audit(req, action, entityType, entityId = null) {
 
 function id(value, name = 'id') {
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) throw new HttpError(400, `${name} is invalid`);
+  if (!Number.isInteger(parsed) || parsed <= 0) throw new HttpError(400, M.nameInvalid(name));
   return parsed;
 }
 
 function paging(req, defaultSize = 20) {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || defaultSize));
-  return { page, pageSize, offset: (page - 1) * pageSize };
+  const { pageNumber, pageSize, offset } = readPagination(req.query, 100, defaultSize);
+  return { page: pageNumber, pageSize, offset };
 }
 
 function oneOf(value, allowed, name) {
-  if (!allowed.includes(value)) throw new HttpError(400, `${name} must be one of ${allowed.join(', ')}`);
+  if (!allowed.includes(value)) throw new HttpError(400, M.mustBeOneOf(name, allowed.join(', ')));
   return value;
 }
 
 function str(value, max, name, { required = false } = {}) {
   const text = String(value ?? '').trim();
-  if (required && !text) throw new HttpError(400, `${name} is required`);
-  if (text.length > max) throw new HttpError(400, `${name} is too long`);
+  if (required && !text) throw new HttpError(400, M.nameRequired(name));
+  if (text.length > max) throw new HttpError(400, M.nameTooLong(name));
   return text || null;
 }
 
 function money(value, name, { min = 0 } = {}) {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < min) throw new HttpError(400, `${name} is invalid`);
+  if (!Number.isFinite(parsed) || parsed < min) throw new HttpError(400, M.nameInvalid(name));
   return parsed;
 }
 
@@ -61,9 +64,9 @@ async function assertRestaurantAccess(user, restaurantId) {
     'SELECT id, owner_user_id, name, status FROM restaurants WHERE id = ? AND deleted_at IS NULL LIMIT 1',
     [restaurantId]
   );
-  if (!rows[0]) throw new HttpError(404, 'Restaurant not found');
+  if (!rows[0]) throw new HttpError(404, M.restaurantNotFound);
   if (user.role !== 'ADMIN' && Number(rows[0].owner_user_id) !== Number(user.id)) {
-    throw new HttpError(403, 'Permission denied');
+    throw new HttpError(403, M.permissionDenied);
   }
   return rows[0];
 }
@@ -98,9 +101,10 @@ adminManageRoutes.get('/orders', asyncHandler(async (req, res) => {
   if (req.query.status) { where.push('o.order_status = ?'); params.push(String(req.query.status)); }
   if (req.query.paymentStatus) { where.push('o.payment_status = ?'); params.push(String(req.query.paymentStatus)); }
   if (req.query.restaurantId) { where.push('o.restaurant_id = ?'); params.push(id(req.query.restaurantId)); }
-  if (req.query.q) {
+  const searchTerm = readSearchTerm(req.query);
+  if (searchTerm) {
     where.push('(o.order_code LIKE ? OR o.receiver_name LIKE ? OR o.receiver_phone LIKE ? OR r.name LIKE ?)');
-    const term = like(req.query.q);
+    const term = like(searchTerm);
     params.push(term, term, term, term);
   }
   const whereSql = where.join(' AND ');
@@ -136,7 +140,7 @@ adminManageRoutes.get('/orders/:orderId', asyncHandler(async (req, res) => {
     [orderId]
   );
   const o = rows[0];
-  if (!o) throw new HttpError(404, 'Order not found');
+  if (!o) throw new HttpError(404, M.orderNotFound);
   const [items, history, payments, delivery] = await Promise.all([
     query('SELECT item_name, variant_name, quantity, unit_price, total_price, note FROM order_items WHERE order_id = ? ORDER BY id', [orderId]),
     query('SELECT old_status, new_status, note, created_at FROM order_status_history WHERE order_id = ? ORDER BY created_at, id', [orderId]),
@@ -155,12 +159,20 @@ adminManageRoutes.get('/orders/:orderId', asyncHandler(async (req, res) => {
   });
 }));
 
-adminManageRoutes.get('/settlements', asyncHandler(async (_req, res) => {
+adminManageRoutes.get('/settlements', asyncHandler(async (req, res) => {
+  const { page, pageSize, offset } = paging(req);
   const rows = await query(
     `SELECT s.*, r.name AS restaurant_name FROM restaurant_settlements s
-     INNER JOIN restaurants r ON r.id = s.restaurant_id ORDER BY s.created_at DESC, s.id DESC LIMIT 200`
+     INNER JOIN restaurants r ON r.id = s.restaurant_id ORDER BY s.created_at DESC, s.id DESC LIMIT ? OFFSET ?`, [pageSize, offset]
   );
+  const [totals] = await query(
+    `SELECT COUNT(*) AS total, COALESCE(SUM(s.gross_sales), 0) AS gross, COALESCE(SUM(s.commission_amount), 0) AS commission,
+            COALESCE(SUM(IF(s.status <> 'SETTLED', s.net_amount, 0)), 0) AS pending_net, COALESCE(SUM(IF(s.status = 'SETTLED', s.net_amount, 0)), 0) AS settled_net
+     FROM restaurant_settlements s INNER JOIN restaurants r ON r.id = s.restaurant_id`);
   res.json({
+    ...pagedMeta(page, pageSize, Number(totals.total)),
+    // Tổng hợp trên TOÀN BỘ kỳ đối soát (không chỉ trang hiện tại)
+    summary: { grossSales: Number(totals.gross), commissionAmount: Number(totals.commission), pendingNet: Number(totals.pending_net), settledNet: Number(totals.settled_net) },
     items: rows.map(row => ({
       id: Number(row.id), restaurantId: Number(row.restaurant_id), restaurantName: row.restaurant_name,
       periodStart: row.period_start, periodEnd: row.period_end, grossSales: Number(row.gross_sales),
@@ -182,9 +194,10 @@ adminManageRoutes.get('/customers', asyncHandler(async (req, res) => {
   const { page, pageSize, offset } = paging(req);
   const where = ["r.name = 'CUSTOMER'", 'u.deleted_at IS NULL'];
   const params = [];
-  if (req.query.q) {
+  const searchTerm = readSearchTerm(req.query);
+  if (searchTerm) {
     where.push('(u.username LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR cp.full_name LIKE ?)');
-    const term = like(req.query.q);
+    const term = like(searchTerm);
     params.push(term, term, term, term);
   }
   const base = `FROM users u INNER JOIN roles r ON r.id = u.role_id
@@ -208,9 +221,16 @@ adminManageRoutes.get('/customers', asyncHandler(async (req, res) => {
 }));
 
 adminManageRoutes.get('/shippers', asyncHandler(async (req, res) => {
+  const { page, pageSize, offset } = paging(req);
   const where = ['sp.deleted_at IS NULL'];
   const params = [];
   if (req.query.status) { where.push('sp.availability_status = ?'); params.push(String(req.query.status)); }
+  const shipperSearch = readSearchTerm(req.query);
+  if (shipperSearch) {
+    where.push('(sp.full_name LIKE ? OR u.username LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR sp.vehicle_plate LIKE ?)');
+    const term = like(shipperSearch);
+    params.push(term, term, term, term, term);
+  }
   const rows = await query(
     `SELECT sp.*, u.email, u.phone, u.status AS user_status,
             (SELECT COUNT(*) FROM shipper_documents d WHERE d.shipper_id = sp.id) AS documents,
@@ -218,10 +238,15 @@ adminManageRoutes.get('/shippers', asyncHandler(async (req, res) => {
             (SELECT COUNT(*) FROM deliveries d WHERE d.shipper_id = sp.id AND d.delivery_status IN ('ASSIGNED','ACCEPTED','PICKED_UP','DELIVERING')) AS active_deliveries
      FROM shipper_profiles sp INNER JOIN users u ON u.id = sp.user_id
      WHERE ${where.join(' AND ')}
-     ORDER BY sp.total_deliveries DESC, sp.id DESC LIMIT 200`,
-    params
+     ORDER BY sp.total_deliveries DESC, sp.id DESC LIMIT ? OFFSET ?`,
+    [...params, pageSize, offset]
   );
+  const [shipperSummary] = await query("SELECT COUNT(*) AS total, COALESCE(SUM(sp.availability_status = 'AVAILABLE'), 0) AS available, COALESCE(SUM(sp.availability_status = 'SUSPENDED'), 0) AS suspended, COALESCE(SUM((SELECT COUNT(*) FROM deliveries d WHERE d.shipper_id = sp.id AND d.delivery_status IN ('ASSIGNED','ACCEPTED','PICKED_UP','DELIVERING'))), 0) AS active_deliveries FROM shipper_profiles sp WHERE sp.deleted_at IS NULL");
+  // totalItems = tổng số dòng THỎA điều kiện lọc (không phải số dòng của trang/LIMIT)
+  const [{ total: shipperTotal }] = await query(`SELECT COUNT(*) AS total FROM shipper_profiles sp INNER JOIN users u ON u.id = sp.user_id WHERE ${where.join(' AND ')}`, params);
   res.json({
+    ...pagedMeta(page, pageSize, Number(shipperTotal)),
+    summary: { total: Number(shipperSummary.total), available: Number(shipperSummary.available), suspended: Number(shipperSummary.suspended), activeDeliveries: Number(shipperSummary.active_deliveries) },
     items: rows.map(row => ({
       id: Number(row.id), userId: Number(row.user_id), fullName: row.full_name, email: row.email, phone: row.phone,
       vehicleType: row.vehicle_type, vehiclePlate: row.vehicle_plate, rating: Number(row.rating),
@@ -237,7 +262,7 @@ adminManageRoutes.patch('/shippers/:shipperId/status', asyncHandler(async (req, 
   const shipperId = id(req.params.shipperId, 'shipperId');
   const status = oneOf(req.body?.status, ['OFFLINE', 'SUSPENDED'], 'status');
   const result = await query('UPDATE shipper_profiles SET availability_status = ? WHERE id = ? AND deleted_at IS NULL', [status, shipperId]);
-  if (!result.affectedRows) throw new HttpError(404, 'Shipper not found');
+  if (!result.affectedRows) throw new HttpError(404, M.shipperNotFound);
   audit(req, 'ADMIN_SHIPPER_STATUS', 'SHIPPER_PROFILE', shipperId);
   res.json({ id: shipperId, status });
 }));
@@ -284,7 +309,10 @@ adminManageRoutes.get('/payments', asyncHandler(async (req, res) => {
     `SELECT method, COUNT(*) AS total, COALESCE(SUM(amount), 0) AS amount FROM payments WHERE status = 'PAID' GROUP BY method ORDER BY amount DESC`
   );
   const cod = await query(`SELECT status, COUNT(*) AS total, COALESCE(SUM(amount), 0) AS amount FROM cod_transactions GROUP BY status`);
+  // Đã hoàn thật (gồm hoàn một phần) lấy từ yêu cầu hoàn COMPLETED
+  const [refunded] = await query(`SELECT COUNT(DISTINCT order_id) AS total, COALESCE(SUM(amount), 0) AS amount FROM refunds WHERE status = 'COMPLETED'`);
   res.json({
+    refunded: { orders: Number(refunded.total), amount: Number(refunded.amount) },
     items: rows.map(row => ({
       id: Number(row.id), paymentCode: row.payment_code, orderId: Number(row.order_id), orderCode: row.order_code,
       restaurantName: row.restaurant_name, method: row.method, amount: Number(row.amount), status: row.status,
@@ -297,11 +325,24 @@ adminManageRoutes.get('/payments', asyncHandler(async (req, res) => {
   });
 }));
 
-adminManageRoutes.get('/refunds', asyncHandler(async (_req, res) => {
+adminManageRoutes.get('/refunds', asyncHandler(async (req, res) => {
+  const { page, pageSize, offset } = paging(req);
+  const refundSearch = readSearchTerm(req.query);
+  const refundWhere = [];
+  const refundParams = [];
+  if (refundSearch) { refundWhere.push('(o.order_code LIKE ? OR f.reason LIKE ?)'); refundParams.push(like(refundSearch), like(refundSearch)); }
+  if (req.query.status) { refundWhere.push('f.status = ?'); refundParams.push(oneOf(String(req.query.status).toUpperCase(), ['PENDING', 'PROCESSING', 'COMPLETED', 'REJECTED'], 'status')); }
+  const refundWhereSql = refundWhere.length ? ` WHERE ${refundWhere.join(' AND ')}` : '';
+  // Yêu cầu đang chờ xử lý lên trước, rồi mới nhất trước
   const rows = await query(
-    `SELECT f.*, o.order_code FROM refunds f INNER JOIN orders o ON o.id = f.order_id ORDER BY f.created_at DESC LIMIT 200`
+    `SELECT f.*, o.order_code FROM refunds f INNER JOIN orders o ON o.id = f.order_id${refundWhereSql} ORDER BY (f.status = 'PENDING') DESC, f.created_at DESC, f.id DESC LIMIT ? OFFSET ?`,
+    [...refundParams, pageSize, offset]
   );
+  const [{ total: refundTotal }] = await query(`SELECT COUNT(*) AS total FROM refunds f INNER JOIN orders o ON o.id = f.order_id${refundWhereSql}`, refundParams);
+  const statusCounts = await query('SELECT status, COUNT(*) AS n FROM refunds GROUP BY status');
   res.json({
+    ...pagedMeta(page, pageSize, Number(refundTotal)),
+    summary: Object.fromEntries(statusCounts.map(row => [row.status, Number(row.n)])),
     items: rows.map(row => ({
       id: Number(row.id), orderId: Number(row.order_id), orderCode: row.order_code, amount: Number(row.amount),
       reason: row.reason, status: row.status, createdAt: row.created_at, processedAt: row.processed_at
@@ -312,17 +353,8 @@ adminManageRoutes.get('/refunds', asyncHandler(async (_req, res) => {
 adminManageRoutes.patch('/refunds/:refundId', asyncHandler(async (req, res) => {
   const refundId = id(req.params.refundId, 'refundId');
   const status = oneOf(req.body?.status, ['COMPLETED', 'REJECTED', 'PROCESSING'], 'status');
-  await withTransaction(async connection => {
-    const rows = await connection.execute('SELECT * FROM refunds WHERE id = ? LIMIT 1 FOR UPDATE', [refundId]);
-    if (!rows[0]) throw new HttpError(404, 'Refund not found');
-    await connection.execute(
-      'UPDATE refunds SET status = ?, processed_by = ?, processed_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [status, req.user.id, refundId]
-    );
-    if (status === 'COMPLETED') {
-      await connection.execute("UPDATE orders SET payment_status = 'REFUNDED' WHERE id = ?", [rows[0].order_id]);
-    }
-  });
+  // Không hoàn vượt số đã trả + đồng bộ payments/orders (modules/payments/refund-service.js)
+  await withTransaction(connection => setRefundStatus(connection, { refundId, status, userId: req.user.id }));
   audit(req, 'ADMIN_REFUND_UPDATE', 'REFUND', refundId);
   res.json({ id: refundId, status });
 }));
@@ -332,15 +364,23 @@ const promotionRow = row => ({
   restaurantId: row.restaurant_id === null ? null : Number(row.restaurant_id), restaurantName: row.restaurant_name ?? null,
   discountType: row.discount_type, discountValue: Number(row.discount_value),
   maxDiscount: row.max_discount === null ? null : Number(row.max_discount), minimumOrder: Number(row.minimum_order),
-  startAt: row.start_at, endAt: row.end_at, usageLimit: row.usage_limit, usedCount: Number(row.used_count), status: row.status
+  startAt: row.start_at, endAt: row.end_at, usageLimit: row.usage_limit, usedCount: Number(row.used_count), status: row.status,
+  firstOrderOnly: Boolean(row.first_order_only), personal: row.customer_id != null
 });
 
-adminManageRoutes.get('/promotions', asyncHandler(async (_req, res) => {
+adminManageRoutes.get('/promotions', asyncHandler(async (req, res) => {
+  const { page, pageSize, offset } = paging(req);
+  const promoSearch = readSearchTerm(req.query);
   const rows = await query(
     `SELECT p.*, r.name AS restaurant_name FROM promotions p LEFT JOIN restaurants r ON r.id = p.restaurant_id
-     WHERE p.deleted_at IS NULL ORDER BY p.created_at DESC LIMIT 200`
+     WHERE p.deleted_at IS NULL AND p.customer_id IS NULL${promoSearch ? ' AND (p.code LIKE ? OR p.name LIKE ? OR r.name LIKE ?)' : ''} ORDER BY (p.restaurant_id IS NULL) DESC, p.created_at DESC, p.id DESC LIMIT ? OFFSET ?`,
+    [...(promoSearch ? [like(promoSearch), like(promoSearch), like(promoSearch)] : []), pageSize, offset]
   );
-  res.json({ items: rows.map(promotionRow) });
+  const [{ total: promoTotal }] = await query(
+    `SELECT COUNT(*) AS total FROM promotions p LEFT JOIN restaurants r ON r.id = p.restaurant_id WHERE p.deleted_at IS NULL AND p.customer_id IS NULL${promoSearch ? ' AND (p.code LIKE ? OR p.name LIKE ? OR r.name LIKE ?)' : ''}`,
+    promoSearch ? [like(promoSearch), like(promoSearch), like(promoSearch)] : []
+  );
+  res.json({ ...pagedMeta(page, pageSize, Number(promoTotal)), items: rows.map(promotionRow) });
 }));
 
 adminManageRoutes.post('/promotions', asyncHandler(async (req, res) => {
@@ -349,19 +389,22 @@ adminManageRoutes.post('/promotions', asyncHandler(async (req, res) => {
   const name = str(b.name, 200, 'name', { required: true });
   const type = oneOf(b.discountType, ['PERCENT', 'FIXED_AMOUNT', 'FREE_DELIVERY'], 'discountType');
   const value = money(b.discountValue ?? 0, 'discountValue');
-  if (type === 'PERCENT' && value > 100) throw new HttpError(400, 'discountValue must be <= 100');
+  if (type === 'PERCENT' && value > 100) throw new HttpError(400, M.discountValueMax);
   const start = new Date(b.startAt ?? Date.now());
-  const end = new Date(b.endAt ?? Date.now() + 30 * 86400000);
-  if (Number.isNaN(+start) || Number.isNaN(+end) || end <= start) throw new HttpError(400, 'Invalid time range');
+  // Mã giảm giá chung (giảm % / giảm trực tiếp) không giới hạn hạn ngạch nhưng có hạn dùng thật (mặc định 90 ngày); freeship bắt buộc có hạn ngạch + ngày kết thúc.
+  const isFreeship = type === 'FREE_DELIVERY';
+  if (isFreeship && (!b.usageLimit || !b.endAt)) throw new HttpError(400, 'Mã freeship phải có hạn ngạch (usageLimit) và ngày kết thúc (endAt)');
+  const end = new Date(b.endAt ?? Date.now() + (isFreeship ? 30 : 90) * 86400000);
+  if (Number.isNaN(+start) || Number.isNaN(+end) || end <= start) throw new HttpError(400, M.timeRangeInvalid);
   try {
     const result = await query(
       `INSERT INTO promotions (restaurant_id, code, name, description, discount_type, discount_value, max_discount,
-        minimum_order, start_at, end_at, usage_limit, usage_per_customer)
-       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        minimum_order, start_at, end_at, usage_limit, usage_per_customer, first_order_only)
+       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [code, name, str(b.description, 1000, 'description'), type, value,
         b.maxDiscount === undefined || b.maxDiscount === '' ? null : money(b.maxDiscount, 'maxDiscount'),
         money(b.minimumOrder ?? 0, 'minimumOrder'), start, end,
-        b.usageLimit ? id(b.usageLimit, 'usageLimit') : null, b.usagePerCustomer ? id(b.usagePerCustomer, 'usagePerCustomer') : 1]
+        isFreeship ? id(b.usageLimit, 'usageLimit') : null, b.usagePerCustomer ? id(b.usagePerCustomer, 'usagePerCustomer') : 1, b.firstOrderOnly === true]
     );
     audit(req, 'ADMIN_PROMOTION_CREATE', 'PROMOTION', result.insertId);
     res.status(201).json({ id: Number(result.insertId), code });
@@ -373,10 +416,73 @@ adminManageRoutes.post('/promotions', asyncHandler(async (req, res) => {
 
 adminManageRoutes.patch('/promotions/:promotionId', asyncHandler(async (req, res) => {
   const promotionId = id(req.params.promotionId, 'promotionId');
+  const b = req.body ?? {};
+  const sets = [];
+  const params = [];
+  if (b.status !== undefined) { sets.push('status = ?'); params.push(oneOf(b.status, ['ACTIVE', 'INACTIVE'], 'status')); }
+  if (b.name !== undefined) { sets.push('name = ?'); params.push(str(b.name, 200, 'name', { required: true })); }
+  if (b.description !== undefined) { sets.push('description = ?'); params.push(str(b.description, 1000, 'description')); }
+  if (b.minimumOrder !== undefined) { sets.push('minimum_order = ?'); params.push(money(b.minimumOrder, 'minimumOrder')); }
+  if (b.endAt !== undefined) {
+    const end = new Date(b.endAt);
+    if (Number.isNaN(+end)) throw new HttpError(400, 'endAt không hợp lệ');
+    sets.push('end_at = ?'); params.push(end);
+  }
+  if (sets.length === 0) throw new HttpError(400, 'Cần ít nhất một trường để cập nhật (status, name, description, minimumOrder, endAt)');
+  await query(`UPDATE promotions SET ${sets.join(', ')} WHERE id = ? AND deleted_at IS NULL`, [...params, promotionId]);
+  audit(req, 'ADMIN_PROMOTION_UPDATE', 'PROMOTION', promotionId);
+  res.json({ id: promotionId, status: b.status ?? undefined, updated: Object.keys(b) });
+}));
+
+const rewardRow = row => ({
+  id: Number(row.id), name: row.name, description: row.description, pointsCost: Number(row.points_cost), discountType: row.discount_type,
+  discountValue: Number(row.discount_value), maxDiscount: row.max_discount === null ? null : Number(row.max_discount), minimumOrder: Number(row.minimum_order),
+  validDays: Number(row.valid_days), stock: row.stock === null ? null : Number(row.stock), status: row.status, redeemed: Number(row.redeemed ?? 0)
+});
+
+adminManageRoutes.get('/loyalty-rewards', asyncHandler(async (_req, res) => {
+  const rows = await query(`SELECT lr.*, (SELECT COUNT(*) FROM loyalty_transactions lt WHERE lt.reward_id = lr.id AND lt.type = 'REDEEM') AS redeemed
+    FROM loyalty_rewards lr ORDER BY lr.points_cost`);
+  res.json({ items: rows.map(rewardRow) });
+}));
+
+adminManageRoutes.post('/loyalty-rewards', asyncHandler(async (req, res) => {
+  const b = req.body ?? {};
+  const type = oneOf(b.discountType, ['PERCENT', 'FIXED_AMOUNT', 'FREE_DELIVERY'], 'discountType');
+  const value = money(b.discountValue ?? 0, 'discountValue');
+  if (type === 'PERCENT' && value > 100) throw new HttpError(400, M.discountValueMax);
+  const result = await query(
+    `INSERT INTO loyalty_rewards (name, description, points_cost, discount_type, discount_value, max_discount, minimum_order, valid_days, stock)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [str(b.name, 200, 'name', { required: true }), str(b.description, 500, 'description'), id(b.pointsCost, 'pointsCost'), type, value,
+      b.maxDiscount === undefined || b.maxDiscount === null || b.maxDiscount === '' ? null : money(b.maxDiscount, 'maxDiscount'),
+      money(b.minimumOrder ?? 0, 'minimumOrder'), b.validDays ? id(b.validDays, 'validDays') : 30, b.stock === undefined || b.stock === null || b.stock === '' ? null : Number(b.stock)]
+  );
+  audit(req, 'ADMIN_REWARD_CREATE', 'LOYALTY_REWARD', result.insertId);
+  res.status(201).json({ id: Number(result.insertId) });
+}));
+
+adminManageRoutes.patch('/loyalty-rewards/:rewardId', asyncHandler(async (req, res) => {
+  const rewardId = id(req.params.rewardId, 'rewardId');
   const status = oneOf(req.body?.status, ['ACTIVE', 'INACTIVE'], 'status');
-  await query('UPDATE promotions SET status = ? WHERE id = ? AND deleted_at IS NULL', [status, promotionId]);
-  audit(req, 'ADMIN_PROMOTION_STATUS', 'PROMOTION', promotionId);
-  res.json({ id: promotionId, status });
+  await query('UPDATE loyalty_rewards SET status = ? WHERE id = ?', [status, rewardId]);
+  audit(req, 'ADMIN_REWARD_STATUS', 'LOYALTY_REWARD', rewardId);
+  res.json({ id: rewardId, status });
+}));
+
+adminManageRoutes.post('/promotions/:promotionId/extend', asyncHandler(async (req, res) => {
+  const promotionId = id(req.params.promotionId, 'promotionId');
+  const rows = await query('SELECT * FROM promotions WHERE id = ? AND restaurant_id IS NULL AND customer_id IS NULL AND deleted_at IS NULL LIMIT 1', [promotionId]);
+  if (!rows[0]) throw new HttpError(404, 'Voucher nền tảng không tồn tại');
+  const days = Number(req.body?.days ?? 0);
+  const addQuota = Number(req.body?.addQuota ?? 0);
+  if (!Number.isInteger(days) || days < 0 || days > 365 || !Number.isInteger(addQuota) || addQuota < 0 || (days === 0 && addQuota === 0)) throw new HttpError(400, 'Cần gia hạn 1-365 ngày và/hoặc thêm hạn ngạch');
+  await query(
+    `UPDATE promotions SET end_at = IF(? > 0, DATE_ADD(GREATEST(end_at, CURRENT_TIMESTAMP), INTERVAL ? DAY), end_at),
+       usage_limit = IF(usage_limit IS NULL, NULL, usage_limit + ?), status = 'ACTIVE' WHERE id = ?`, [days, days, addQuota, promotionId]
+  );
+  audit(req, 'ADMIN_PROMOTION_EXTEND', 'PROMOTION', promotionId);
+  res.json({ id: promotionId, extendedDays: days, addedQuota: addQuota });
 }));
 
 adminManageRoutes.delete('/promotions/:promotionId', asyncHandler(async (req, res) => {
@@ -481,7 +587,7 @@ adminManageRoutes.post('/zones', asyncHandler(async (req, res) => {
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [str(b.name, 150, 'name', { required: true }), str(b.city, 100, 'city', { required: true }), str(b.district, 100, 'district'),
       money(b.baseFee ?? 15000, 'baseFee'), money(b.pricePerKm ?? 5000, 'pricePerKm'), money(b.minimumFee ?? 15000, 'minimumFee'),
-      money(b.maximumDistance ?? 20, 'maximumDistance', { min: 1 })]
+      money(b.maximumDistance ?? 15, 'maximumDistance', { min: 1 })]
   );
   audit(req, 'ADMIN_ZONE_CREATE', 'DELIVERY_ZONE', result.insertId);
   res.status(201).json({ id: Number(result.insertId) });
@@ -497,7 +603,7 @@ adminManageRoutes.patch('/zones/:zoneId', asyncHandler(async (req, res) => {
   if (b.pricePerKm !== undefined) { fields.push('price_per_km = ?'); values.push(money(b.pricePerKm, 'pricePerKm')); }
   if (b.minimumFee !== undefined) { fields.push('minimum_fee = ?'); values.push(money(b.minimumFee, 'minimumFee')); }
   if (b.maximumDistance !== undefined) { fields.push('maximum_distance = ?'); values.push(money(b.maximumDistance, 'maximumDistance', { min: 1 })); }
-  if (!fields.length) throw new HttpError(400, 'Nothing to update');
+  if (!fields.length) throw new HttpError(400, M.nothingToUpdate);
   await query(`UPDATE delivery_zones SET ${fields.join(', ')} WHERE id = ?`, [...values, zoneId]);
   audit(req, 'ADMIN_ZONE_UPDATE', 'DELIVERY_ZONE', zoneId);
   res.json({ id: zoneId });
@@ -553,9 +659,10 @@ restaurantManageRoutes.get('/:restaurantId/orders', asyncHandler(async (req, res
   if (req.query.status) { where.push('o.order_status = ?'); params.push(String(req.query.status)); }
   if (req.query.from) { where.push('o.created_at >= ?'); params.push(new Date(String(req.query.from))); }
   if (req.query.to) { where.push('o.created_at < DATE_ADD(?, INTERVAL 1 DAY)'); params.push(new Date(String(req.query.to))); }
-  if (req.query.q) {
+  const searchTerm = readSearchTerm(req.query);
+  if (searchTerm) {
     where.push('(o.order_code LIKE ? OR o.receiver_name LIKE ? OR o.receiver_phone LIKE ?)');
-    const term = like(req.query.q);
+    const term = like(searchTerm);
     params.push(term, term, term);
   }
   const whereSql = where.join(' AND ');
@@ -596,7 +703,7 @@ restaurantManageRoutes.post('/:restaurantId/reviews/:reviewId/reply', asyncHandl
     'UPDATE restaurant_reviews SET restaurant_reply = ?, replied_at = CURRENT_TIMESTAMP WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL',
     [reply, reviewId, restaurantId]
   );
-  if (!result.affectedRows) throw new HttpError(404, 'Review not found');
+  if (!result.affectedRows) throw new HttpError(404, M.reviewNotFound);
   audit(req, 'RESTAURANT_REVIEW_REPLY', 'RESTAURANT_REVIEW', reviewId);
   res.json({ id: reviewId, reply });
 }));
@@ -630,7 +737,7 @@ restaurantManageRoutes.put('/:restaurantId/hours', asyncHandler(async (req, res)
   await withTransaction(async connection => {
     for (const item of items) {
       const day = Number(item.dayOfWeek);
-      if (!Number.isInteger(day) || day < 1 || day > 7) throw new HttpError(400, 'dayOfWeek is invalid');
+      if (!Number.isInteger(day) || day < 1 || day > 7) throw new HttpError(400, M.dayOfWeekInvalid);
       if (!item.isClosed && (!time.test(item.openTime) || !time.test(item.closeTime) || item.openTime >= item.closeTime)) {
         throw new HttpError(400, `Giờ mở cửa ngày ${day} không hợp lệ`);
       }

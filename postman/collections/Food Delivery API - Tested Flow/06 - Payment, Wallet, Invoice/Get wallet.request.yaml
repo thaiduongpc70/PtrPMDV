@@ -1,4 +1,17 @@
 $kind: http-request
 url: "{{baseUrl}}/api/payments/wallet"
 method: GET
-order: 4000
+headers:
+  Content-Type: "application/json"
+  Authorization: "Bearer {{customerToken}}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Get wallet: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("balance present", () => pm.expect(json.wallet.balance >= 0).to.be.true);
+      { const v = (json.wallet.balance); if (v !== undefined && v !== null) pm.collectionVariables.set('walletBefore', v); }
+    language: text/javascript
+order: 6000

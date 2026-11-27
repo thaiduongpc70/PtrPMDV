@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/customer/favorites"
+method: GET
+headers:
+  Authorization: Bearer {{newToken}}
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Favorites list contains both: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Favorites list contains both: nội dung", () => { pm.expect(JSON.stringify(j)).to.include('Món Postman'); });
+    language: text/javascript
+order: 20000

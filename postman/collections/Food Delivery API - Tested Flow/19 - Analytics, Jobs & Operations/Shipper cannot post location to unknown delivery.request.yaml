@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/shippers/locations"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{shipperToken}}
+body:
+  type: text
+  content: '{"deliveryId":999999999,"latitude":20.65,"longitude":106.06}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Shipper cannot post location to unknown delivery: HTTP 404", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([404]));
+      pm.test("Shipper cannot post location to unknown delivery: nội dung", () => { pm.expect(j.message).to.include('chuyến giao'); });
+    language: text/javascript
+order: 30000

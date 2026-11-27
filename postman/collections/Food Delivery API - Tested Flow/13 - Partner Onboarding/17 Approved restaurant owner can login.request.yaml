@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: "application/json"
+body:
+  type: text
+  content: |-
+    {
+      "emailOrUsername": "nha{{pSuffix}}",
+      "password": "duong2k5"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Approved restaurant owner can login: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("role is RESTAURANT", () => pm.expect(json.user.role === "RESTAURANT").to.be.true);
+    language: text/javascript
+order: 17000

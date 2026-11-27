@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/restaurant/restaurants/{{pmRid}}/topping-groups/{{pmGroupId}}/toppings/{{pmToppingId}}"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{restaurantToken}}
+body:
+  type: text
+  content: '{"price":9000}'
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Owner updates topping: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Owner updates topping: nội dung", () => { pm.expect(j.price).to.eql(9000); pm.expect(j.name).to.eql('Trứng'); });
+    language: text/javascript
+order: 29000

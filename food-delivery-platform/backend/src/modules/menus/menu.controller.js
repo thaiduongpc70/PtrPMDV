@@ -37,3 +37,4 @@ async function respondMutation(req, res, result, entityType, action, status = 20
 function applyAudit(req, result, entityType, action) { setAudit(req, action, entityType, result.value?.id ?? result.value?.itemId ?? null); req.auditOldValues = result.audit.oldValues; req.auditNewValues = result.audit.newValues; }
 function setAudit(req, action, entityType, entityId = null) { req.auditUserId = req.user?.id ?? null; req.auditAction = action; req.auditEntityType = entityType; req.auditEntityId = entityId; }
 function id(value, field) { return readId(value, field); }
+export const setCombo = asyncHandler(async (req, res) => respondMutation(req, res, await menuService.setCombo(req.user.id, id(req.params.restaurantId, 'restaurant'), id(req.params.itemId, 'menu item'), req.body), 'MENU_ITEM', 'MENU_ITEM_COMBO_UPDATE'));

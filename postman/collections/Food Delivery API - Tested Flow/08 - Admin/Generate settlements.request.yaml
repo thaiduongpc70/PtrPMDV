@@ -2,7 +2,8 @@ $kind: http-request
 url: "{{baseUrl}}/api/settlements/admin/settlements/generate"
 method: POST
 headers:
-  Content-Type: application/json
+  Content-Type: "application/json"
+  Authorization: "Bearer {{adminToken}}"
 body:
   type: text
   content: |-
@@ -11,4 +12,12 @@ body:
       "periodEnd": "2026-09-30",
       "commissionRate": 0.18
     }
-order: 6000
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Generate settlements: HTTP 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));
+    language: text/javascript
+order: 8000

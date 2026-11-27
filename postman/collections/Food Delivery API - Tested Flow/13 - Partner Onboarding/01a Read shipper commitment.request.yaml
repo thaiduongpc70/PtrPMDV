@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/api/partners/commitments/shipper"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Commitment shipper: HTTP 200', () => pm.response.to.have.status(200));
+      const j = pm.response.json();
+      pm.test('có phiên bản và đúng loại cam kết', () => { pm.expect(j.version).to.be.a('string'); pm.expect(j.kind).to.eql('shipper'); });
+      pm.collectionVariables.set('pCommitVersion', j.version);
+    language: text/javascript
+order: 1500

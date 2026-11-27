@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/api/deliveries/available-shippers"
+method: GET
+headers:
+  Content-Type: "application/json"
+  Authorization: "Bearer {{restaurantToken}}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.text() ? (() => { try { return pm.response.json(); } catch (e) { return null; } })() : null;
+      pm.test('Restaurant lists available shippers: HTTP 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));
+      pm.test("a shipper is available", () => pm.expect(json.items.length > 0).to.be.true);
+      // Nhiều tài xế đang rảnh: chọn đúng tài xế của tài khoản bao.shipper đã đăng nhập ở bước trước.
+      const mine = json.items.find(s => s.fullName === 'Trần Quốc Bảo');
+      pm.test("bao.shipper is in the available list", () => pm.expect(!!mine).to.be.true);
+      if (mine) pm.collectionVariables.set('shipperId', mine.id);
+    language: text/javascript
+order: 33000

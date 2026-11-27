@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/catalog/delivery-fees"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = (() => { try { return pm.response.json(); } catch (e) { return null; } })();
+      pm.test("Delivery fee table: HTTP 200", () => pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.oneOf([200]));
+      pm.test("Delivery fee table: nội dung", () => { pm.expect(JSON.stringify(j)).to.include('fee'); });
+    language: text/javascript
+order: 3000

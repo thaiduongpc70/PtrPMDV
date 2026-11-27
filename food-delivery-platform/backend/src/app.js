@@ -10,6 +10,8 @@ import { auditLogRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { catalogRoutes } from './modules/catalog/catalog.routes.js';
 import { engagementAdminRoutes, engagementCustomerRoutes, engagementPublicRoutes, engagementRestaurantRoutes } from './modules/engagement/engagement.routes.js';
+import { rewardsCustomerRoutes } from './modules/engagement/rewards.routes.js';
+import { analyticsRoutes } from './modules/analytics/analytics.routes.js';
 import { notificationRoutes } from './modules/notifications/notification.routes.js';
 import { customerOrderRoutes, restaurantOrderRoutes } from './modules/orders/order.routes.js';
 import { adminDashboardRoutes } from './modules/dashboard/admin-dashboard.routes.js';
@@ -23,6 +25,8 @@ import {
 } from './modules/operations/operations.routes.js';
 import { restaurantMenuRoutes } from './modules/menus/menu.routes.js';
 import { adminManageRoutes, restaurantManageRoutes } from './modules/management/management.routes.js';
+import { partnerAdminRoutes, partnerPublicRoutes } from './modules/partners/partner.routes.js';
+import { adminExportRoutes, restaurantExportRoutes } from './modules/exports/export.routes.js';
 import { jobRoutes } from './modules/jobs/job.routes.js';
 import { settingsRoutes } from './modules/settings/settings.routes.js';
 import { customerProfileRoutes } from './modules/customers/customer.routes.js';
@@ -44,7 +48,11 @@ import { invalidateResponseCache, responseCache } from './shared/cache/response-
 export function createApp() {
   const app = express();
 
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: { ...helmet.contentSecurityPolicy.getDefaultDirectives(), 'img-src': ["'self'", 'data:', 'https://tile.openstreetmap.org', 'https://*.tile.openstreetmap.org'] }
+    }
+  }));
   app.use(cors({
     origin(origin, callback) {
       if (!origin || env.corsOrigins.includes('*') || env.corsOrigins.includes(origin)) {
@@ -66,8 +74,8 @@ export function createApp() {
       }
     }
   }));
-  app.use(rateLimit(env.rateLimit));
   app.use(authContextMiddleware);
+  app.use(rateLimit({ ...env.rateLimit, max: req => (req.user?.role === 'ADMIN' ? env.rateLimit.adminMax : env.rateLimit.max) }));
   app.use(requestAuditMiddleware);
   app.use(express.json({ limit: '1mb' }));
   app.use('/uploads', express.static(resolve(process.cwd(), '..', '..', 'storage')));
@@ -81,8 +89,13 @@ export function createApp() {
   app.use('/api/accounts', accountRoutes);
   app.use('/api/jobs', jobRoutes);
   app.use('/api/admin/system-settings', settingsRoutes);
-  app.get('/api/docs', (_req, res) => res.sendFile(resolve(process.cwd(), '..', '..', 'docs', 'swagger.html')));
-  app.get('/docs/swagger', (_req, res) => res.sendFile(resolve(process.cwd(), '..', '..', 'docs', 'swagger.html')));
+  const sendSwagger = (_req, res) => {
+    // Swagger UI is loaded from unpkg and initialised inline, so this page needs a looser CSP than the API default.
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self'");
+    res.sendFile(resolve(process.cwd(), '..', '..', 'docs', 'swagger.html'));
+  };
+  app.get('/api/docs', sendSwagger);
+  app.get('/docs/swagger', sendSwagger);
   app.get('/api/openapi.json', (_req, res) => res.sendFile(resolve(process.cwd(), '..', '..', 'docs', 'openapi.json')));
   app.use('/api/customer/profile', customerProfileRoutes);
   app.use('/api/customer/addresses', addressRoutes);
@@ -90,6 +103,8 @@ export function createApp() {
   app.use('/api/catalog', engagementPublicRoutes);
   app.use('/api/admin/banners', engagementAdminRoutes);
   app.use('/api/customer', engagementCustomerRoutes);
+  app.use('/api/analytics', analyticsRoutes);
+  app.use('/api/customer', rewardsCustomerRoutes);
   app.use('/api/customer', customerOrderRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/shippers', shipperRoutes);
@@ -98,6 +113,10 @@ export function createApp() {
   app.use('/api/communications', communicationRoutes);
   app.use('/api/settlements', settlementRoutes);
   app.use('/api/catalog', restaurantPublicRoutes);
+  app.use('/api/partners', partnerPublicRoutes);
+  app.use('/api/admin/partners', partnerAdminRoutes);
+  app.use('/api/admin/export', adminExportRoutes);
+  app.use('/api/restaurant/export', restaurantExportRoutes);
   app.use('/api/admin/manage', adminManageRoutes);
   app.use('/api/restaurant/manage', restaurantManageRoutes);
   app.use('/api/restaurant/restaurants', invalidateMenuCache, restaurantOwnerRoutes);
