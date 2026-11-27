@@ -38,3 +38,8 @@ food-delivery-platform/backend/scripts/_*
 
 # Tệp khoá của Word
 ~$*
+
+# Tệp cá nhân, không đưa lên GitHub
+/taikhoan.md
+/BaoCao_NhanDienCamXuc.docx
+/BaoCao_FoodGo.docx
